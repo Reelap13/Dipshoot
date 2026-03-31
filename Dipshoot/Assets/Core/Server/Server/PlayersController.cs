@@ -73,12 +73,19 @@ namespace Server.ServerSide
             OnDeleted.Invoke(player);
         }
 
-        private Player GetPlayer(Guid clientId)
+        public Player GetPlayer(Guid clientId)
         {
             foreach (Player player in _players)
                 if (player.ClientId == clientId)
                     return player;
+            return null;
+        }
 
+        public Player GetPlayer(int player_id)
+        {
+            foreach (Player player in _players)
+                if (player.PlayerId == player_id)
+                    return player;
             return null;
         }
 

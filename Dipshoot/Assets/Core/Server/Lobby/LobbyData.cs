@@ -39,10 +39,7 @@ namespace Server.Lobby
         {
             foreach (var player in Players)
                 if (player.PlayerId == player_id)
-                {
-                    Players.Remove(player);
                     return player;
-                }
             return null;
         }
 
