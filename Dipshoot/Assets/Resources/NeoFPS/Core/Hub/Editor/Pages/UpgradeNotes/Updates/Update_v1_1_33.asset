@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a4f4abcda999cd4b8254e506b70e10f, type: 3}
+  m_Name: Update_v1_1_33
+  m_EditorClassIdentifier: 
+  version: 1133
+  sections:
+  - image: {fileID: 0}
+    h2Heading: 
+    h3Heading: 
+    bulletPoints: []
+    text: '1.1.33 is a minor update with some bug fixes and tweaks
+
+'
+    links: []
+    highlightObjects: []
+    actions: []
+  - image: {fileID: 0}
+    h2Heading: 
+    h3Heading: New Features
+    bulletPoints:
+    - Added a new aim target transform behaviour that can be triggered via script
+      or event to force player to aim at the object
+    - Added versioning to save system (prevent loading incompatible save version
+      files)
+    text: 
+    links: []
+    highlightObjects: []
+    actions: []

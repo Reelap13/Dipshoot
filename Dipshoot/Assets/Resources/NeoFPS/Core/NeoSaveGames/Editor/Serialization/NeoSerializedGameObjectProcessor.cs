@@ -1,0 +1,1 @@
+﻿// This script is a stub to prevent errors when updating a project from prior to the save system refactor
