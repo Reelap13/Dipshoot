@@ -21,10 +21,8 @@ namespace Server.Match
         [TargetRpc]
         public void TargetLoadGameScene(string scene_name)
         {
-            Debug.Log("Start loading");
             _scene_loader.OnLoaded += () =>
             {
-                Debug.Log("Finish loading");
                 CommandMarkPlayerReadiness();
             };
             StartCoroutine(_scene_loader.LoadMatchScene(scene_name));

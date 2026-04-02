@@ -12,6 +12,8 @@ GameObject:
   - component: {fileID: 3706163397506929878}
   - component: {fileID: 2027675238589823550}
   - component: {fileID: 2906318608905810584}
+  - component: {fileID: 8046492816359297389}
+  - component: {fileID: 2629009863051560201}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -82,3 +84,32 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+  <LevelCreator>k__BackingField: {fileID: 8046492816359297389}
+--- !u!114 &8046492816359297389
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8092689362971832261}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa46d3e810c9fff42980bb1c409d27aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  <GameController>k__BackingField: {fileID: 2906318608905810584}
+  _level_prefab: {fileID: 2536181029044780511, guid: 0e944feec16b1f14ab05102ebc9a4270, type: 3}
+--- !u!114 &2629009863051560201
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8092689362971832261}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e8eda4e9d6e07e42b3f9c4658a59e4a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  <GameController>k__BackingField: {fileID: 2906318608905810584}
+  _character_prefab: {fileID: 4896800512555455457, guid: 363305e3a1e267743a300945317c7a73, type: 3}

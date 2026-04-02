@@ -34,7 +34,10 @@ namespace Server.Data
 
             NetworkConnectionToClient conn = GetConnection();
             if (conn != null)
+            {
                 obj.AssignClientAuthority(conn);
+                NetworkServer.RebuildObservers(obj, true);
+            }
         }
 
         public void RemoveNetworkObject(NetworkIdentity obj)

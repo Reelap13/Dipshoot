@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.SceneManagement;
 
 namespace Server.Match
 {
@@ -13,7 +14,10 @@ namespace Server.Match
         [NonSerialized] public UnityEvent OnEndingGame = new UnityEvent();
         [NonSerialized] public UnityEvent OnDestroingGame = new UnityEvent();
         
-        protected MatchController MatchController;
+        public MatchController MatchController { get; private set; }
+
+        public Scene Scene => MatchController.SceneManager.Scene;
+        public Guid MatchId => MatchController.MatchData.Guid;
 
         public virtual void LoadGame(MatchController match_controller)
         {
@@ -21,7 +25,7 @@ namespace Server.Match
             match_controller.OnDestroingMatch.AddListener(DestoryGame);
         }
 
-        protected virtual void StartGame()
+        public virtual void StartGame()
         {
             OnStartingGame.Invoke();
         }

@@ -20,6 +20,7 @@ namespace Server.ClientSide
         private void CmdRegisterOnServer(Guid player_id, string nickname)
         {
             ConnectionController.Instance.RegisterClient(player_id, nickname, connectionToClient);
+            GetComponent<NetworkMatch>().matchId = player_id;
         }
 
         private Guid GetPlayerId()

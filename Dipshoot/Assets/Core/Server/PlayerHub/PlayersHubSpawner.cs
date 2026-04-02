@@ -1,3 +1,4 @@
+using System;
 using Mirror;
 using Server.Data;
 using Server.ServerSide;
@@ -17,6 +18,7 @@ namespace Server.PlayerHub
         private void CreatePlayerHub(Player player)
         {
             var hub = NetworkUtils.NetworkInstantiate(_hub_prefab, transform, transform);
+            hub.GetComponent<NetworkMatch>().matchId = player.ClientId;
             player.AddNetworkObject(hub.netIdentity);
             hub.GetComponent<PlayerHubController>().Initialize(player);
         }

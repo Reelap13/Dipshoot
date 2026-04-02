@@ -14,7 +14,7 @@ namespace Server.ClientSide
 
             var scene = SceneManager.GetSceneByName(sceneName);
             SceneManager.SetActiveScene(scene);
-            SceneManager.MoveGameObjectToScene(gameObject, scene);
+            //SceneManager.MoveGameObjectToScene(gameObject, scene); host mode break
 
             yield return null; 
 
