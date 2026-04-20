@@ -57,5 +57,6 @@ public class InputManager : MonoBehaviour
     {
         return controls;
     }
+    public Controls Controls { get { return controls; } }
 }
 

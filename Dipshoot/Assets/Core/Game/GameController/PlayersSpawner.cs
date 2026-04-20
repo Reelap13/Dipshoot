@@ -1,3 +1,4 @@
+using Game.Players;
 using Mirror;
 using Server.Data;
 using Server.Match;
@@ -10,7 +11,7 @@ namespace Game
     {
         [field: SerializeField]
         public DipshootGameController GameController { get; private set; }
-        [SerializeField] private NetworkIdentity _character_prefab;
+        [SerializeField] private PlayerCharacter _character_prefab;
 
         private void Awake()
         {
@@ -22,10 +23,11 @@ namespace Game
             foreach (var lobby_player in GameController.MatchController.MatchData.LobbyData.Players)
             {
                 Player player = PlayersController.Instance.GetPlayer(lobby_player.PlayerId);
-                NetworkIdentity character = NetworkUtils.NetworkMatchInstantiate(
+                PlayerCharacter character = NetworkUtils.NetworkMatchInstantiate(
                     _character_prefab, GameController.Scene, GameController.MatchId, 
                     GameController.LevelCreator.Level.GetRandomSpawnPoint(), transform);
-                player.AddNetworkObject(character);
+                player.AddNetworkObject(character.netIdentity);
+                character.Initialize(GameController.TickManager);
             }
         }
     }

@@ -14,13 +14,13 @@ namespace Scripts.UI.SceneUI
 
         private void Awake()
         {
-             InputManager.Instance.GetControls().UI.Cancel.started += ProcessESCButtonClicked;
+            //InputManager.Instance.GetControls().UI.Cancel.started += ProcessESCButtonClicked;
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
         private void OnDestroy()
         {
-            InputManager.Instance.GetControls().UI.Cancel.started -= ProcessESCButtonClicked;
+            //InputManager.Instance.GetControls().UI.Cancel.started -= ProcessESCButtonClicked;
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
@@ -73,7 +73,7 @@ namespace Scripts.UI.SceneUI
             return null;
         }
 
-        private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => InputManager.Instance.GetControls().UI.Cancel.started += ProcessESCButtonClicked;
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode) { }// =>InputManager.Instance.GetControls().UI.Cancel.started += ProcessESCButtonClicked;
     }
 
     public class ESCRequest

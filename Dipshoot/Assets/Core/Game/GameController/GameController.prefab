@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 2906318608905810584}
   - component: {fileID: 8046492816359297389}
   - component: {fileID: 2629009863051560201}
+  - component: {fileID: 633118772506370116}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -85,6 +86,7 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   <LevelCreator>k__BackingField: {fileID: 8046492816359297389}
+  <TickManager>k__BackingField: {fileID: 633118772506370116}
 --- !u!114 &8046492816359297389
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -112,4 +114,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   <GameController>k__BackingField: {fileID: 2906318608905810584}
-  _character_prefab: {fileID: 4896800512555455457, guid: 363305e3a1e267743a300945317c7a73, type: 3}
+  _character_prefab: {fileID: 7358710916428720345, guid: 363305e3a1e267743a300945317c7a73, type: 3}
+--- !u!114 &633118772506370116
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8092689362971832261}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 269c13da99d45ff428782f4e44934067, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  TickRate: 60
