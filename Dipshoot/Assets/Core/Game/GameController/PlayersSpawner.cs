@@ -27,7 +27,7 @@ namespace Game
                     _character_prefab, GameController.Scene, GameController.MatchId, 
                     GameController.LevelCreator.Level.GetRandomSpawnPoint(), transform);
                 player.AddNetworkObject(character.netIdentity);
-                character.Initialize(GameController.TickManager);
+                character.InitializeServerSimulation(GameController.TickManager);
             }
         }
     }

@@ -10,6 +10,10 @@ namespace Game.Players
 
         public TickManager TickManager => Character.TickManager;
 
+        public bool IsClient => Character.isClient;
+        public bool IsServer => Character.isServer;
+        public bool IsOwned => Character.isOwned;
+
         private bool _is_initialized;
         private bool _is_subscribed;
 
@@ -36,9 +40,9 @@ namespace Game.Players
             if (!_is_initialized || _is_subscribed)
                 return;
 
-            Debug.Log($"{Character == null} {Character?.TickManager == null}");
             Character.TickManager.OnPreTick += OnPreTick;
             Character.TickManager.OnTick += OnTick;
+            Character.TickManager.OnPostTick += OnPostTick;
             _is_subscribed = true;
         }
 
@@ -49,10 +53,12 @@ namespace Game.Players
 
             Character.TickManager.OnPreTick -= OnPreTick;
             Character.TickManager.OnTick -= OnTick;
+            Character.TickManager.OnPostTick -= OnPostTick;
             _is_subscribed = false;
         }
 
         protected virtual void OnPreTick() { }
         protected virtual void OnTick() { }
+        protected virtual void OnPostTick() { }
     }
 }

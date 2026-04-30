@@ -15,7 +15,9 @@ GameObject:
   - component: {fileID: 1037792969983032477}
   - component: {fileID: 3682429442234547083}
   - component: {fileID: 563671470526942404}
+  - component: {fileID: 1508822084912371000}
   - component: {fileID: 3299513015696557962}
+  - component: {fileID: 9044189472314785501}
   m_Layer: 0
   m_Name: PlayerCharacter
   m_TagString: Untagged
@@ -131,7 +133,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fb20a80a1e4ba4443ba0c62446e658a0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _input: {fileID: 3682429442234547083}
+--- !u!114 &1508822084912371000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1239777248742655304}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88b12c1bccc2e684f9311a791ab62023, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _character: {fileID: 7358710916428720345}
+  _inputController: {fileID: 563671470526942404}
 --- !u!114 &3299513015696557962
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -145,6 +163,27 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _speed: 5
+--- !u!114 &9044189472314785501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1239777248742655304}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67a6f9ad4f4048d1af93f06875d00e7e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _character: {fileID: 7358710916428720345}
+  _movement: {fileID: 3299513015696557962}
+  _input_buffer_synchronizer: {fileID: 1508822084912371000}
+  _position_error_threshold: 0.001
+  _rotation_error_threshold: 0.1
+  _remote_interpolation_back_ticks: 2
 --- !u!1 &2530876336101798869
 GameObject:
   m_ObjectHideFlags: 0

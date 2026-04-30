@@ -17,7 +17,7 @@ namespace Game.Level
                 return;
 
             _terrainGenerated = true;
-            GetOrCreateTerrainGenerator().GenerateLevel();
+            //GetOrCreateTerrainGenerator().GenerateLevel();
         }
 
         public ChunkedTerrainLevelGenerator GetOrCreateTerrainGenerator()
