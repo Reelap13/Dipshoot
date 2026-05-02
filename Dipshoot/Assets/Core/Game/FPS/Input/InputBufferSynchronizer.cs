@@ -131,9 +131,6 @@ namespace Game.Players.Input
                 return;
 
             LastCapturedTick = input.Tick;
-            Debug.Log(
-                $"{LogPrefix} Captured input. netId={netId} localTick={input.Tick} " +
-                $"move={input.Move} look={input.Look} shoot={input.IsShoot}");
             OnPendingInputsChanged?.Invoke(input.Tick);
             TrySendUnsentInputs();
         }
@@ -154,15 +151,9 @@ namespace Game.Players.Input
 
             if (!TryBuildUnsentBatch(out PlayerInputBatch batch))
             {
-                Debug.Log(
-                    $"{LogPrefix} No unsent inputs. netId={netId} " +
-                    $"captured={LastCapturedTick} sent={LastSentTick} acked={LastAcknowledgedTick}");
                 return false;
             }
 
-            Debug.Log(
-                $"{LogPrefix} Sending batch. netId={netId} from={batch.FromTick} " +
-                $"to={batch.ToTick} count={batch.Inputs.Length}");
             CmdSendInputs(batch.Inputs);
             MarkInputsAsSentUpTo(batch.ToTick);
             return true;
@@ -173,9 +164,6 @@ namespace Game.Players.Input
         {
             if (_character == null || inputs == null || inputs.Length == 0)
             {
-                Debug.Log(
-                    $"{LogPrefix} Server received empty batch. netId={netId} " +
-                    $"characterMissing={_character == null}");
                 return;
             }
 
@@ -187,9 +175,6 @@ namespace Game.Players.Input
                     last_received_tick = input.Tick;
             }
 
-            Debug.Log(
-                $"{LogPrefix} Server stored batch. netId={netId} count={inputs.Length} " +
-                $"lastReceivedInputTick={last_received_tick}");
             TargetRegisterInputsReceived(last_received_tick);
         }
 
@@ -200,8 +185,6 @@ namespace Game.Players.Input
                 return;
 
             LastReceivedByServerTick = tick;
-            Debug.Log(
-                $"{LogPrefix} Server receipt ack. netId={netId} receivedUpTo={tick}");
             OnInputsReceivedByServer?.Invoke(tick);
         }
     }

@@ -78,19 +78,12 @@ namespace Game.Players
         {
             if (_character == null || _character.TickManager == null || _movement == null)
             {
-                Debug.Log(
-                    $"{LogPrefix} Server post tick skipped. netId={netId} " +
-                    $"characterMissing={_character == null} tickManagerMissing={_character?.TickManager == null} " +
-                    $"movementMissing={_movement == null}");
                 return;
             }
 
             int server_tick = _character.TickManager.CurrentTick;
             if (!_character.StateBuffer.TryGet(server_tick, out PlayerState state))
             {
-                Debug.Log(
-                    $"{LogPrefix} Snapshot skipped. netId={netId} serverTick={server_tick} " +
-                    "reason=missing_state");
                 return;
             }
 
@@ -99,9 +92,6 @@ namespace Game.Players
                 server_tick,
                 _movement.LastServerProcessedInputTick);
 
-            Debug.Log(
-                $"{LogPrefix} Sending snapshot. netId={netId} serverTick={snapshot.ServerTick} " +
-                $"lastProcessedInputTick={snapshot.LastProcessedInputTick} position={snapshot.Position}");
             TargetReceiveAuthoritativeState(snapshot);
             RpcReceiveRemoteAuthoritativeState(snapshot);
         }

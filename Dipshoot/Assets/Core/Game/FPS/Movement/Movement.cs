@@ -9,6 +9,10 @@ namespace Game.Players
         private const string LogPrefix = "[NetTick][Movement]";
 
         [SerializeField] private float _speed = 5f;
+        [SerializeField] private float _yaw_sensitivity = 0.15f;
+        [SerializeField] private float _pitch_sensitivity = 0.15f;
+        [SerializeField] private float _min_camera_pitch = -80f;
+        [SerializeField] private float _max_camera_pitch = 80f;
         private int _last_server_processed_input_tick = -1;
         private bool _has_last_server_input;
         private PlayerInputData _last_server_input;
@@ -33,17 +37,11 @@ namespace Game.Players
         {
             if (!Character.InputBuffet.TryGet(tick, out PlayerInputData input))
             {
-                Debug.Log(
-                    $"{LogPrefix} Local simulate skipped. netId={Character.netId} tick={tick} " +
-                    "reason=missing_input");
                 return false;
             }
 
             if (!TryGetPreviousStateForTick(tick, out PlayerState previous_state))
             {
-                Debug.Log(
-                    $"{LogPrefix} Local simulate skipped. netId={Character.netId} tick={tick} " +
-                    $"reason=missing_previous_state previousTick={tick - 1}");
                 return false;
             }
 
@@ -55,9 +53,6 @@ namespace Game.Players
 
             Character.StateBuffer.Add(new_state);
             ApplyState(new_state);
-            Debug.Log(
-                $"{LogPrefix} Local simulate success. netId={Character.netId} tick={tick} " +
-                $"inputTick={input.Tick} position={new_state.Position}");
             return true;
         }
 
@@ -65,9 +60,6 @@ namespace Game.Players
         {
             if (!TryGetPreviousStateForTick(server_tick, out PlayerState previous_state))
             {
-                Debug.Log(
-                    $"{LogPrefix} Server simulate skipped. netId={Character.netId} serverTick={server_tick} " +
-                    $"reason=missing_previous_state previousTick={server_tick - 1}");
                 return false;
             }
 
@@ -83,9 +75,6 @@ namespace Game.Players
 
             Character.StateBuffer.Add(new_state);
             ApplyState(new_state);
-            Debug.Log(
-                $"{LogPrefix} Server simulate success. netId={Character.netId} serverTick={server_tick} " +
-                $"inputTick={input.Tick} position={new_state.Position}");
             return true;
         }
 
@@ -109,6 +98,10 @@ namespace Game.Players
                 input,
                 delta_time,
                 _speed,
+                _yaw_sensitivity,
+                _pitch_sensitivity,
+                _min_camera_pitch,
+                _max_camera_pitch,
                 tick);
         }
 
@@ -124,9 +117,6 @@ namespace Game.Players
 
             if (Character.StateBuffer.TryGetLastAtOrBefore(tick - 1, out previous_state))
             {
-                Debug.Log(
-                    $"{LogPrefix} Resolved previous state by fallback. netId={Character.netId} " +
-                    $"requestedPreviousTick={tick - 1} resolvedTick={previous_state.Tick}");
                 return true;
             }
 
@@ -148,9 +138,6 @@ namespace Game.Players
 
                 Character.StateBuffer.Add(state);
                 previous_state = state;
-                Debug.Log(
-                    $"{LogPrefix} Filled missing state. netId={Character.netId} tick={next_tick} " +
-                    $"inputTick={input.Tick} position={state.Position}");
             }
 
             return previous_state;
@@ -163,23 +150,14 @@ namespace Game.Players
                 _last_server_processed_input_tick = input.Tick;
                 _last_server_input = input;
                 _has_last_server_input = true;
-                Debug.Log(
-                    $"{LogPrefix} Server consumed new input. netId={Character.netId} " +
-                    $"inputTick={input.Tick} move={input.Move}");
                 return input;
             }
 
             if (_has_last_server_input)
             {
-                Debug.Log(
-                    $"{LogPrefix} Server reusing last input. netId={Character.netId} " +
-                    $"inputTick={_last_server_input.Tick} move={_last_server_input.Move}");
                 return _last_server_input;
             }
 
-            Debug.Log(
-                $"{LogPrefix} Server using neutral input. netId={Character.netId} " +
-                $"lastProcessedInputTick={_last_server_processed_input_tick}");
             return default;
         }
     }

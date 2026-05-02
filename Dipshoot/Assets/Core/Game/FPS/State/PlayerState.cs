@@ -10,6 +10,7 @@ namespace Game.Players
         public Vector3 Position;
         public Vector3 Velocity;
         public Quaternion Rotation;
+        public float CameraPitch;
         public bool IsGrounded;
 
         public readonly int GetTick() => Tick;

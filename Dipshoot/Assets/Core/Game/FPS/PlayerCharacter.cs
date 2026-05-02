@@ -106,6 +106,7 @@ namespace Game.Players
                 Position = transform.position,
                 Velocity = Vector3.zero,
                 Rotation = transform.rotation,
+                CameraPitch = 0f,
                 IsGrounded = false,
             });
 
