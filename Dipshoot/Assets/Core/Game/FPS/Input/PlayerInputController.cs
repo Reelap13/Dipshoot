@@ -1,19 +1,24 @@
 ﻿using System;
+using Game.TickSystem;
 using UnityEngine;
 
 namespace Game.Players.Input
 {
     public class PlayerInputController : PlayerCharacterComponent
     {
+        public override TickLayer TickLayer => TickLayer.InputCollect;
+
         public event Action<PlayerInputData> OnInputCaptured;
 
-        protected override void OnPreTick()
+        public override bool ShouldTick(GameTickContext context)
         {
-            if (!IsOwned)
-                return;
+            return base.ShouldTick(context) && IsClient && IsOwned;
+        }
 
+        protected override void OnTick(GameTickContext context)
+        {
             PlayerInputData input = GetInput();
-            input.Tick = TickManager.CurrentTick;
+            input.Tick = context.Tick;
             Character.InputBuffet.Add(input);
 
             OnInputCaptured?.Invoke(input);

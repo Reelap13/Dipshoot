@@ -1,12 +1,13 @@
 using Game.Players.Input;
 using Game.Players.State;
+using Game.TickSystem;
 using Mirror;
 using UnityEngine;
 
 namespace Game.Players
 {
     [DisallowMultipleComponent]
-    public class StateSynchronizer : NetworkBehaviour
+    public class StateSynchronizer : NetworkBehaviour, ITickSystem
     {
         private const string LogPrefix = "[NetTick][StateSync]";
 
@@ -22,10 +23,13 @@ namespace Game.Players
         public int LastAppliedStateTick { get; private set; } = -1;
         public int LastProcessedInputTick { get; private set; } = -1;
 
-        private bool _is_subscribed_to_tick;
+        private TickManager _registered_tick_manager;
         private bool _has_server_tick_offset;
         private double _server_tick_offset;
         private readonly RemoteInterpolationBuffer _remote_interpolation_buffer = new();
+
+        public TickLayer TickLayer => TickLayer.StateSnapshot;
+        public int TickOrder => 0;
 
         private void Awake()
         {
@@ -35,13 +39,13 @@ namespace Game.Players
         private void Update()
         {
             CacheReferences();
-            TrySubscribeToServerTick();
+            TryRegisterTickSystem();
             UpdateRemoteInterpolation();
         }
 
         private void OnDisable()
         {
-            TryUnsubscribeFromServerTick();
+            TryUnregisterTickSystem();
         }
 
         private void CacheReferences()
@@ -56,25 +60,35 @@ namespace Game.Players
                 _input_buffer_synchronizer = GetComponent<InputBufferSynchronizer>();
         }
 
-        private void TrySubscribeToServerTick()
+        public bool ShouldTick(GameTickContext context)
         {
-            if (_is_subscribed_to_tick || !isServer || _character == null || _character.TickManager == null)
-                return;
-
-            _character.TickManager.OnPostTick += HandleServerPostTick;
-            _is_subscribed_to_tick = true;
+            return isServer && _character != null && _character.TickManager == context.TickManager;
         }
 
-        private void TryUnsubscribeFromServerTick()
+        public void Tick(GameTickContext context)
         {
-            if (!_is_subscribed_to_tick || _character == null || _character.TickManager == null)
-                return;
-
-            _character.TickManager.OnPostTick -= HandleServerPostTick;
-            _is_subscribed_to_tick = false;
+            SendAuthoritativeState();
         }
 
-        private void HandleServerPostTick()
+        private void TryRegisterTickSystem()
+        {
+            if (_registered_tick_manager != null || _character == null || _character.TickManager == null)
+                return;
+
+            _registered_tick_manager = _character.TickManager;
+            _registered_tick_manager.RegisterSystem(this);
+        }
+
+        private void TryUnregisterTickSystem()
+        {
+            if (_registered_tick_manager == null)
+                return;
+
+            _registered_tick_manager.UnregisterSystem(this);
+            _registered_tick_manager = null;
+        }
+
+        private void SendAuthoritativeState()
         {
             if (_character == null || _character.TickManager == null || _movement == null)
             {

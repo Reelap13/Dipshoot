@@ -19,21 +19,30 @@ namespace Game.Players
 
         public int LastServerProcessedInputTick => _last_server_processed_input_tick;
 
-        protected override void OnTick()
+        public override TickLayer TickLayer => TickLayer.Movement;
+
+        public override bool ShouldTick(GameTickContext context)
+        {
+            return base.ShouldTick(context) && (IsServer || IsClient && IsOwned);
+        }
+
+        protected override void OnTick(GameTickContext context)
         {
             if (IsServer)
             {
-                SimulateServerTick(TickManager.CurrentTick);
+                SimulateServerTick(context.Tick, context.DeltaTime);
                 return;
             }
 
-            if (!IsOwned)
-                return;
-
-            SimulateTick(TickManager.CurrentTick);
+            SimulateTick(context.Tick, context.DeltaTime);
         }
 
         public bool SimulateTick(int tick)
+        {
+            return SimulateTick(tick, TickManager.TickDelta);
+        }
+
+        public bool SimulateTick(int tick, float delta_time)
         {
             if (!Character.InputBuffet.TryGet(tick, out PlayerInputData input))
             {
@@ -48,7 +57,7 @@ namespace Game.Players
             PlayerState new_state = Simulate(
                 previous_state,
                 input,
-                TickManager.TickDelta,
+                delta_time,
                 tick);
 
             Character.StateBuffer.Add(new_state);
@@ -58,19 +67,24 @@ namespace Game.Players
 
         public bool SimulateServerTick(int server_tick)
         {
+            return SimulateServerTick(server_tick, TickManager.TickDelta);
+        }
+
+        public bool SimulateServerTick(int server_tick, float delta_time)
+        {
             if (!TryGetPreviousStateForTick(server_tick, out PlayerState previous_state))
             {
                 return false;
             }
 
-            previous_state = FillMissingStates(previous_state, server_tick - 1);
+            previous_state = FillMissingStates(previous_state, server_tick - 1, delta_time);
 
             PlayerInputData input = GetServerInput();
 
             PlayerState new_state = Simulate(
                 previous_state,
                 input,
-                TickManager.TickDelta,
+                delta_time,
                 server_tick);
 
             Character.StateBuffer.Add(new_state);
@@ -124,7 +138,7 @@ namespace Game.Players
             return false;
         }
 
-        private PlayerState FillMissingStates(PlayerState previous_state, int target_tick)
+        private PlayerState FillMissingStates(PlayerState previous_state, int target_tick, float delta_time)
         {
             while (previous_state.Tick < target_tick)
             {
@@ -133,7 +147,7 @@ namespace Game.Players
                 PlayerState state = Simulate(
                     previous_state,
                     input,
-                    TickManager.TickDelta,
+                    delta_time,
                     next_tick);
 
                 Character.StateBuffer.Add(state);

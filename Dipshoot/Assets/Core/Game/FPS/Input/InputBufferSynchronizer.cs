@@ -1,4 +1,5 @@
 using System;
+using Game.TickSystem;
 using Mirror;
 using UnityEngine;
 
@@ -21,7 +22,7 @@ namespace Game.Players.Input
     }
 
     [DisallowMultipleComponent]
-    public class InputBufferSynchronizer : NetworkBehaviour
+    public class InputBufferSynchronizer : NetworkBehaviour, ITickSystem
     {
         private const string LogPrefix = "[NetTick][InputSync]";
 
@@ -40,14 +41,26 @@ namespace Game.Players.Input
         public event Action<int> OnInputsAcknowledged;
         public event Action<int> OnInputsReceivedByServer;
 
+        private TickManager _registered_tick_manager;
+
+        public TickLayer TickLayer => TickLayer.InputSend;
+        public int TickOrder => 0;
+
         private void Awake()
         {
             CacheReferences();
         }
 
+        private void Update()
+        {
+            CacheReferences();
+            TryRegisterTickSystem();
+        }
+
         private void OnEnable()
         {
             CacheReferences();
+            TryRegisterTickSystem();
 
             if (_inputController != null)
                 _inputController.OnInputCaptured += HandleInputCaptured;
@@ -57,6 +70,8 @@ namespace Game.Players.Input
         {
             if (_inputController != null)
                 _inputController.OnInputCaptured -= HandleInputCaptured;
+
+            TryUnregisterTickSystem();
         }
 
         public bool TryBuildPendingBatch(out PlayerInputBatch batch)
@@ -132,7 +147,6 @@ namespace Game.Players.Input
 
             LastCapturedTick = input.Tick;
             OnPendingInputsChanged?.Invoke(input.Tick);
-            TrySendUnsentInputs();
         }
 
         private void CacheReferences()
@@ -142,6 +156,34 @@ namespace Game.Players.Input
 
             if (_inputController == null)
                 _inputController = GetComponent<PlayerInputController>();
+        }
+
+        public bool ShouldTick(GameTickContext context)
+        {
+            return isOwned && _character != null && _character.TickManager == context.TickManager;
+        }
+
+        public void Tick(GameTickContext context)
+        {
+            TrySendUnsentInputs();
+        }
+
+        private void TryRegisterTickSystem()
+        {
+            if (_registered_tick_manager != null || _character == null || _character.TickManager == null)
+                return;
+
+            _registered_tick_manager = _character.TickManager;
+            _registered_tick_manager.RegisterSystem(this);
+        }
+
+        private void TryUnregisterTickSystem()
+        {
+            if (_registered_tick_manager == null)
+                return;
+
+            _registered_tick_manager.UnregisterSystem(this);
+            _registered_tick_manager = null;
         }
 
         public bool TrySendUnsentInputs()

@@ -108,7 +108,7 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   _camera_point: {fileID: 2030584166189090006}
-  _character: {fileID: 0}
+  _character: {fileID: 7358710916428720345}
 --- !u!114 &563671470526942404
 MonoBehaviour:
   m_ObjectHideFlags: 0
