@@ -12,6 +12,7 @@ namespace Game.Players
         private const string LogPrefix = "[NetTick][StateSync]";
 
         [SerializeField] private PlayerCharacter _character;
+        [SerializeField] private AimController _aim_controller;
         [SerializeField] private Movement _movement;
         [SerializeField] private InputBufferSynchronizer _input_buffer_synchronizer;
         [SerializeField] private float _position_error_threshold = 0.001f;
@@ -55,6 +56,9 @@ namespace Game.Players
 
             if (_movement == null)
                 _movement = GetComponent<Movement>();
+
+            if (_aim_controller == null)
+                _aim_controller = GetComponent<AimController>();
 
             if (_input_buffer_synchronizer == null)
                 _input_buffer_synchronizer = GetComponent<InputBufferSynchronizer>();
@@ -167,7 +171,7 @@ namespace Game.Players
 
             int current_tick = _character.TickManager.CurrentTick;
             int replay_from_tick = predicted_tick + 1;
-            _movement.ReplayFromTick(replay_from_tick, current_tick);
+            ReplayFromTick(replay_from_tick, current_tick);
 
             if (_character.StateBuffer.TryGet(current_tick, out PlayerState replayed_state))
             {
@@ -181,6 +185,20 @@ namespace Game.Players
             }
 
             AcknowledgeProcessedInputs(snapshot.LastProcessedInputTick);
+        }
+
+        private void ReplayFromTick(int from_tick, int to_tick)
+        {
+            if (to_tick < from_tick)
+                return;
+
+            for (int tick = from_tick; tick <= to_tick; tick++)
+            {
+                if (_aim_controller != null)
+                    _aim_controller.SimulateTick(tick);
+
+                _movement.SimulateTick(tick);
+            }
         }
 
         private void ReceiveRemoteAuthoritativeState(PlayerStateSnapshot snapshot)

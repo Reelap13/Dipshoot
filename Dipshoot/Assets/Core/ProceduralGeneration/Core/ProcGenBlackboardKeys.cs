@@ -6,5 +6,7 @@ namespace Game.ProcGen
         public const string ChunkTerrain = "procgen.chunk-terrain";
         public const string TreePlacements = "procgen.tree-placements";
         public const string BuildPlan = "procgen.build-plan";
+
+        public static readonly GenerationKey<MapBuildPlan> BuildPlanKey = new GenerationKey<MapBuildPlan>(BuildPlan);
     }
 }

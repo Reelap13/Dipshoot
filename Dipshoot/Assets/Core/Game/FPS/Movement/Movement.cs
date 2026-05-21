@@ -9,10 +9,6 @@ namespace Game.Players
         private const string LogPrefix = "[NetTick][Movement]";
 
         [SerializeField] private float _speed = 5f;
-        [SerializeField] private float _yaw_sensitivity = 0.15f;
-        [SerializeField] private float _pitch_sensitivity = 0.15f;
-        [SerializeField] private float _min_camera_pitch = -80f;
-        [SerializeField] private float _max_camera_pitch = 80f;
         private int _last_server_processed_input_tick = -1;
         private bool _has_last_server_input;
         private PlayerInputData _last_server_input;
@@ -49,7 +45,7 @@ namespace Game.Players
                 return false;
             }
 
-            if (!TryGetPreviousStateForTick(tick, out PlayerState previous_state))
+            if (!TryGetSimulationStateForTick(tick, out PlayerState previous_state))
             {
                 return false;
             }
@@ -72,7 +68,7 @@ namespace Game.Players
 
         public bool SimulateServerTick(int server_tick, float delta_time)
         {
-            if (!TryGetPreviousStateForTick(server_tick, out PlayerState previous_state))
+            if (!TryGetSimulationStateForTick(server_tick, out PlayerState previous_state))
             {
                 return false;
             }
@@ -112,10 +108,6 @@ namespace Game.Players
                 input,
                 delta_time,
                 _speed,
-                _yaw_sensitivity,
-                _pitch_sensitivity,
-                _min_camera_pitch,
-                _max_camera_pitch,
                 tick);
         }
 
@@ -124,8 +116,11 @@ namespace Game.Players
             MovementPresentation.ApplyState(transform, state);
         }
 
-        private bool TryGetPreviousStateForTick(int tick, out PlayerState previous_state)
+        private bool TryGetSimulationStateForTick(int tick, out PlayerState previous_state)
         {
+            if (Character.StateBuffer.TryGet(tick, out previous_state))
+                return true;
+
             if (Character.StateBuffer.TryGet(tick - 1, out previous_state))
                 return true;
 

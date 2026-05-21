@@ -7,6 +7,7 @@ namespace Game.TickSystem
     {
         InputCollect = 0,
         InputSend = 10,
+        AimSimulation = 50,
         WeaponInput = 100,
         WeaponSimulation = 110,
         Movement = 200,

@@ -9,7 +9,8 @@ namespace Game.Players.Input
 
         public Vector2 Move;
         public Vector2 Look;
-        public bool IsShoot;
+        public bool IsShootPressed;
+        public bool IsShootHeld;
 
         public readonly int GetTick() => Tick;
     }

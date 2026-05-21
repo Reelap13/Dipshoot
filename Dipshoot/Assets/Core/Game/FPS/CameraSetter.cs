@@ -1,5 +1,6 @@
 using Mirror;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Game.Players
 {
@@ -57,10 +58,12 @@ namespace Game.Players
 
         private void TryAttachCamera()
         {
-            if (_is_camera_attached || _camera_point == null || Camera.main == null)
+            if (_is_camera_attached || _camera_point == null)
                 return;
 
-            _attached_camera = Camera.main;
+            if (!TryGetSceneCamera(out _attached_camera))
+                return;
+
             Transform camera_transform = _attached_camera.transform;
             _initial_parent = camera_transform.parent;
             _initial_local_position = camera_transform.localPosition;
@@ -84,6 +87,48 @@ namespace Game.Players
 
             _attached_camera = null;
             _is_camera_attached = false;
+        }
+
+        private bool TryGetSceneCamera(out Camera camera)
+        {
+            camera = null;
+            Camera fallback_camera = null;
+            Scene scene = gameObject.scene;
+
+            if (!scene.IsValid() || !scene.isLoaded)
+                return false;
+
+            GameObject[] root_objects = scene.GetRootGameObjects();
+            foreach (GameObject root_object in root_objects)
+            {
+                Camera[] cameras = root_object.GetComponentsInChildren<Camera>(true);
+                foreach (Camera scene_camera in cameras)
+                {
+                    if (scene_camera == null)
+                        continue;
+
+                    if (fallback_camera == null)
+                        fallback_camera = scene_camera;
+
+                    if (!scene_camera.isActiveAndEnabled)
+                        continue;
+
+                    if (camera == null)
+                        camera = scene_camera;
+
+                    if (scene_camera.CompareTag("MainCamera"))
+                    {
+                        camera = scene_camera;
+                        return true;
+                    }
+                }
+            }
+
+            if (camera != null)
+                return true;
+
+            camera = fallback_camera;
+            return camera != null;
         }
 
         private void UpdateCameraPitch()

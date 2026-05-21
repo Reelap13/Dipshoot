@@ -10,6 +10,8 @@ namespace Game.Players.Input
 
         public event Action<PlayerInputData> OnInputCaptured;
 
+        private bool _was_shoot_pressed;
+
         public override bool ShouldTick(GameTickContext context)
         {
             return base.ShouldTick(context) && IsClient && IsOwned;
@@ -29,10 +31,14 @@ namespace Game.Players.Input
             PlayerInputData input = new();
 
             var controls = InputManager.Instance.Controls;
+            bool is_shoot_pressed = controls.Player.Attack.IsPressed();
 
             input.Move = controls.Player.Move.ReadValue<Vector2>();
             input.Look = controls.Player.Look.ReadValue<Vector2>();
-            input.IsShoot = controls.Player.Attack.IsPressed();
+            input.IsShootPressed = is_shoot_pressed && !_was_shoot_pressed;
+            input.IsShootHeld = is_shoot_pressed;
+
+            _was_shoot_pressed = is_shoot_pressed;
 
             return input;
         }

@@ -18,10 +18,20 @@ namespace Game.ProcGen
 
         public IReadOnlyList<string> Writes => _writes;
 
+        public void Read<T>(GenerationKey<T> key)
+        {
+            Read(key.Id);
+        }
+
         public void Read(string key)
         {
             if (_reads.Contains(key) == false)
                 _reads.Add(key);
+        }
+
+        public void Write<T>(GenerationKey<T> key)
+        {
+            Write(key.Id);
         }
 
         public void Write(string key)

@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Game.ProcGen
 {
     public interface IMapGenerator
@@ -9,22 +7,16 @@ namespace Game.ProcGen
 
     public sealed class PipelineMapGenerator : IMapGenerator
     {
+        private readonly GenerationPipeline _pipeline = new GenerationPipeline();
+
+        public GenerationResult GenerateResult(GenerationRequest request, ProcGenRecipe recipe)
+        {
+            return _pipeline.Generate(request, recipe);
+        }
+
         public MapBuildPlan Generate(GenerationRequest request, ProcGenRecipe recipe)
         {
-            GenerationBlackboard blackboard = new GenerationBlackboard();
-            GenerationContext context = new GenerationContext(request, recipe, blackboard);
-            List<ProcGenPass> passes = new List<ProcGenPass>();
-            recipe.BuildPasses(passes);
-
-            for (int i = 0; i < passes.Count; i++)
-            {
-                ProcGenPass pass = passes[i];
-                GenerationPassContract contract = new GenerationPassContract(pass.Backend);
-                pass.Declare(contract);
-                pass.Execute(context);
-            }
-
-            return blackboard.GetRequired<MapBuildPlan>(ProcGenBlackboardKeys.BuildPlan);
+            return GenerateResult(request, recipe).GetRequired(ProcGenBlackboardKeys.BuildPlanKey);
         }
     }
 }
