@@ -7,15 +7,19 @@ using UnityEngine.SceneManagement;
 namespace Game.Players
 {
     [DisallowMultipleComponent]
-    public class WeaponController : NetworkBehaviour, ITickSystem
+    public class WeaponController : NetworkBehaviour, ITickSystem, IPlayerSimulationResettable
     {
         private const string LogPrefix = "[NetTick][Weapon]";
 
         [SerializeField] private PlayerCharacter _character;
+        [SerializeField] private int _damage = 25;
         [SerializeField] private float _range = 100f;
         [SerializeField] private Vector3 _eye_offset = new(0f, 0.49f, 0.359f);
         [SerializeField] private LayerMask _hit_mask = ~0;
         [SerializeField] private QueryTriggerInteraction _trigger_interaction = QueryTriggerInteraction.Ignore;
+        [SerializeField] private float _tracer_lifetime = 0.12f;
+        [SerializeField] private float _tracer_width = 0.03f;
+        [SerializeField] private Color _tracer_color = Color.cyan;
         [SerializeField] private float _marker_lifetime = 0.6f;
         [SerializeField] private float _hit_marker_size = 0.18f;
         [SerializeField] private float _miss_marker_size = 0.1f;
@@ -23,6 +27,7 @@ namespace Game.Players
         [SerializeField] private Color _hit_color = Color.red;
 
         private readonly RaycastHit[] _hits = new RaycastHit[16];
+        private static Material _tracer_material;
         private TickManager _registered_tick_manager;
         private int _last_processed_input_tick = -1;
 
@@ -47,7 +52,10 @@ namespace Game.Players
 
         public bool ShouldTick(GameTickContext context)
         {
-            return isServer && _character != null && _character.TickManager == context.TickManager;
+            return isServer &&
+                _character != null &&
+                (_character.Health == null || _character.Health.IsAlive) &&
+                _character.TickManager == context.TickManager;
         }
 
         public void Tick(GameTickContext context)
@@ -96,7 +104,8 @@ namespace Game.Players
 
             Debug.Log(
                 $"{LogPrefix} Shot. netId={result.ShooterNetId} inputTick={result.InputTick} " +
-                $"serverTick={result.ServerTick} hit={result.HasHit} hitNetId={result.HitNetId}");
+                $"serverTick={result.ServerTick} hit={result.HasHit} hitNetId={result.HitNetId} " +
+                $"damage={result.DidDamage}");
 
             RpcRegisterShot(result);
         }
@@ -108,7 +117,7 @@ namespace Game.Players
             bool has_hit = TryGetShotHit(origin, direction, out RaycastHit hit);
             Vector3 point = has_hit ? hit.point : origin + direction * _range;
 
-            return new ShotResult
+            ShotResult result = new()
             {
                 ShooterNetId = netId,
                 HitNetId = has_hit ? GetHitNetId(hit) : 0,
@@ -117,8 +126,26 @@ namespace Game.Players
                 Origin = origin,
                 Direction = direction,
                 Point = point,
+                Damage = _damage,
                 HasHit = has_hit,
+                DidDamage = false,
             };
+
+            TryApplyDamage(ref result, hit);
+            return result;
+        }
+
+        private void TryApplyDamage(ref ShotResult result, RaycastHit hit)
+        {
+            if (!result.HasHit || hit.collider == null)
+                return;
+
+            PlayerHealth health = hit.collider.GetComponentInParent<PlayerHealth>();
+            if (health == null)
+                return;
+
+            result.HitNetId = health.netId;
+            result.DidDamage = health.TryApplyDamage(result.Damage, result.ShooterNetId);
         }
 
         private Vector3 GetShotOrigin(PlayerState state)
@@ -137,18 +164,16 @@ namespace Game.Players
             hit = default;
             float closest_distance = float.MaxValue;
             bool has_hit = false;
-            int hits_count = Physics.RaycastNonAlloc(
-                origin,
-                direction,
-                _hits,
-                _range,
-                _hit_mask,
-                _trigger_interaction);
+            int hits_count = RaycastScene(origin, direction);
 
             for (int i = 0; i < hits_count; i++)
             {
                 RaycastHit current_hit = _hits[i];
                 if (current_hit.collider == null || IsOwnCollider(current_hit.collider))
+                    continue;
+
+                PlayerHealth health = current_hit.collider.GetComponentInParent<PlayerHealth>();
+                if (health != null && !health.IsAlive)
                     continue;
 
                 if (current_hit.distance >= closest_distance)
@@ -160,6 +185,31 @@ namespace Game.Players
             }
 
             return has_hit;
+        }
+
+        private int RaycastScene(Vector3 origin, Vector3 direction)
+        {
+            Physics.SyncTransforms();
+
+            PhysicsScene physics_scene = gameObject.scene.GetPhysicsScene();
+            if (!physics_scene.IsValid())
+            {
+                return Physics.RaycastNonAlloc(
+                    origin,
+                    direction,
+                    _hits,
+                    _range,
+                    _hit_mask,
+                    _trigger_interaction);
+            }
+
+            return physics_scene.Raycast(
+                origin,
+                direction,
+                _hits,
+                _range,
+                _hit_mask,
+                _trigger_interaction);
         }
 
         private bool IsOwnCollider(Collider target)
@@ -176,7 +226,43 @@ namespace Game.Players
         [ClientRpc]
         private void RpcRegisterShot(ShotResult result)
         {
+            DrawShotTracer(result);
             DrawShotMarker(result);
+        }
+
+        private void DrawShotTracer(ShotResult result)
+        {
+            GameObject tracer = new("ShotTracer");
+            MoveToObjectScene(tracer);
+
+            LineRenderer line_renderer = tracer.AddComponent<LineRenderer>();
+            line_renderer.positionCount = 2;
+            line_renderer.useWorldSpace = true;
+            line_renderer.SetPosition(0, result.Origin);
+            line_renderer.SetPosition(1, result.Point);
+            line_renderer.startWidth = _tracer_width;
+            line_renderer.endWidth = _tracer_width;
+            line_renderer.numCapVertices = 2;
+            Material tracer_material = GetTracerMaterial();
+            if (tracer_material != null)
+                line_renderer.material = tracer_material;
+            line_renderer.startColor = _tracer_color;
+            line_renderer.endColor = _tracer_color;
+
+            tracer.AddComponent<SelfDestroyer>().Initialize(_tracer_lifetime);
+        }
+
+        private static Material GetTracerMaterial()
+        {
+            if (_tracer_material != null)
+                return _tracer_material;
+
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader == null)
+                return null;
+
+            _tracer_material = new Material(shader);
+            return _tracer_material;
         }
 
         private void DrawShotMarker(ShotResult result)
@@ -186,9 +272,7 @@ namespace Game.Players
             marker.transform.position = result.Point;
             marker.transform.localScale = Vector3.one * (result.HasHit ? _hit_marker_size : _miss_marker_size);
 
-            Scene scene = gameObject.scene;
-            if (scene.IsValid() && scene.isLoaded)
-                SceneManager.MoveGameObjectToScene(marker, scene);
+            MoveToObjectScene(marker);
 
             if (marker.TryGetComponent(out Collider marker_collider))
                 Destroy(marker_collider);
@@ -197,6 +281,18 @@ namespace Game.Players
                 marker_renderer.material.color = result.HasHit ? _hit_color : _miss_color;
 
             marker.AddComponent<SelfDestroyer>().Initialize(_marker_lifetime);
+        }
+
+        private void MoveToObjectScene(GameObject target)
+        {
+            Scene scene = gameObject.scene;
+            if (scene.IsValid() && scene.isLoaded)
+                SceneManager.MoveGameObjectToScene(target, scene);
+        }
+
+        public void ResetSimulation()
+        {
+            _last_processed_input_tick = -1;
         }
     }
 }

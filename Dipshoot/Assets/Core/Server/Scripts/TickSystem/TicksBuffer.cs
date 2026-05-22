@@ -80,5 +80,10 @@ namespace Server.Scripts.TickSystem
             foreach (var k in keys)
                 _inputs.Remove(k);
         }
+
+        public void Clear()
+        {
+            _inputs.Clear();
+        }
     }
 }

@@ -12,8 +12,10 @@ namespace Game.Players
         private const string LogPrefix = "[NetTick][Character]";
 
         [SerializeField] private List<PlayerCharacterComponent> _components;
+        [SerializeField] private PlayerHealth _health;
 
         public TickManager TickManager { get; private set; }
+        public PlayerHealth Health => _health == null ? _health = GetComponent<PlayerHealth>() : _health;
         public InputBuffer InputBuffet { get; } = new();
         public StateBuffer StateBuffer { get; } = new();
 
@@ -100,19 +102,50 @@ namespace Game.Players
             if (TickManager == null)
                 return;
 
-            StateBuffer.Add(new()
-            {
-                Tick = TickManager.CurrentTick,
-                Position = transform.position,
-                Velocity = Vector3.zero,
-                Rotation = transform.rotation,
-                CameraPitch = 0f,
-                IsGrounded = false,
-            });
+            AddInitialState(transform.position, transform.rotation);
 
             Debug.Log(
                 $"{LogPrefix} Seeded initial state. netId={netId} " +
                 $"tick={TickManager.CurrentTick} position={transform.position}");
+        }
+
+        public void ResetSimulationState(Vector3 position, Quaternion rotation)
+        {
+            if (TickManager == null)
+                return;
+
+            InputBuffet.Clear();
+            StateBuffer.Clear();
+            ResetSimulationComponents();
+            transform.SetPositionAndRotation(position, rotation);
+            AddInitialState(position, rotation);
+
+            Debug.Log(
+                $"{LogPrefix} Reset simulation state. netId={netId} " +
+                $"tick={TickManager.CurrentTick} position={position}");
+        }
+
+        private void AddInitialState(Vector3 position, Quaternion rotation)
+        {
+            StateBuffer.Add(new()
+            {
+                Tick = TickManager.CurrentTick,
+                Position = position,
+                Velocity = Vector3.zero,
+                Rotation = rotation,
+                CameraPitch = 0f,
+                IsGrounded = false,
+            });
+        }
+
+        private void ResetSimulationComponents()
+        {
+            MonoBehaviour[] behaviours = GetComponents<MonoBehaviour>();
+            foreach (MonoBehaviour behaviour in behaviours)
+            {
+                if (behaviour is IPlayerSimulationResettable resettable)
+                    resettable.ResetSimulation();
+            }
         }
 
         private TickManager ResolveSceneTickManager()

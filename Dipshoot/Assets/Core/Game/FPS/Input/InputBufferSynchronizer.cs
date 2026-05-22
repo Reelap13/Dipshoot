@@ -22,7 +22,7 @@ namespace Game.Players.Input
     }
 
     [DisallowMultipleComponent]
-    public class InputBufferSynchronizer : NetworkBehaviour, ITickSystem
+    public class InputBufferSynchronizer : NetworkBehaviour, ITickSystem, IPlayerSimulationResettable
     {
         private const string LogPrefix = "[NetTick][InputSync]";
 
@@ -166,6 +166,15 @@ namespace Game.Players.Input
         public void Tick(GameTickContext context)
         {
             TrySendUnsentInputs();
+        }
+
+        public void ResetSimulation()
+        {
+            int tick = _character == null || _character.TickManager == null
+                ? -1
+                : _character.TickManager.CurrentTick;
+
+            ResetTracking(tick);
         }
 
         private void TryRegisterTickSystem()

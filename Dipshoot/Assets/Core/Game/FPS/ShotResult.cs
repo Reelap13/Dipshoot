@@ -11,6 +11,8 @@ namespace Game.Players
         public Vector3 Origin;
         public Vector3 Direction;
         public Vector3 Point;
+        public int Damage;
         public bool HasHit;
+        public bool DidDamage;
     }
 }

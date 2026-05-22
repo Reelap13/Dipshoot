@@ -19,7 +19,7 @@ namespace Game.Players
 
         public override bool ShouldTick(GameTickContext context)
         {
-            return base.ShouldTick(context) && (IsServer || IsClient && IsOwned);
+            return base.ShouldTick(context) && IsAlive && (IsServer || IsClient && IsOwned);
         }
 
         protected override void OnTick(GameTickContext context)
@@ -168,6 +168,13 @@ namespace Game.Players
             }
 
             return default;
+        }
+
+        public override void ResetSimulation()
+        {
+            _last_server_processed_input_tick = -1;
+            _has_last_server_input = false;
+            _last_server_input = default;
         }
     }
 }

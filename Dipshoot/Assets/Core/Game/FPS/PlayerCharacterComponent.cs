@@ -3,7 +3,12 @@ using UnityEngine;
 
 namespace Game.Players
 {
-    public class PlayerCharacterComponent : MonoBehaviour, ITickSystem
+    public interface IPlayerSimulationResettable
+    {
+        void ResetSimulation();
+    }
+
+    public class PlayerCharacterComponent : MonoBehaviour, ITickSystem, IPlayerSimulationResettable
     {
         public PlayerCharacter Character { get; private set; }
 
@@ -12,6 +17,7 @@ namespace Game.Players
         public bool IsClient => Character.isClient;
         public bool IsServer => Character.isServer;
         public bool IsOwned => Character.isOwned;
+        public bool IsAlive => Character.Health == null || Character.Health.IsAlive;
 
         private bool _is_initialized;
         private TickManager _registered_tick_manager;
@@ -49,6 +55,8 @@ namespace Game.Players
         {
             OnTick(context);
         }
+
+        public virtual void ResetSimulation() { }
 
         private void TryRegister()
         {

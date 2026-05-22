@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Game.TickSystem;
 using UnityEngine;
 
@@ -14,7 +14,7 @@ namespace Game.Players.Input
 
         public override bool ShouldTick(GameTickContext context)
         {
-            return base.ShouldTick(context) && IsClient && IsOwned;
+            return base.ShouldTick(context) && IsClient && IsOwned && IsAlive;
         }
 
         protected override void OnTick(GameTickContext context)
@@ -41,6 +41,11 @@ namespace Game.Players.Input
             _was_shoot_pressed = is_shoot_pressed;
 
             return input;
+        }
+
+        public override void ResetSimulation()
+        {
+            _was_shoot_pressed = false;
         }
     }
 }
