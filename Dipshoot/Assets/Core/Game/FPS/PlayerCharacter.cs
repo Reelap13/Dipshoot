@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Game.MatchMode;
 using Game.Players.State;
 using Game.TickSystem;
 using Mirror;
@@ -16,11 +17,20 @@ namespace Game.Players
 
         public TickManager TickManager { get; private set; }
         public PlayerHealth Health => _health == null ? _health = GetComponent<PlayerHealth>() : _health;
+        public bool IsGameplayActive
+        {
+            get
+            {
+                TeamControlModeController mode_controller = ResolveSceneMatchModeController();
+                return mode_controller == null || mode_controller.IsGameplayActive;
+            }
+        }
         public InputBuffer InputBuffet { get; } = new();
         public StateBuffer StateBuffer { get; } = new();
 
         public bool IsServerSimulationInitialized { get; private set; }
         public bool IsClientSimulationInitialized { get; private set; }
+        private TeamControlModeController _match_mode_controller;
 
         public override void OnStartServer()
         {
@@ -156,6 +166,26 @@ namespace Game.Players
                 TickManager tick_manager = root_object.GetComponentInChildren<TickManager>(true);
                 if (tick_manager != null)
                     return tick_manager;
+            }
+
+            return null;
+        }
+
+        private TeamControlModeController ResolveSceneMatchModeController()
+        {
+            if (_match_mode_controller != null)
+                return _match_mode_controller;
+
+            GameObject[] root_objects = gameObject.scene.GetRootGameObjects();
+            foreach (GameObject root_object in root_objects)
+            {
+                TeamControlModeController mode_controller =
+                    root_object.GetComponentInChildren<TeamControlModeController>(true);
+                if (mode_controller == null)
+                    continue;
+
+                _match_mode_controller = mode_controller;
+                return _match_mode_controller;
             }
 
             return null;

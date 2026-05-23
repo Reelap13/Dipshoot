@@ -20,7 +20,6 @@ namespace Game
 
         private void Awake()
         {
-            GameController.OnStartingGame.AddListener(SpawnPlayersCharacters);
         }
 
         private void SpawnPlayersCharacters()
@@ -45,7 +44,7 @@ namespace Game
             character.Health.OnDied += HandlePlayerDied;
         }
 
-        private void HandlePlayerDied(PlayerHealth health)
+        private void HandlePlayerDied(PlayerHealth health, DamageInfo damage_info)
         {
             if (health == null || _respawn_coroutines.ContainsKey(health))
                 return;

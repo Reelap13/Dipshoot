@@ -12,6 +12,8 @@ namespace Game.TickSystem
         WeaponSimulation = 110,
         Movement = 200,
         PhysicsResolve = 300,
+        Objective = 500,
+        MatchState = 800,
         StateSnapshot = 900,
         Cleanup = 1000,
     }

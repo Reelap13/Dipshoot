@@ -18,6 +18,7 @@ namespace Game.Players
         public bool IsServer => Character.isServer;
         public bool IsOwned => Character.isOwned;
         public bool IsAlive => Character.Health == null || Character.Health.IsAlive;
+        public bool IsGameplayActive => Character.IsGameplayActive;
 
         private bool _is_initialized;
         private TickManager _registered_tick_manager;

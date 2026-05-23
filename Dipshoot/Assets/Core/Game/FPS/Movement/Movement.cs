@@ -19,7 +19,7 @@ namespace Game.Players
 
         public override bool ShouldTick(GameTickContext context)
         {
-            return base.ShouldTick(context) && IsAlive && (IsServer || IsClient && IsOwned);
+            return base.ShouldTick(context) && IsAlive && IsGameplayActive && (IsServer || IsClient && IsOwned);
         }
 
         protected override void OnTick(GameTickContext context)

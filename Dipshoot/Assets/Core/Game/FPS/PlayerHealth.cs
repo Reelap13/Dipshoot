@@ -22,7 +22,8 @@ namespace Game.Players
         public int CurrentHealth => _current_health;
         public bool IsAlive => _is_alive;
 
-        public event Action<PlayerHealth> OnDied;
+        public event Action<PlayerHealth, DamageInfo> OnDamageApplied;
+        public event Action<PlayerHealth, DamageInfo> OnDied;
 
         private void Awake()
         {
@@ -50,13 +51,16 @@ namespace Game.Players
             if (!isServer || !_is_alive || damage <= 0)
                 return false;
 
+            DamageInfo damage_info = new(damage_source_net_id, damage);
             _current_health = Mathf.Max(0, _current_health - damage);
             Debug.Log(
                 $"{LogPrefix} Damage. netId={netId} source={damage_source_net_id} " +
                 $"damage={damage} health={_current_health}/{_max_health}");
 
+            OnDamageApplied?.Invoke(this, damage_info);
+
             if (_current_health <= 0)
-                Die(damage_source_net_id);
+                Die(damage_info);
 
             return true;
         }
@@ -117,15 +121,15 @@ namespace Game.Players
                 _colliders[i].enabled = is_alive;
         }
 
-        private void Die(uint damage_source_net_id)
+        private void Die(DamageInfo damage_info)
         {
             if (!_is_alive)
                 return;
 
             _is_alive = false;
             ApplyAlive(false);
-            Debug.Log($"{LogPrefix} Died. netId={netId} source={damage_source_net_id}");
-            OnDied?.Invoke(this);
+            Debug.Log($"{LogPrefix} Died. netId={netId} source={damage_info.SourceNetId}");
+            OnDied?.Invoke(this, damage_info);
         }
     }
 }

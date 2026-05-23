@@ -1,3 +1,4 @@
+using Game.MatchMode;
 using Game.Players.Input;
 using Game.TickSystem;
 using Mirror;
@@ -55,6 +56,7 @@ namespace Game.Players
             return isServer &&
                 _character != null &&
                 (_character.Health == null || _character.Health.IsAlive) &&
+                _character.IsGameplayActive &&
                 _character.TickManager == context.TickManager;
         }
 
@@ -144,8 +146,22 @@ namespace Game.Players
             if (health == null)
                 return;
 
+            if (IsFriendlyTarget(health))
+                return;
+
             result.HitNetId = health.netId;
             result.DidDamage = health.TryApplyDamage(result.Damage, result.ShooterNetId);
+        }
+
+        private bool IsFriendlyTarget(PlayerHealth health)
+        {
+            PlayerMatchIdentity shooter_identity = _character.GetComponent<PlayerMatchIdentity>();
+            PlayerMatchIdentity target_identity = health.GetComponent<PlayerMatchIdentity>();
+
+            return shooter_identity != null &&
+                target_identity != null &&
+                shooter_identity.TeamId != TeamId.None &&
+                shooter_identity.TeamId == target_identity.TeamId;
         }
 
         private Vector3 GetShotOrigin(PlayerState state)

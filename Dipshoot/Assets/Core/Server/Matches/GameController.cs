@@ -35,6 +35,11 @@ namespace Server.Match
             OnEndingGame.Invoke();
         }
 
+        public void FinishGame()
+        {
+            EndGame();
+        }
+
         protected void DestoryGame()
         {
             OnDestroingGame.Invoke();

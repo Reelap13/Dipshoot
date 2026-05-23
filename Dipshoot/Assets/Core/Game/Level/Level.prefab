@@ -179,6 +179,14 @@ MonoBehaviour:
   - {fileID: 1791144271101337578}
   - {fileID: 2202752152036111518}
   - {fileID: 1586837057607464895}
+  _red_spawn_points:
+  - {fileID: 2202752152036111518}
+  - {fileID: 1791144271101337578}
+  _blue_spawn_points:
+  - {fileID: 1883307962097985431}
+  - {fileID: 1586837057607464895}
+  _capture_point: {fileID: 277460534219394008}
+  _capture_marker_radius: 4
 --- !u!1 &2568607992273339550
 GameObject:
   m_ObjectHideFlags: 0

@@ -15,7 +15,6 @@ namespace Game
         public void CreateLevel()
         {
             Level = NetworkUtils.NetworkMatchInstantiate(_level_prefab, GameController.Scene, GameController.MatchId, transform, transform);
-            GameController.StartGame();
         }
     }
 }
