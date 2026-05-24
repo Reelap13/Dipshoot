@@ -99,7 +99,9 @@ namespace Core.ClientPresentation
             if (prefab == null)
             {
                 Debug.LogError($"Missing client UI prefab at Resources/{resources_path}");
-                return null;
+                GameObject fallback = new(fallback_name);
+                fallback.transform.SetParent(transform, false);
+                return fallback.AddComponent<T>();
             }
 
             GameObject instance = Instantiate(prefab, transform);
@@ -109,7 +111,7 @@ namespace Core.ClientPresentation
                 return component;
 
             Debug.LogError($"Client UI prefab '{resources_path}' has no {typeof(T).Name} component");
-            return null;
+            return instance.AddComponent<T>();
         }
 
         private void EnsureEventSystem()

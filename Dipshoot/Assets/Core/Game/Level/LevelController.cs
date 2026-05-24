@@ -50,6 +50,9 @@ namespace Game.Level
 
         private void CreateCapturePointMarker()
         {
+            if (CapturePoint.Find("CapturePointMarker") != null)
+                return;
+
             GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             marker.name = "CapturePointMarker";
             marker.transform.SetParent(CapturePoint, false);
