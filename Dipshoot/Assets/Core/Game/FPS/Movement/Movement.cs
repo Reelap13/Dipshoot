@@ -133,6 +133,8 @@ namespace Game.Players
             ResolveStance(previous_state, ref new_state, settings);
             ResolveCollision(previous_state, ref new_state, settings);
             UpdateGrounding(ref new_state, settings);
+            if (!previous_state.IsGrounded && new_state.IsGrounded)
+                MovementSimulation.ApplyLandingGroundControl(ref new_state, input, delta_time, settings);
 
             return new_state;
         }

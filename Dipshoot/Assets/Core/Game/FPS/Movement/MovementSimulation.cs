@@ -94,26 +94,16 @@ namespace Game.Players
                 ? 0f
                 : previous_state.TimeSinceJumpPressed + delta_time;
 
-            Vector2 local_move = Vector2.ClampMagnitude(input.Move, 1f);
-            Vector3 wish_dir = previous_state.Rotation * new Vector3(local_move.x, 0f, local_move.y);
-            if (wish_dir.sqrMagnitude > 0f)
-                wish_dir.Normalize();
-
             Vector3 horizontal_velocity = new(previous_state.Velocity.x, 0f, previous_state.Velocity.z);
-            float target_speed = ResolveTargetSpeed(local_move, input, state.Stance, settings);
-            Vector3 target_velocity = wish_dir * target_speed;
+            Vector3 target_velocity = GetTargetVelocity(previous_state.Rotation, input, state.Stance, settings);
 
             if (previous_state.IsGrounded)
             {
-                horizontal_velocity = Vector3.MoveTowards(
-                    horizontal_velocity,
-                    Vector3.zero,
-                    settings.GroundFriction * delta_time);
-
-                horizontal_velocity = Vector3.MoveTowards(
+                horizontal_velocity = MoveGroundVelocity(
                     horizontal_velocity,
                     target_velocity,
-                    settings.GroundAcceleration * delta_time);
+                    delta_time,
+                    settings);
             }
             else
             {
@@ -147,6 +137,54 @@ namespace Game.Players
             state.Position += state.Velocity * delta_time;
 
             return state;
+        }
+
+        public static void ApplyLandingGroundControl(
+            ref PlayerState state,
+            PlayerInputData input,
+            float delta_time,
+            MovementSettings settings)
+        {
+            Vector3 horizontal_velocity = new(state.Velocity.x, 0f, state.Velocity.z);
+            Vector3 target_velocity = GetTargetVelocity(state.Rotation, input, state.Stance, settings);
+            horizontal_velocity = MoveGroundVelocity(
+                horizontal_velocity,
+                target_velocity,
+                delta_time,
+                settings);
+
+            state.Velocity = new Vector3(horizontal_velocity.x, state.Velocity.y, horizontal_velocity.z);
+        }
+
+        private static Vector3 GetTargetVelocity(
+            Quaternion rotation,
+            PlayerInputData input,
+            MovementStance stance,
+            MovementSettings settings)
+        {
+            Vector2 local_move = Vector2.ClampMagnitude(input.Move, 1f);
+            Vector3 wish_dir = rotation * new Vector3(local_move.x, 0f, local_move.y);
+            if (wish_dir.sqrMagnitude > 0f)
+                wish_dir.Normalize();
+
+            return wish_dir * ResolveTargetSpeed(local_move, input, stance, settings);
+        }
+
+        private static Vector3 MoveGroundVelocity(
+            Vector3 horizontal_velocity,
+            Vector3 target_velocity,
+            float delta_time,
+            MovementSettings settings)
+        {
+            horizontal_velocity = Vector3.MoveTowards(
+                horizontal_velocity,
+                Vector3.zero,
+                settings.GroundFriction * delta_time);
+
+            return Vector3.MoveTowards(
+                horizontal_velocity,
+                target_velocity,
+                settings.GroundAcceleration * delta_time);
         }
 
         private static float ResolveTargetSpeed(
