@@ -6,6 +6,7 @@ namespace Game.Players
     {
         public uint ShooterNetId;
         public uint HitNetId;
+        public WeaponSlot WeaponSlot;
         public int InputTick;
         public int ServerTick;
         public Vector3 Origin;

@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6b29401427fc30f43a25561f0eacf2fb, type: 3}
-  m_Name: Damage
-  m_EditorClassIdentifier: 
-  Stat: 2000
-  Description: "\u0423\u0440\u043E\u043D"
+  m_Name: WeaponPistolReserveAmmo
+  m_EditorClassIdentifier:
+  Stat: 2104
+  Description: Pistol reserve ammo at spawn.

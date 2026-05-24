@@ -471,6 +471,83 @@ namespace Core.ClientPresentation.Editor
                 Vector2.zero,
                 new Color(0.7f, 0.7f, 0.7f, 1f));
 
+            GameObject weapon_panel = CreatePanel(
+                "WeaponPanel",
+                root.transform,
+                new Vector2(1f, 0f),
+                new Vector2(1f, 0f),
+                new Vector2(1f, 0f),
+                new Vector2(-34f, 34f),
+                new Vector2(320f, 118f),
+                new Color(0f, 0f, 0f, 0.58f));
+            weapon_panel.GetComponent<Image>().raycastTarget = false;
+
+            Text weapon_name_text = CreateText(
+                "WeaponNameText",
+                weapon_panel.transform,
+                new Vector2(0f, 0.64f),
+                new Vector2(1f, 1f),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                new Vector2(-28f, 0f),
+                20,
+                TextAnchor.MiddleLeft);
+
+            Text weapon_ammo_text = CreateText(
+                "WeaponAmmoText",
+                weapon_panel.transform,
+                new Vector2(0f, 0.24f),
+                new Vector2(0.58f, 0.72f),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                Vector2.zero,
+                42,
+                TextAnchor.MiddleRight);
+
+            Text weapon_reserve_text = CreateText(
+                "WeaponReserveText",
+                weapon_panel.transform,
+                new Vector2(0.58f, 0.24f),
+                new Vector2(1f, 0.72f),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                new Vector2(-28f, 0f),
+                24,
+                TextAnchor.MiddleLeft);
+
+            Text weapon_reload_text = CreateText(
+                "WeaponReloadText",
+                weapon_panel.transform,
+                new Vector2(0f, 0f),
+                new Vector2(1f, 0.26f),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                new Vector2(-28f, 0f),
+                17,
+                TextAnchor.MiddleLeft);
+
+            GameObject weapon_reload_background = CreatePanel(
+                "WeaponReloadBackground",
+                weapon_panel.transform,
+                new Vector2(0.08f, 0.06f),
+                new Vector2(0.92f, 0.1f),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                Vector2.zero,
+                new Color(1f, 1f, 1f, 0.15f));
+            weapon_reload_background.GetComponent<Image>().raycastTarget = false;
+
+            Image weapon_reload_progress_fill = CreateImage(
+                "WeaponReloadProgressFill",
+                weapon_reload_background.transform,
+                Vector2.zero,
+                new Vector2(0f, 1f),
+                Vector2.zero,
+                Vector2.zero,
+                Vector2.zero,
+                new Color(1f, 1f, 1f, 0.78f));
+            weapon_reload_progress_fill.raycastTarget = false;
+
             SerializedObject serialized_object = new(root.GetComponent<ClientMatchHudLayer>());
             Set(serialized_object, "_phase_banner", phase_banner);
             Set(serialized_object, "_result_panel", result_panel);
@@ -482,6 +559,12 @@ namespace Core.ClientPresentation.Editor
             Set(serialized_object, "_inside_text", inside_text);
             Set(serialized_object, "_point_owner_strip", point_owner_strip);
             Set(serialized_object, "_point_progress_fill", point_progress_fill);
+            Set(serialized_object, "_weapon_panel", weapon_panel);
+            Set(serialized_object, "_weapon_name_text", weapon_name_text);
+            Set(serialized_object, "_weapon_ammo_text", weapon_ammo_text);
+            Set(serialized_object, "_weapon_reserve_text", weapon_reserve_text);
+            Set(serialized_object, "_weapon_reload_text", weapon_reload_text);
+            Set(serialized_object, "_weapon_reload_progress_fill", weapon_reload_progress_fill);
             serialized_object.ApplyModifiedPropertiesWithoutUndo();
 
             SavePrefab(root, "ClientMatchHudLayer.prefab");

@@ -1,4 +1,5 @@
 using Game.MatchMode;
+using Game.Players;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -21,8 +22,15 @@ namespace Core.ClientPresentation
         [SerializeField] private Text _inside_text;
         [SerializeField] private Image _point_owner_strip;
         [SerializeField] private Image _point_progress_fill;
+        [SerializeField] private GameObject _weapon_panel;
+        [SerializeField] private Text _weapon_name_text;
+        [SerializeField] private Text _weapon_ammo_text;
+        [SerializeField] private Text _weapon_reserve_text;
+        [SerializeField] private Text _weapon_reload_text;
+        [SerializeField] private Image _weapon_reload_progress_fill;
 
         private TeamControlModeController _mode_controller;
+        private WeaponController _local_weapon_controller;
         private ClientUiLayer _layer;
 
         private void Awake()
@@ -33,6 +41,8 @@ namespace Core.ClientPresentation
 
         private void Update()
         {
+            UpdateWeaponPanel();
+
             _mode_controller = ClientAppRoot.Instance.MatchStore.ModeController;
             if (_mode_controller == null || _score_text == null)
                 return;
@@ -41,6 +51,37 @@ namespace Core.ClientPresentation
             UpdatePhaseBanner();
             UpdateResultPanel();
             UpdatePointPanel();
+        }
+
+        private void UpdateWeaponPanel()
+        {
+            if (_weapon_panel == null)
+                return;
+
+            WeaponController weapon_controller = ResolveLocalWeaponController();
+            bool has_weapon_controller = weapon_controller != null;
+            _weapon_panel.SetActive(has_weapon_controller);
+            if (!has_weapon_controller)
+                return;
+
+            if (_weapon_name_text != null)
+                _weapon_name_text.text = weapon_controller.ActiveWeaponDisplayName;
+
+            if (_weapon_ammo_text != null)
+                _weapon_ammo_text.text = weapon_controller.ActiveAmmo.ToString();
+
+            if (_weapon_reserve_text != null)
+                _weapon_reserve_text.text = $"/ {weapon_controller.ActiveReserveAmmo}";
+
+            bool is_reloading = weapon_controller.IsActiveReloading;
+            if (_weapon_reload_text != null)
+                _weapon_reload_text.text = is_reloading ? "Reloading" : string.Empty;
+
+            if (_weapon_reload_progress_fill == null)
+                return;
+
+            _weapon_reload_progress_fill.rectTransform.anchorMax =
+                new Vector2(is_reloading ? weapon_controller.ActiveReloadProgress : 0f, 1f);
         }
 
         private void UpdateScorePanel()
@@ -163,6 +204,33 @@ namespace Core.ClientPresentation
                 TeamId.Blue => _blue_color,
                 _ => _neutral_color,
             };
+        }
+
+        private WeaponController ResolveLocalWeaponController()
+        {
+            if (_local_weapon_controller != null &&
+                _local_weapon_controller.isActiveAndEnabled &&
+                _local_weapon_controller.isOwned)
+            {
+                return _local_weapon_controller;
+            }
+
+            _local_weapon_controller = null;
+            WeaponController[] weapon_controllers = FindObjectsByType<WeaponController>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+
+            for (int i = 0; i < weapon_controllers.Length; i++)
+            {
+                WeaponController weapon_controller = weapon_controllers[i];
+                if (weapon_controller == null || !weapon_controller.isOwned)
+                    continue;
+
+                _local_weapon_controller = weapon_controller;
+                return _local_weapon_controller;
+            }
+
+            return null;
         }
 
         private ClientUiLayer GetOrAddLayer()

@@ -1,5 +1,6 @@
 using Server.Scripts.TickSystem;
 using UnityEngine;
+using Game.Players;
 
 namespace Game.Players.Input
 {
@@ -11,6 +12,8 @@ namespace Game.Players.Input
         public Vector2 Look;
         public bool IsShootPressed;
         public bool IsShootHeld;
+        public bool IsReloadPressed;
+        public WeaponSlot RequestedWeaponSlot;
         public bool IsJumpPressed;
         public bool IsJumpHeld;
         public bool IsSprintHeld;

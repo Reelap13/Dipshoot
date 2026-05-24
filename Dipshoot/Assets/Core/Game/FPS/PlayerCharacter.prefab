@@ -56,8 +56,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   sceneId: 0
   _assetId: 1731520522
   serverOnly: 0
@@ -115,6 +115,7 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   _character: {fileID: 7358710916428720345}
+  _stats: {fileID: 2560981488615711837}
   _max_health: 100
 --- !u!114 &2560981488615711837
 MonoBehaviour:
@@ -126,8 +127,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 10d14081e72c6f74e99a862e0a0d228a, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   _preset: {fileID: 11400000, guid: fa0a5988922949a2a799146c3b21a752, type: 2}
 --- !u!114 &5927461570483310201
 MonoBehaviour:
@@ -190,6 +191,22 @@ MonoBehaviour:
   syncInterval: 0
   _character: {fileID: 7358710916428720345}
   _inputController: {fileID: 563671470526942404}
+--- !u!114 &4619937518296402501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1239777248742655304}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a72775f7e3504b148ba8082fc0530d96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _yaw_sensitivity: 0.15
+  _pitch_sensitivity: 0.15
+  _min_camera_pitch: -80
+  _max_camera_pitch: 80
 --- !u!114 &3299513015696557962
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -207,24 +224,8 @@ MonoBehaviour:
   _camera_point: {fileID: 2030584166189090006}
   _collision_mask:
     serializedVersion: 2
-    m_Bits: 4294967291
+    m_Bits: 134217523
   _trigger_interaction: 1
---- !u!114 &4619937518296402501
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1239777248742655304}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a72775f7e3504b148ba8082fc0530d96, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _yaw_sensitivity: 0.15
-  _pitch_sensitivity: 0.15
-  _min_camera_pitch: -80
-  _max_camera_pitch: 80
 --- !u!114 &6332809675569614723
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -241,21 +242,14 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   _character: {fileID: 7358710916428720345}
-  _damage: 25
-  _range: 100
+  _stats: {fileID: 2560981488615711837}
+  _primary_weapon: {fileID: 11400000, guid: f0ee1a0ba5a241e0a2747fb26dc3e6e0, type: 2}
+  _pistol_weapon: {fileID: 11400000, guid: a46453fc3a1b4bf4ac938f28cc029a9c, type: 2}
   _eye_offset: {x: 0, y: 0.49, z: 0.359}
   _hit_mask:
     serializedVersion: 2
     m_Bits: 4294967295
   _trigger_interaction: 1
-  _tracer_lifetime: 0.12
-  _tracer_width: 0.03
-  _tracer_color: {r: 0, g: 1, b: 1, a: 1}
-  _marker_lifetime: 0.6
-  _hit_marker_size: 0.18
-  _miss_marker_size: 0.1
-  _miss_color: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  _hit_color: {r: 1, g: 0, b: 0, a: 1}
 --- !u!114 &9044189472314785501
 MonoBehaviour:
   m_ObjectHideFlags: 0

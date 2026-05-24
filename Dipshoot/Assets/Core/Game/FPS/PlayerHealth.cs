@@ -1,5 +1,6 @@
 using System;
 using Mirror;
+using Scripts.Stats;
 using UnityEngine;
 
 namespace Game.Players
@@ -10,6 +11,7 @@ namespace Game.Players
         private const string LogPrefix = "[NetTick][Health]";
 
         [SerializeField] private PlayerCharacter _character;
+        [SerializeField] private StatsController _stats;
         [SerializeField] private int _max_health = 100;
 
         [SyncVar] private int _current_health;
@@ -18,7 +20,7 @@ namespace Game.Players
         private Renderer[] _renderers = Array.Empty<Renderer>();
         private Collider[] _colliders = Array.Empty<Collider>();
 
-        public int MaxHealth => _max_health;
+        public int MaxHealth => GetMaxHealth();
         public int CurrentHealth => _current_health;
         public bool IsAlive => _is_alive;
 
@@ -55,7 +57,7 @@ namespace Game.Players
             _current_health = Mathf.Max(0, _current_health - damage);
             Debug.Log(
                 $"{LogPrefix} Damage. netId={netId} source={damage_source_net_id} " +
-                $"damage={damage} health={_current_health}/{_max_health}");
+                $"damage={damage} health={_current_health}/{MaxHealth}");
 
             OnDamageApplied?.Invoke(this, damage_info);
 
@@ -87,13 +89,16 @@ namespace Game.Players
             if (_character != null)
                 _character.ResetSimulationState(position, rotation);
 
-            Debug.Log($"{LogPrefix} Respawn. netId={netId} health={_current_health}/{_max_health}");
+            Debug.Log($"{LogPrefix} Respawn. netId={netId} health={_current_health}/{MaxHealth}");
         }
 
         private void CacheReferences()
         {
             if (_character == null)
                 _character = GetComponent<PlayerCharacter>();
+
+            if (_stats == null)
+                _stats = GetComponent<StatsController>();
         }
 
         private void CachePresentationTargets()
@@ -104,7 +109,14 @@ namespace Game.Players
 
         private void ResetHealth()
         {
-            _current_health = _max_health;
+            _current_health = MaxHealth;
+        }
+
+        private int GetMaxHealth()
+        {
+            return _stats == null
+                ? _max_health
+                : Mathf.Max(1, Mathf.RoundToInt(_stats.GetStatValue(Stat.MAX_HEALTH, _max_health)));
         }
 
         private void HandleAliveChanged(bool old_value, bool new_value)
