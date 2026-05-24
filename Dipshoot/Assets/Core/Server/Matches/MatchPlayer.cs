@@ -21,11 +21,15 @@ namespace Server.Match
         [TargetRpc]
         public void TargetLoadGameScene(string scene_name)
         {
-            _scene_loader.OnLoaded += () =>
-            {
-                CommandMarkPlayerReadiness();
-            };
+            _scene_loader.OnLoaded -= OnSceneLoaded;
+            _scene_loader.OnLoaded += OnSceneLoaded;
             StartCoroutine(_scene_loader.LoadMatchScene(scene_name));
+        }
+
+        private void OnSceneLoaded()
+        {
+            _scene_loader.OnLoaded -= OnSceneLoaded;
+            CommandMarkPlayerReadiness();
         }
 
         [Command]

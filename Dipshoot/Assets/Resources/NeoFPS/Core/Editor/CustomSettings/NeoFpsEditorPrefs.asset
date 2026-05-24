@@ -21,4 +21,4 @@ MonoBehaviour:
   m_CurrentBuildSettingsVersion: 7
   m_CurrentNeoFPSVersion: 1133
   m_RenderPipeline: 0
-  m_DisableNeoObjectBrowsers: 0
+  m_DisableNeoObjectBrowsers: 1
