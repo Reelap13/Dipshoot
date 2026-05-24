@@ -145,6 +145,9 @@ namespace Game.Players
                 Rotation = rotation,
                 CameraPitch = 0f,
                 IsGrounded = false,
+                Stance = MovementStance.Standing,
+                TimeSinceGrounded = float.MaxValue,
+                TimeSinceJumpPressed = float.MaxValue,
             });
         }
 

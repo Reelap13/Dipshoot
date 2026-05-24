@@ -56,8 +56,8 @@ namespace Settings.UI.ValueChader
         [System.Serializable]
         private class DropdownFieldData
         {
-            public int Id;
-            public string Name;
+            public int Id = default;
+            public string Name = default;
         }
     }
 }

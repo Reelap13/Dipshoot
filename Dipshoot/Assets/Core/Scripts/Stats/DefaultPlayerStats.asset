@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac42bc3fb0dbdb946bf8dfacadb9c44b, type: 3}
+  m_Name: DefaultPlayerStats
+  m_EditorClassIdentifier:
+  _stats:
+  - Preset: {fileID: 11400000, guid: 04b2fd6eef9ae29479032952abe11ddc, type: 2}
+    Value: 100
+  - Preset: {fileID: 11400000, guid: 5ed0779a06ecd49498e2f5ea91fb68a2, type: 2}
+    Value: 25
+  - Preset: {fileID: 11400000, guid: 3278c85f57b74b4096de4aeba1de2ac4, type: 2}
+    Value: 5
+  - Preset: {fileID: 11400000, guid: 934916e667804561b89d01d018094fcf, type: 2}
+    Value: 7.5
+  - Preset: {fileID: 11400000, guid: 36c4dfa3dee949a694c3ac8a8d4f4ffa, type: 2}
+    Value: 2.7
+  - Preset: {fileID: 11400000, guid: 7365310cd9e7494586e6c512c30ea99b, type: 2}
+    Value: 35
+  - Preset: {fileID: 11400000, guid: 74bc148807a4444a9b34b106e83ac684, type: 2}
+    Value: 8
+  - Preset: {fileID: 11400000, guid: 361bfd8f1a2249a9af92a36a6b1563a3, type: 2}
+    Value: 12
+  - Preset: {fileID: 11400000, guid: 85c2a2e29fd64c68b1f32c0d024e5676, type: 2}
+    Value: 0.45
+  - Preset: {fileID: 11400000, guid: ebbbeb06954e48429a70d9710a436d60, type: 2}
+    Value: 22
+  - Preset: {fileID: 11400000, guid: 8dc5e23fbbd043958f815b0f9b4d2023, type: 2}
+    Value: 7
+  - Preset: {fileID: 11400000, guid: d2291a76677145a4ae90bd96c40de405, type: 2}
+    Value: 0.08
+  - Preset: {fileID: 11400000, guid: af947507d4cc4a6394ad1d9304ed3eb5, type: 2}
+    Value: 0.12
+  - Preset: {fileID: 11400000, guid: 6b9e3077000443b08bb9d69a41ce84c9, type: 2}
+    Value: 2
+  - Preset: {fileID: 11400000, guid: 4b9b72ea4be742df83b6a26a79896edf, type: 2}
+    Value: 1.2
+  - Preset: {fileID: 11400000, guid: e86fe57a63994c05ae695d063d1413a9, type: 2}
+    Value: 0.5
+  - Preset: {fileID: 11400000, guid: eeb53335be324ab49382f7cfc74131a8, type: 2}
+    Value: 45
+  - Preset: {fileID: 11400000, guid: 462f9abfe22d4b51896cf786f1bfaa51, type: 2}
+    Value: 0.35
+  - Preset: {fileID: 11400000, guid: 3f1a320dc6534ef690e9bdcda6b59db5, type: 2}
+    Value: 0.05
+  - Preset: {fileID: 11400000, guid: be78bbe49d6c4882820f8f5788fd3341, type: 2}
+    Value: 0.35
+  - Preset: {fileID: 11400000, guid: b4a62df4e04e4444a6354f4fb1f1a63b, type: 2}
+    Value: 0.8
+  - Preset: {fileID: 11400000, guid: 068b22adcc894989a867b0590ec9d07f, type: 2}
+    Value: 0.6

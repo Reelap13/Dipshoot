@@ -11,22 +11,50 @@ namespace Scripts.Stats
 
         private void Awake()
         {
-            Initialize();    
+            Initialize();
         }
 
         private void Initialize()
         {
+            if (_stats != null)
+                return;
+
             _stats = new();
+            if (_preset == null)
+                return;
+
             foreach (var stat_data in _preset.GetData())
-                _stats.Add(stat_data.Stat, stat_data);
+                _stats[stat_data.Stat] = stat_data;
         }
 
         public float GetStatValue(Stat stat)
         {
-            if (_stats.TryGetValue(stat, out StatData data))
-                return data.GetStat();
+            if (TryGetStatValue(stat, out float value))
+                return value;
+
             Debug.LogError($"Error: Try to get unsetted stat '{stat.ToString()}' on object {name}");
             return 0f;
+        }
+
+        public float GetStatValue(Stat stat, float fallback_value)
+        {
+            return TryGetStatValue(stat, out float value)
+                ? value
+                : fallback_value;
+        }
+
+        public bool TryGetStatValue(Stat stat, out float value)
+        {
+            Initialize();
+
+            if (_stats.TryGetValue(stat, out StatData data))
+            {
+                value = data.GetStat();
+                return true;
+            }
+
+            value = 0f;
+            return false;
         }
     }
 }

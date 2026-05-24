@@ -11,6 +11,10 @@ namespace Game.Players.Input
         public Vector2 Look;
         public bool IsShootPressed;
         public bool IsShootHeld;
+        public bool IsJumpPressed;
+        public bool IsJumpHeld;
+        public bool IsSprintHeld;
+        public bool IsCrouchHeld;
 
         public readonly int GetTick() => Tick;
     }

@@ -90,6 +90,15 @@ namespace Game.Players.State
                 Rotation = Quaternion.Slerp(from_state.Rotation, to_state.Rotation, t),
                 CameraPitch = Mathf.Lerp(from_state.CameraPitch, to_state.CameraPitch, t),
                 IsGrounded = t < 0.5f ? from_state.IsGrounded : to_state.IsGrounded,
+                Stance = t < 0.5f ? from_state.Stance : to_state.Stance,
+                TimeSinceGrounded = Mathf.Lerp(
+                    from_state.TimeSinceGrounded,
+                    to_state.TimeSinceGrounded,
+                    t),
+                TimeSinceJumpPressed = Mathf.Lerp(
+                    from_state.TimeSinceJumpPressed,
+                    to_state.TimeSinceJumpPressed,
+                    t),
             };
 
             return true;

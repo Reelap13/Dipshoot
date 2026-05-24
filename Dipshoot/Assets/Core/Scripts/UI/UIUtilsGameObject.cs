@@ -3,7 +3,6 @@ using System;
 using System.Collections;
 using NUnit.Framework;
 using TMPro;
-using UnityEngine;
 
 namespace Scripts.UI
 {

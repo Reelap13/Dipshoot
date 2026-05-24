@@ -12,6 +12,9 @@ namespace Game.Players.State
         public Quaternion Rotation;
         public float CameraPitch;
         public bool IsGrounded;
+        public MovementStance Stance;
+        public float TimeSinceGrounded;
+        public float TimeSinceJumpPressed;
 
         public static PlayerStateSnapshot Create(
             PlayerState state,
@@ -27,6 +30,9 @@ namespace Game.Players.State
                 Rotation = state.Rotation,
                 CameraPitch = state.CameraPitch,
                 IsGrounded = state.IsGrounded,
+                Stance = state.Stance,
+                TimeSinceGrounded = state.TimeSinceGrounded,
+                TimeSinceJumpPressed = state.TimeSinceJumpPressed,
             };
         }
 
@@ -40,6 +46,9 @@ namespace Game.Players.State
                 Rotation = Rotation,
                 CameraPitch = CameraPitch,
                 IsGrounded = IsGrounded,
+                Stance = Stance,
+                TimeSinceGrounded = TimeSinceGrounded,
+                TimeSinceJumpPressed = TimeSinceJumpPressed,
             };
         }
     }
