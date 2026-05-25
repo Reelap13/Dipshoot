@@ -242,6 +242,9 @@ namespace Game.Players
                     first_person_parent,
                     $"{_name}_FirstPerson",
                     first_person_layer,
+                    definition.FirstPersonLocalPosition,
+                    definition.FirstPersonLocalEulerAngles,
+                    definition.FirstPersonLocalScale,
                     definition.FirstPersonAnimatorController,
                     out _first_person_animator);
                 _third_person_instance = InstantiateVisual(
@@ -249,6 +252,9 @@ namespace Game.Players
                     third_person_parent,
                     $"{_name}_ThirdPerson",
                     third_person_layer,
+                    definition.ThirdPersonLocalPosition,
+                    definition.ThirdPersonLocalEulerAngles,
+                    definition.ThirdPersonLocalScale,
                     definition.ThirdPersonAnimatorController,
                     out _third_person_animator);
                 _first_person_muzzle_socket = FindChildRecursive(_first_person_instance?.transform, definition.MuzzleSocketName);
@@ -283,6 +289,9 @@ namespace Game.Players
                 Transform parent,
                 string name,
                 string layer_name,
+                Vector3 local_position,
+                Vector3 local_euler_angles,
+                Vector3 local_scale,
                 RuntimeAnimatorController animator_controller,
                 out Animator animator)
             {
@@ -292,10 +301,11 @@ namespace Game.Players
 
                 GameObject instance = Object.Instantiate(prefab, parent);
                 instance.name = name;
-                instance.transform.localPosition = Vector3.zero;
-                instance.transform.localRotation = Quaternion.identity;
-                instance.transform.localScale = Vector3.one;
+                instance.transform.localPosition = local_position;
+                instance.transform.localRotation = Quaternion.Euler(local_euler_angles);
+                instance.transform.localScale = local_scale;
                 PlayerVisualLayerUtility.SetLayerRecursive(instance, layer_name);
+                DisableEmbeddedMuzzleFlashes(instance.transform);
 
                 animator = instance.GetComponentInChildren<Animator>(true);
                 if (animator != null && animator_controller != null)
@@ -303,6 +313,24 @@ namespace Game.Players
 
                 instance.SetActive(false);
                 return instance;
+            }
+
+            private static void DisableEmbeddedMuzzleFlashes(Transform root)
+            {
+                if (root == null)
+                    return;
+
+                for (int i = 0; i < root.childCount; i++)
+                {
+                    Transform child = root.GetChild(i);
+                    if (child.name.StartsWith("MuzzleFlash", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        child.gameObject.SetActive(false);
+                        continue;
+                    }
+
+                    DisableEmbeddedMuzzleFlashes(child);
+                }
             }
 
             private static bool ParentMatches(GameObject instance, Transform parent)

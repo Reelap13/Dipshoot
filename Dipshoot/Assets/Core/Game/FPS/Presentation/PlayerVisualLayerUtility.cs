@@ -21,6 +21,9 @@ namespace Game.Players
             if (target == null || layer < 0)
                 return;
 
+            if (target.GetComponent<PlayerHitbox>() != null)
+                return;
+
             target.gameObject.layer = layer;
 
             for (int i = 0; i < target.childCount; i++)

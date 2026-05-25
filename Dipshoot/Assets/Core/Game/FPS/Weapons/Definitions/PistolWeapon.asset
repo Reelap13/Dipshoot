@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f3db5c2e1f2d4f629b3ec4c2e0b4dd37, type: 3}
   m_Name: PistolWeapon
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   _id: pistol
   _display_name: Pistol
   _slot: 2
@@ -24,6 +24,8 @@ MonoBehaviour:
   _reload_time_stat: 2105
   _spread_degrees_stat: 2106
   _visual: {fileID: 11400000, guid: a5b397ccf768f554e9243b9b56bc0761, type: 2}
+  _show_debug_tracer: 1
+  _show_debug_hit_marker: 0
   _tracer_lifetime: 0.1
   _tracer_width: 0.02
   _tracer_color: {r: 1, g: 0.85, b: 0.25, a: 1}

@@ -15,8 +15,14 @@ namespace Game.Players
             if (owner != null && owner.TryGetComponent(out PlayerWeaponVisualController weapon_visual_controller))
                 weapon_visual_controller.PlayShot(result);
 
-            DrawShotTracer(owner, result, weapon);
-            DrawShotMarker(owner, result, weapon);
+            if (owner != null && owner.TryGetComponent(out PlayerAnimationController animation_controller))
+                animation_controller.PlayShot(result);
+
+            if (weapon == null || weapon.ShowDebugTracer)
+                DrawShotTracer(owner, result, weapon);
+
+            if (weapon == null || weapon.ShowDebugHitMarker)
+                DrawShotMarker(owner, result, weapon);
         }
 
         private static void DrawShotTracer(

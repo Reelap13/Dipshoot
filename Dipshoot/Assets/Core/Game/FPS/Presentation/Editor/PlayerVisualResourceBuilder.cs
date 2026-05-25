@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Scripts.Stats;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -18,6 +20,8 @@ namespace Game.Players.Editor
 
         private const string FirstPersonArmsModelPath = CharacterRoot + "/Models/Character_FirstPerson_Arms.FBX";
         private const string ThirdPersonCharacterModelPath = CharacterRoot + "/Models/Character_ThirdPerson.fbx";
+        private const string ThirdPersonAnimationStubsPath = CharacterRoot + "/Animation/NeoDemoCharacter_AnimationStubs.fbx";
+        private const string ThirdPersonAnimatorPath = CharacterRoot + "/Animation/DipshootThirdPerson.controller";
         private const string FirstPersonArmsPrefabPath = CharacterRoot + "/Prefabs/FirstPersonArms.prefab";
         private const string ThirdPersonCharacterPrefabPath = CharacterRoot + "/Prefabs/ThirdPersonCharacter.prefab";
         private const string PlayerVisualDefinitionPath = CharacterRoot + "/PlayerVisualDefinition.asset";
@@ -52,6 +56,9 @@ namespace Game.Players.Editor
             new(
                 "Assets/Resources/NeoFPS/Samples/Shared/Geometry/Character/Character_ThirdPerson.fbx",
                 ThirdPersonCharacterModelPath),
+            new(
+                "Assets/Resources/NeoFPS/Samples/SinglePlayer/Scenes/FeatureDemos/FirstPersonBody/FBX/NeoDemoCharacter_AnimationStubs.fbx",
+                ThirdPersonAnimationStubsPath),
             new(
                 "Assets/Resources/NeoFPS/Samples/Shared/Geometry/Weapons/Weapon_FP_AssaultRifle.FBX",
                 PrimaryFirstPersonModelPath),
@@ -171,6 +178,7 @@ namespace Game.Players.Editor
                 "WieldablesFirstPerson",
                 object_map);
 
+            RuntimeAnimatorController third_person_animator = BuildThirdPersonAnimatorController();
             PlayerVisualDefinition player_visual = BuildPlayerVisualDefinition(
                 first_person_arms,
                 third_person_character);
@@ -188,6 +196,8 @@ namespace Game.Players.Editor
                 pistol_third_person,
                 pistol_muzzle,
                 AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(PistolFirstPersonAnimatorPath));
+
+            ConfigureThirdPersonCharacterAnimator(third_person_character, third_person_animator);
 
             UpdateWeaponDefinitionVisual(PrimaryWeaponDefinitionPath, primary_visual);
             UpdateWeaponDefinitionVisual(PistolWeaponDefinitionPath, pistol_visual);
@@ -423,6 +433,10 @@ namespace Game.Players.Editor
             SerializedObject serialized_object = new(definition);
             Set(serialized_object, "_first_person_arms_prefab", first_person_arms);
             Set(serialized_object, "_third_person_character_prefab", third_person_character);
+            Set(
+                serialized_object,
+                "_third_person_animator_controller",
+                AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(ThirdPersonAnimatorPath));
             serialized_object.FindProperty("_first_person_character_layer").stringValue = "CharacterFirstPerson";
             serialized_object.FindProperty("_third_person_character_layer").stringValue = "CharacterExternal";
             serialized_object.FindProperty("_first_person_weapon_layer").stringValue = "WieldablesFirstPerson";
@@ -430,6 +444,143 @@ namespace Game.Players.Editor
             serialized_object.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(definition);
             return definition;
+        }
+
+        private static RuntimeAnimatorController BuildThirdPersonAnimatorController()
+        {
+            AnimationClip idle = FindAnimationClip(ThirdPersonAnimationStubsPath, "Stub-Idle");
+            AnimationClip walk = FindAnimationClip(ThirdPersonAnimationStubsPath, "Stub-WalkFwd", "Walk-Fwd");
+            AnimationClip run = FindAnimationClip(ThirdPersonAnimationStubsPath, "Stub-RunFwd");
+            AnimationClip crouch_idle = FindAnimationClip(ThirdPersonAnimationStubsPath, "Stub-CrouchIdle");
+            AnimationClip crouch_walk = FindAnimationClip(ThirdPersonAnimationStubsPath, "Stub-CrouchFwd");
+            AnimationClip fall = FindAnimationClip(ThirdPersonAnimationStubsPath, "Stub-Fall", "Stub-Jump");
+
+            if (AssetDatabase.LoadAssetAtPath<AnimatorController>(ThirdPersonAnimatorPath) != null)
+                AssetDatabase.DeleteAsset(ThirdPersonAnimatorPath);
+
+            EnsureFolderForAssetPath(ThirdPersonAnimatorPath);
+            AnimatorController controller = AnimatorController.CreateAnimatorControllerAtPath(ThirdPersonAnimatorPath);
+            AddParameter(controller, "MoveX", AnimatorControllerParameterType.Float);
+            AddParameter(controller, "MoveY", AnimatorControllerParameterType.Float);
+            AddParameter(controller, "Speed", AnimatorControllerParameterType.Float);
+            AddParameter(controller, "Grounded", AnimatorControllerParameterType.Bool, bool_default: true);
+            AddParameter(controller, "Crouch", AnimatorControllerParameterType.Bool);
+            AddParameter(controller, "Sprint", AnimatorControllerParameterType.Bool);
+            AddParameter(controller, "Falling", AnimatorControllerParameterType.Bool);
+            AddParameter(controller, "WeaponSlot", AnimatorControllerParameterType.Int);
+            AddParameter(controller, "Fire", AnimatorControllerParameterType.Trigger);
+            AddParameter(controller, "AimPitch", AnimatorControllerParameterType.Float);
+
+            AddParameter(controller, "forward", AnimatorControllerParameterType.Float);
+            AddParameter(controller, "strafe", AnimatorControllerParameterType.Float);
+            AddParameter(controller, "locomotionMultiplier", AnimatorControllerParameterType.Float, float_default: 1f);
+            AddParameter(controller, "characterHeight", AnimatorControllerParameterType.Float, float_default: 1f);
+            AddParameter(controller, "jump", AnimatorControllerParameterType.Trigger);
+            AddParameter(controller, "airborne", AnimatorControllerParameterType.Bool);
+            AddParameter(controller, "sprinting", AnimatorControllerParameterType.Bool);
+            AddParameter(controller, "dead", AnimatorControllerParameterType.Bool);
+
+            AnimatorStateMachine state_machine = controller.layers[0].stateMachine;
+            AnimatorState locomotion = state_machine.AddState("Locomotion");
+            AnimatorState crouch = state_machine.AddState("Crouch");
+            AnimatorState falling = state_machine.AddState("Falling");
+            state_machine.defaultState = locomotion;
+
+            locomotion.motion = CreateSimpleBlendTree(
+                controller,
+                "LocomotionBlend",
+                "Speed",
+                new BlendTreeChildData(idle, 0f),
+                new BlendTreeChildData(walk, 0.45f),
+                new BlendTreeChildData(run, 1f));
+            crouch.motion = CreateSimpleBlendTree(
+                controller,
+                "CrouchBlend",
+                "Speed",
+                new BlendTreeChildData(crouch_idle, 0f),
+                new BlendTreeChildData(crouch_walk, 1f));
+            falling.motion = fall;
+
+            AddBoolTransition(locomotion, crouch, "Crouch", true);
+            AddBoolTransition(crouch, locomotion, "Crouch", false);
+            AddBoolTransition(locomotion, falling, "Falling", true);
+            AddBoolTransition(crouch, falling, "Falling", true);
+            AddBoolTransition(falling, locomotion, "Falling", false);
+
+            EditorUtility.SetDirty(controller);
+            AssetDatabase.SaveAssets();
+            return controller;
+        }
+
+        private static void AddParameter(
+            AnimatorController controller,
+            string name,
+            AnimatorControllerParameterType type,
+            float float_default = 0f,
+            bool bool_default = false)
+        {
+            AnimatorControllerParameter parameter = new()
+            {
+                name = name,
+                type = type,
+                defaultFloat = float_default,
+                defaultBool = bool_default,
+            };
+            controller.AddParameter(parameter);
+        }
+
+        private static BlendTree CreateSimpleBlendTree(
+            AnimatorController controller,
+            string name,
+            string blend_parameter,
+            params BlendTreeChildData[] children)
+        {
+            BlendTree blend_tree = new()
+            {
+                name = name,
+                blendType = BlendTreeType.Simple1D,
+                blendParameter = blend_parameter,
+                useAutomaticThresholds = false,
+            };
+            AssetDatabase.AddObjectToAsset(blend_tree, controller);
+
+            for (int i = 0; i < children.Length; i++)
+                blend_tree.AddChild(children[i].Motion, children[i].Threshold);
+
+            EditorUtility.SetDirty(blend_tree);
+            return blend_tree;
+        }
+
+        private static void AddBoolTransition(
+            AnimatorState from,
+            AnimatorState to,
+            string parameter,
+            bool expected_value)
+        {
+            AnimatorStateTransition transition = from.AddTransition(to);
+            transition.hasExitTime = false;
+            transition.hasFixedDuration = true;
+            transition.duration = 0.08f;
+            transition.canTransitionToSelf = false;
+            transition.AddCondition(
+                expected_value ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot,
+                0f,
+                parameter);
+        }
+
+        private static AnimationClip FindAnimationClip(string path, params string[] names)
+        {
+            Object[] assets = AssetDatabase.LoadAllAssetsAtPath(path);
+            for (int i = 0; i < names.Length; i++)
+            {
+                for (int j = 0; j < assets.Length; j++)
+                {
+                    if (assets[j] is AnimationClip clip && clip.name == names[i])
+                        return clip;
+                }
+            }
+
+            throw new FileNotFoundException($"Missing animation clip in {path}: {string.Join(", ", names)}");
         }
 
         private static WeaponVisualDefinition BuildWeaponVisualDefinition(
@@ -449,6 +600,12 @@ namespace Game.Players.Editor
             Set(serialized_object, "_first_person_animator_controller", first_person_animator);
             Set(serialized_object, "_third_person_animator_controller", null);
             serialized_object.FindProperty("_muzzle_socket_name").stringValue = "MuzzleSocket";
+            serialized_object.FindProperty("_first_person_local_position").vector3Value = new Vector3(0f, -0.28f, 0.55f);
+            serialized_object.FindProperty("_first_person_local_euler_angles").vector3Value = Vector3.zero;
+            serialized_object.FindProperty("_first_person_local_scale").vector3Value = Vector3.one;
+            serialized_object.FindProperty("_third_person_local_position").vector3Value = Vector3.zero;
+            serialized_object.FindProperty("_third_person_local_euler_angles").vector3Value = Vector3.zero;
+            serialized_object.FindProperty("_third_person_local_scale").vector3Value = Vector3.one;
             serialized_object.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(definition);
             return definition;
@@ -482,13 +639,15 @@ namespace Game.Players.Editor
                 Transform third_person_root = FindOrCreateChild(visual_root, "ThirdPersonView");
                 Transform legacy_root = FindChildRecursive(root.transform, "Model");
 
+                SetThirdPersonRootOffset(third_person_root);
                 ClearChildren(first_person_root);
                 ClearChildren(third_person_root);
                 InstantiatePrefab(first_person_arms, first_person_root, "FirstPersonArms");
                 InstantiatePrefab(third_person_character, third_person_root, "ThirdPersonCharacter");
 
                 DisableRenderers(legacy_root);
-                RebuildDefaultHitboxes(root);
+                SerializeHitboxRigSettings(root);
+                SerializeHitboxLagCompensationSettings(root);
                 SerializeWeaponRaycastSettings(root);
 
                 PlayerVisualController controller = root.GetComponent<PlayerVisualController>();
@@ -503,7 +662,10 @@ namespace Game.Players.Editor
                 Set(serialized_object, "_first_person_root", first_person_root);
                 Set(serialized_object, "_third_person_root", third_person_root);
                 Set(serialized_object, "_legacy_render_root", legacy_root);
+                Set(serialized_object, "_stats", root.GetComponent<StatsController>());
                 serialized_object.FindProperty("_hide_legacy_renderers").boolValue = true;
+                serialized_object.FindProperty("_align_third_person_to_capsule_bottom").boolValue = true;
+                serialized_object.FindProperty("_fallback_stand_height").floatValue = 2f;
                 serialized_object.ApplyModifiedPropertiesWithoutUndo();
 
                 PlayerWeaponVisualController weapon_visual_controller = root.GetComponent<PlayerWeaponVisualController>();
@@ -515,6 +677,11 @@ namespace Game.Players.Editor
                 Set(weapon_visual_serialized_object, "_weapon_controller", root.GetComponent<WeaponController>());
                 weapon_visual_serialized_object.FindProperty("_hide_base_first_person_arms").boolValue = true;
                 weapon_visual_serialized_object.ApplyModifiedPropertiesWithoutUndo();
+
+                SerializeAnimationControllerSettings(root, controller, third_person_root);
+                PlayerThirdPersonPoseController pose_controller = root.GetComponent<PlayerThirdPersonPoseController>();
+                if (pose_controller != null)
+                    Object.DestroyImmediate(pose_controller);
 
                 PrefabUtility.SaveAsPrefabAsset(root, PlayerCharacterPrefabPath);
             }
@@ -665,6 +832,39 @@ namespace Game.Players.Editor
             serialized_object.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        private static void SerializeHitboxRigSettings(GameObject root)
+        {
+            Transform legacy_hitbox_root = FindChildRecursive(root.transform, "Hitboxes");
+            if (legacy_hitbox_root != null)
+                Object.DestroyImmediate(legacy_hitbox_root.gameObject);
+
+            PlayerHitboxRigController hitbox_rig = root.GetComponent<PlayerHitboxRigController>();
+            if (hitbox_rig == null)
+                hitbox_rig = root.AddComponent<PlayerHitboxRigController>();
+
+            SerializedObject serialized_object = new(hitbox_rig);
+            Set(serialized_object, "_health", root.GetComponent<PlayerHealth>());
+            Set(serialized_object, "_skeleton_root", FindChildRecursive(root.transform, "ThirdPersonCharacter"));
+            serialized_object.FindProperty("_rebuild_on_awake").boolValue = true;
+            serialized_object.FindProperty("_remove_legacy_root").boolValue = true;
+            serialized_object.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SerializeHitboxLagCompensationSettings(GameObject root)
+        {
+            PlayerHitboxLagCompensation lag_compensation = root.GetComponent<PlayerHitboxLagCompensation>();
+            if (lag_compensation == null)
+                lag_compensation = root.AddComponent<PlayerHitboxLagCompensation>();
+
+            SerializedObject serialized_object = new(lag_compensation);
+            Set(serialized_object, "_character", root.GetComponent<PlayerCharacter>());
+            Set(serialized_object, "_health", root.GetComponent<PlayerHealth>());
+            Set(serialized_object, "_hitbox_rig", root.GetComponent<PlayerHitboxRigController>());
+            serialized_object.FindProperty("_history_seconds").floatValue = 0.35f;
+            serialized_object.FindProperty("_max_history_ticks").intValue = 64;
+            serialized_object.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private static void SerializeWeaponRaycastSettings(GameObject root)
         {
             WeaponController weapon_controller = root.GetComponent<WeaponController>();
@@ -674,6 +874,76 @@ namespace Game.Players.Editor
             SerializedObject serialized_object = new(weapon_controller);
             serialized_object.FindProperty("_trigger_interaction").enumValueIndex = (int)QueryTriggerInteraction.Collide;
             serialized_object.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SerializeAnimationControllerSettings(
+            GameObject root,
+            PlayerVisualController controller,
+            Transform third_person_root)
+        {
+            PlayerAnimationController animation_controller = root.GetComponent<PlayerAnimationController>();
+            if (animation_controller == null)
+                animation_controller = root.AddComponent<PlayerAnimationController>();
+
+            SerializedObject serialized_object = new(animation_controller);
+            Set(serialized_object, "_character", root.GetComponent<PlayerCharacter>());
+            Set(serialized_object, "_visual", controller);
+            Set(serialized_object, "_weapon_controller", root.GetComponent<WeaponController>());
+            Set(serialized_object, "_skeleton_root", FindChildRecursive(third_person_root, "ThirdPersonCharacter"));
+            Set(serialized_object, "_third_person_animator", FindThirdPersonAnimator(third_person_root));
+            serialized_object.FindProperty("_server_updates_animator").boolValue = true;
+            serialized_object.FindProperty("_client_updates_parameters").boolValue = true;
+            serialized_object.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SetThirdPersonRootOffset(Transform third_person_root)
+        {
+            if (third_person_root == null)
+                return;
+
+            Vector3 position = third_person_root.localPosition;
+            position.y = -1f;
+            third_person_root.localPosition = position;
+        }
+
+        private static void ConfigureThirdPersonCharacterAnimator(
+            GameObject prefab,
+            RuntimeAnimatorController animator_controller)
+        {
+            if (prefab == null)
+                return;
+
+            string prefab_path = AssetDatabase.GetAssetPath(prefab);
+            if (string.IsNullOrEmpty(prefab_path))
+                return;
+
+            GameObject root = PrefabUtility.LoadPrefabContents(prefab_path);
+            try
+            {
+                Animator animator = root.GetComponentInChildren<Animator>(true);
+                if (animator == null)
+                    return;
+
+                animator.runtimeAnimatorController = animator_controller;
+                animator.applyRootMotion = false;
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                PrefabUtility.SaveAsPrefabAsset(root, prefab_path);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        private static Animator FindThirdPersonAnimator(Transform third_person_root)
+        {
+            if (third_person_root == null)
+                return null;
+
+            Transform skeleton_root = FindChildRecursive(third_person_root, "ThirdPersonCharacter");
+            return skeleton_root == null
+                ? third_person_root.GetComponentInChildren<Animator>(true)
+                : skeleton_root.GetComponentInChildren<Animator>(true);
         }
 
         private static T GetOrCreateAsset<T>(string path) where T : ScriptableObject
@@ -870,6 +1140,18 @@ namespace Game.Players.Editor
         {
             SerializedProperty property = serialized_object.FindProperty(property_name);
             property.objectReferenceValue = value;
+        }
+
+        private readonly struct BlendTreeChildData
+        {
+            public readonly Motion Motion;
+            public readonly float Threshold;
+
+            public BlendTreeChildData(Motion motion, float threshold)
+            {
+                Motion = motion;
+                Threshold = threshold;
+            }
         }
 
         private readonly struct SourceAsset

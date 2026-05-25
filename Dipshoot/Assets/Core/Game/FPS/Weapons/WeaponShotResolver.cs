@@ -2,7 +2,6 @@ using Game.MatchMode;
 using Game.Players.Input;
 using Mirror;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Game.Players
 {
@@ -22,7 +21,7 @@ namespace Game.Players
         {
             Vector3 origin = GetShotOrigin(shot_state, eye_offset);
             Vector3 direction = GetShotDirection(shot_state, weapon_stats, shooter.netId, input.Tick, weapon.Slot);
-            bool has_hit = TryGetShotHit(
+            bool has_world_hit = TryGetWorldHit(
                 shooter,
                 origin,
                 direction,
@@ -30,13 +29,31 @@ namespace Game.Players
                 hit_mask,
                 trigger_interaction,
                 hits,
-                out RaycastHit hit);
-            Vector3 point = has_hit ? hit.point : origin + direction * weapon_stats.Range;
+                out RaycastHit world_hit);
+            float player_hit_range = has_world_hit ? world_hit.distance : weapon_stats.Range;
+            int hitbox_snapshot_tick = ResolveHitboxSnapshotTick(input, server_tick);
+            bool has_player_hit = PlayerHitboxLagCompensation.TryRaycast(
+                shooter,
+                hitbox_snapshot_tick,
+                origin,
+                direction,
+                player_hit_range,
+                out PlayerHitboxSnapshotHit player_hit);
+            bool has_hit = has_player_hit || has_world_hit;
+            Vector3 point = has_player_hit
+                ? player_hit.Point
+                : has_world_hit
+                    ? world_hit.point
+                    : origin + direction * weapon_stats.Range;
 
             ShotResult result = new()
             {
                 ShooterNetId = shooter.netId,
-                HitNetId = has_hit ? GetHitNetId(hit) : 0,
+                HitNetId = has_player_hit
+                    ? player_hit.HitNetId
+                    : has_world_hit
+                        ? GetHitNetId(world_hit)
+                        : 0,
                 WeaponSlot = weapon.Slot,
                 InputTick = input.Tick,
                 ServerTick = server_tick,
@@ -44,13 +61,13 @@ namespace Game.Players
                 Direction = direction,
                 Point = point,
                 Damage = weapon_stats.Damage,
-                HitboxType = PlayerHitboxType.None,
-                DamageMultiplier = 1f,
+                HitboxType = has_player_hit ? player_hit.HitboxType : PlayerHitboxType.None,
+                DamageMultiplier = has_player_hit ? player_hit.DamageMultiplier : 1f,
                 HasHit = has_hit,
                 DidDamage = false,
             };
 
-            TryApplyDamage(shooter, ref result, hit);
+            TryApplyDamage(shooter, ref result, has_player_hit, player_hit);
             return result;
         }
 
@@ -107,7 +124,15 @@ namespace Game.Players
             return (value & 0x00ffffff) / 16777215f;
         }
 
-        private static bool TryGetShotHit(
+        private static int ResolveHitboxSnapshotTick(PlayerInputData input, int server_tick)
+        {
+            if (input.Tick <= 0)
+                return server_tick;
+
+            return Mathf.Min(input.Tick, server_tick);
+        }
+
+        private static bool TryGetWorldHit(
             PlayerCharacter shooter,
             Vector3 origin,
             Vector3 direction,
@@ -135,15 +160,10 @@ namespace Game.Players
                 if (current_hit.collider == null || IsOwnCollider(shooter.transform, current_hit.collider))
                     continue;
 
-                PlayerHitbox hitbox = current_hit.collider.GetComponentInParent<PlayerHitbox>();
-                if (current_hit.collider.isTrigger && hitbox == null)
+                if (current_hit.collider.isTrigger)
                     continue;
 
-                PlayerHealth health = ResolveHitHealth(current_hit.collider, hitbox);
-                if (hitbox != null && health == null)
-                    continue;
-
-                if (health != null && !health.IsAlive)
+                if (IsPlayerCollider(current_hit.collider))
                     continue;
 
                 if (current_hit.distance >= closest_distance)
@@ -192,46 +212,41 @@ namespace Game.Players
         private static void TryApplyDamage(
             PlayerCharacter shooter,
             ref ShotResult result,
-            RaycastHit hit)
+            bool has_player_hit,
+            PlayerHitboxSnapshotHit hit)
         {
-            if (!result.HasHit || hit.collider == null)
+            if (!has_player_hit || hit.Health == null || IsFriendlyTarget(shooter, hit.Health))
                 return;
 
-            PlayerHitbox hitbox = hit.collider.GetComponentInParent<PlayerHitbox>();
-            PlayerHealth health = ResolveHitHealth(hit.collider, hitbox);
-            if (health == null || IsFriendlyTarget(shooter, health))
-                return;
-
-            result.HitNetId = health.netId;
-            if (hitbox == null)
-            {
-                result.HitboxType = PlayerHitboxType.Body;
-                result.DamageMultiplier = 1f;
-                result.DidDamage = health.TryApplyDamage(
-                    result.Damage,
-                    result.ShooterNetId,
-                    result.HitboxType,
-                    result.DamageMultiplier);
-                return;
-            }
-
-            result.HitboxType = hitbox.Type;
-            result.DamageMultiplier = hitbox.DamageMultiplier;
-            result.DidDamage = hitbox.TryApplyDamage(result.Damage, result.ShooterNetId, out int applied_damage);
+            result.HitNetId = hit.Health.netId;
+            result.HitboxType = hit.HitboxType;
+            result.DamageMultiplier = hit.DamageMultiplier;
+            int applied_damage = CalculateDamage(result.Damage, hit.DamageMultiplier);
+            result.DidDamage = hit.Health.TryApplyDamage(
+                applied_damage,
+                result.ShooterNetId,
+                result.HitboxType,
+                result.DamageMultiplier);
             result.Damage = applied_damage;
         }
 
-        private static PlayerHealth ResolveHitHealth(Collider collider, PlayerHitbox hitbox)
+        private static int CalculateDamage(int base_damage, float damage_multiplier)
         {
-            if (hitbox != null)
-                return hitbox.Health;
+            if (base_damage <= 0 || damage_multiplier <= 0f)
+                return 0;
 
-            return collider.GetComponentInParent<PlayerHealth>();
+            return Mathf.Max(1, Mathf.RoundToInt(base_damage * damage_multiplier));
         }
 
         private static bool IsOwnCollider(Transform shooter, Collider target)
         {
             return target.transform == shooter || target.transform.IsChildOf(shooter);
+        }
+
+        private static bool IsPlayerCollider(Collider target)
+        {
+            return target.GetComponentInParent<PlayerHealth>() != null ||
+                target.GetComponentInParent<PlayerHitbox>() != null;
         }
 
         private static bool IsFriendlyTarget(PlayerCharacter shooter, PlayerHealth target_health)

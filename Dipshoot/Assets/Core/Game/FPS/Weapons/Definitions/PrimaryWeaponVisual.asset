@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a7558ab1f277478fa2f7a78934fcceaa, type: 3}
   m_Name: PrimaryWeaponVisual
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   _slot: 1
   _first_person_prefab: {fileID: 4599805615451697323, guid: bbd9a96e478987848854405ed07c4043, type: 3}
   _third_person_prefab: {fileID: 2626743814325838858, guid: 9aba2ff6b256b3946a18227adc46199b, type: 3}
@@ -19,3 +19,9 @@ MonoBehaviour:
   _first_person_animator_controller: {fileID: 9100000, guid: 5130691bf2f94d44f8be92f868c00547, type: 2}
   _third_person_animator_controller: {fileID: 0}
   _muzzle_socket_name: MuzzleSocket
+  _first_person_local_position: {x: 0, y: -0.28, z: 0.55}
+  _first_person_local_euler_angles: {x: 0, y: 0, z: 0}
+  _first_person_local_scale: {x: 1, y: 1, z: 1}
+  _third_person_local_position: {x: 0, y: 0, z: 0}
+  _third_person_local_euler_angles: {x: 0, y: 0, z: 0}
+  _third_person_local_scale: {x: 1, y: 1, z: 1}

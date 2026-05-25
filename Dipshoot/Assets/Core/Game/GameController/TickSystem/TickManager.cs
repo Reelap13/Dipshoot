@@ -14,6 +14,8 @@ namespace Game.TickSystem
         PhysicsResolve = 300,
         Objective = 500,
         MatchState = 800,
+        AnimationPose = 840,
+        HitboxSnapshot = 850,
         StateSnapshot = 900,
         Cleanup = 1000,
     }

@@ -11,9 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 724e57fc20014d2b8778a4064f0ba709, type: 3}
   m_Name: PlayerVisualDefinition
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   _first_person_arms_prefab: {fileID: 1108242457989605051, guid: 12269009ffc9e8449ad546e633173d31, type: 3}
   _third_person_character_prefab: {fileID: 4617596897990314066, guid: a6bffab2e60b78d4d93b23121932b664, type: 3}
+  _third_person_animator_controller: {fileID: 9100000, guid: 32557c3a2b14d444f89c24f24a7c5989, type: 2}
   _first_person_character_layer: CharacterFirstPerson
   _third_person_character_layer: CharacterExternal
   _first_person_weapon_layer: WieldablesFirstPerson

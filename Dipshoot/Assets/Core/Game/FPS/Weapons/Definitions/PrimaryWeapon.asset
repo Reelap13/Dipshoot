@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f3db5c2e1f2d4f629b3ec4c2e0b4dd37, type: 3}
   m_Name: PrimaryWeapon
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   _id: primary
   _display_name: Primary
   _slot: 1
@@ -24,6 +24,8 @@ MonoBehaviour:
   _reload_time_stat: 2005
   _spread_degrees_stat: 2006
   _visual: {fileID: 11400000, guid: 1a438f2f68b55be4087b059e13ea1d4f, type: 2}
+  _show_debug_tracer: 1
+  _show_debug_hit_marker: 0
   _tracer_lifetime: 0.12
   _tracer_width: 0.025
   _tracer_color: {r: 0, g: 1, b: 1, a: 1}

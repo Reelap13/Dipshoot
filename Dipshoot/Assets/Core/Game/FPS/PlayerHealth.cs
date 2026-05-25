@@ -19,6 +19,8 @@ namespace Game.Players
 
         private Renderer[] _renderers = Array.Empty<Renderer>();
         private Collider[] _colliders = Array.Empty<Collider>();
+        private bool[] _initial_renderer_enabled = Array.Empty<bool>();
+        private bool[] _initial_collider_enabled = Array.Empty<bool>();
 
         public int MaxHealth => GetMaxHealth();
         public int CurrentHealth => _current_health;
@@ -91,15 +93,21 @@ namespace Game.Players
                 return;
 
             CacheReferences();
-            CachePresentationTargets();
             _is_alive = true;
             ResetHealth();
+            CachePresentationTargets();
             ApplyAlive(true);
 
             if (_character != null)
                 _character.ResetSimulationState(position, rotation);
 
             Debug.Log($"{LogPrefix} Respawn. netId={netId} health={_current_health}/{MaxHealth}");
+        }
+
+        public void RefreshPresentationTargets()
+        {
+            CachePresentationTargets();
+            ApplyAlive(_is_alive);
         }
 
         private void CacheReferences()
@@ -113,8 +121,37 @@ namespace Game.Players
 
         private void CachePresentationTargets()
         {
+            Renderer[] previous_renderers = _renderers;
+            Collider[] previous_colliders = _colliders;
+            bool[] previous_renderer_enabled = _initial_renderer_enabled;
+            bool[] previous_collider_enabled = _initial_collider_enabled;
+
             _renderers = GetComponentsInChildren<Renderer>(true);
             _colliders = GetComponentsInChildren<Collider>(true);
+            _initial_renderer_enabled = new bool[_renderers.Length];
+            _initial_collider_enabled = new bool[_colliders.Length];
+
+            for (int i = 0; i < _renderers.Length; i++)
+            {
+                _initial_renderer_enabled[i] = TryGetPreviousEnabled(
+                    _renderers[i],
+                    previous_renderers,
+                    previous_renderer_enabled,
+                    out bool is_enabled)
+                    ? is_enabled
+                    : _renderers[i] != null && _renderers[i].enabled;
+            }
+
+            for (int i = 0; i < _colliders.Length; i++)
+            {
+                _initial_collider_enabled[i] = TryGetPreviousEnabled(
+                    _colliders[i],
+                    previous_colliders,
+                    previous_collider_enabled,
+                    out bool is_enabled)
+                    ? is_enabled
+                    : _colliders[i] != null && _colliders[i].enabled;
+            }
         }
 
         private void ResetHealth()
@@ -137,10 +174,53 @@ namespace Game.Players
         private void ApplyAlive(bool is_alive)
         {
             for (int i = 0; i < _renderers.Length; i++)
-                _renderers[i].enabled = is_alive;
+            {
+                if (_renderers[i] != null)
+                    _renderers[i].enabled = is_alive && GetInitialRendererEnabled(i);
+            }
 
             for (int i = 0; i < _colliders.Length; i++)
-                _colliders[i].enabled = is_alive;
+            {
+                if (_colliders[i] != null)
+                    _colliders[i].enabled = is_alive && GetInitialColliderEnabled(i);
+            }
+        }
+
+        private bool GetInitialRendererEnabled(int index)
+        {
+            return index >= 0 &&
+                index < _initial_renderer_enabled.Length &&
+                _initial_renderer_enabled[index];
+        }
+
+        private bool GetInitialColliderEnabled(int index)
+        {
+            return index >= 0 &&
+                index < _initial_collider_enabled.Length &&
+                _initial_collider_enabled[index];
+        }
+
+        private static bool TryGetPreviousEnabled<T>(
+            T target,
+            T[] previous_targets,
+            bool[] previous_enabled,
+            out bool is_enabled)
+            where T : UnityEngine.Object
+        {
+            is_enabled = false;
+            if (target == null)
+                return false;
+
+            for (int i = 0; i < previous_targets.Length && i < previous_enabled.Length; i++)
+            {
+                if (previous_targets[i] != target)
+                    continue;
+
+                is_enabled = previous_enabled[i];
+                return true;
+            }
+
+            return false;
         }
 
         private void Die(DamageInfo damage_info)
