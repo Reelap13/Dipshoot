@@ -18,7 +18,7 @@ namespace Game.Players
         [SerializeField] private WeaponDefinition _pistol_weapon;
         [SerializeField] private Vector3 _eye_offset = new(0f, 0.49f, 0.359f);
         [SerializeField] private LayerMask _hit_mask = ~0;
-        [SerializeField] private QueryTriggerInteraction _trigger_interaction = QueryTriggerInteraction.Ignore;
+        [SerializeField] private QueryTriggerInteraction _trigger_interaction = QueryTriggerInteraction.Collide;
 
         [SyncVar] private WeaponSlot _active_slot = WeaponSlot.Primary;
         [SyncVar] private int _primary_ammo;
@@ -50,6 +50,8 @@ namespace Game.Players
         public bool IsActiveReloading => GetIsReloading(_active_slot);
         public float ActiveReloadProgress => GetReloadProgress(_active_slot);
         public string ActiveWeaponDisplayName => GetWeaponDefinition(_active_slot)?.DisplayName ?? _active_slot.ToString();
+        public WeaponDefinition PrimaryWeaponDefinition => _primary_weapon;
+        public WeaponDefinition PistolWeaponDefinition => _pistol_weapon;
 
         private void Awake()
         {
@@ -161,7 +163,9 @@ namespace Game.Players
             Debug.Log(
                 $"{LogPrefix} Shot. netId={shot_result.ShooterNetId} slot={shot_result.WeaponSlot} " +
                 $"inputTick={shot_result.InputTick} serverTick={shot_result.ServerTick} " +
-                $"hit={shot_result.HasHit} hitNetId={shot_result.HitNetId} damage={shot_result.DidDamage} " +
+                $"hit={shot_result.HasHit} hitNetId={shot_result.HitNetId} " +
+                $"hitbox={shot_result.HitboxType} damage={shot_result.DidDamage} " +
+                $"appliedDamage={shot_result.Damage} multiplier={shot_result.DamageMultiplier:0.##} " +
                 $"ammo={simulation_result.FiredSlotState.AmmoInMagazine}/{simulation_result.FiredSlotState.ReserveAmmo}");
 
             RpcRegisterShot(shot_result);
@@ -202,7 +206,7 @@ namespace Game.Players
             _pistol_reload_end_tick = _weapon_state.Pistol.ReloadEndTick;
         }
 
-        private WeaponDefinition GetWeaponDefinition(WeaponSlot slot)
+        public WeaponDefinition GetWeaponDefinition(WeaponSlot slot)
         {
             return slot == WeaponSlot.Pistol
                 ? _pistol_weapon

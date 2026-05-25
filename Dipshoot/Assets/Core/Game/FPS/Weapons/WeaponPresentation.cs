@@ -12,6 +12,9 @@ namespace Game.Players
             ShotResult result,
             WeaponDefinition weapon)
         {
+            if (owner != null && owner.TryGetComponent(out PlayerWeaponVisualController weapon_visual_controller))
+                weapon_visual_controller.PlayShot(result);
+
             DrawShotTracer(owner, result, weapon);
             DrawShotMarker(owner, result, weapon);
         }

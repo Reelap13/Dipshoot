@@ -44,6 +44,8 @@ namespace Game.Players
                 Direction = direction,
                 Point = point,
                 Damage = weapon_stats.Damage,
+                HitboxType = PlayerHitboxType.None,
+                DamageMultiplier = 1f,
                 HasHit = has_hit,
                 DidDamage = false,
             };
@@ -133,7 +135,14 @@ namespace Game.Players
                 if (current_hit.collider == null || IsOwnCollider(shooter.transform, current_hit.collider))
                     continue;
 
-                PlayerHealth health = current_hit.collider.GetComponentInParent<PlayerHealth>();
+                PlayerHitbox hitbox = current_hit.collider.GetComponentInParent<PlayerHitbox>();
+                if (current_hit.collider.isTrigger && hitbox == null)
+                    continue;
+
+                PlayerHealth health = ResolveHitHealth(current_hit.collider, hitbox);
+                if (hitbox != null && health == null)
+                    continue;
+
                 if (health != null && !health.IsAlive)
                     continue;
 
@@ -188,12 +197,36 @@ namespace Game.Players
             if (!result.HasHit || hit.collider == null)
                 return;
 
-            PlayerHealth health = hit.collider.GetComponentInParent<PlayerHealth>();
+            PlayerHitbox hitbox = hit.collider.GetComponentInParent<PlayerHitbox>();
+            PlayerHealth health = ResolveHitHealth(hit.collider, hitbox);
             if (health == null || IsFriendlyTarget(shooter, health))
                 return;
 
             result.HitNetId = health.netId;
-            result.DidDamage = health.TryApplyDamage(result.Damage, result.ShooterNetId);
+            if (hitbox == null)
+            {
+                result.HitboxType = PlayerHitboxType.Body;
+                result.DamageMultiplier = 1f;
+                result.DidDamage = health.TryApplyDamage(
+                    result.Damage,
+                    result.ShooterNetId,
+                    result.HitboxType,
+                    result.DamageMultiplier);
+                return;
+            }
+
+            result.HitboxType = hitbox.Type;
+            result.DamageMultiplier = hitbox.DamageMultiplier;
+            result.DidDamage = hitbox.TryApplyDamage(result.Damage, result.ShooterNetId, out int applied_damage);
+            result.Damage = applied_damage;
+        }
+
+        private static PlayerHealth ResolveHitHealth(Collider collider, PlayerHitbox hitbox)
+        {
+            if (hitbox != null)
+                return hitbox.Health;
+
+            return collider.GetComponentInParent<PlayerHealth>();
         }
 
         private static bool IsOwnCollider(Transform shooter, Collider target)

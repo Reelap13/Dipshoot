@@ -17,6 +17,7 @@ namespace Game.Players
         [SerializeField] private Stat _reserve_ammo_stat;
         [SerializeField] private Stat _reload_time_stat;
         [SerializeField] private Stat _spread_degrees_stat;
+        [SerializeField] private WeaponVisualDefinition _visual;
         [SerializeField] private float _tracer_lifetime = 0.12f;
         [SerializeField] private float _tracer_width = 0.03f;
         [SerializeField] private Color _tracer_color = Color.cyan;
@@ -37,6 +38,7 @@ namespace Game.Players
         public Stat ReserveAmmoStat => _reserve_ammo_stat;
         public Stat ReloadTimeStat => _reload_time_stat;
         public Stat SpreadDegreesStat => _spread_degrees_stat;
+        public WeaponVisualDefinition Visual => _visual;
         public float TracerLifetime => _tracer_lifetime;
         public float TracerWidth => _tracer_width;
         public Color TracerColor => _tracer_color;

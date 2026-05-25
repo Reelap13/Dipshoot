@@ -13,6 +13,8 @@ namespace Game.Players
         public Vector3 Direction;
         public Vector3 Point;
         public int Damage;
+        public PlayerHitboxType HitboxType;
+        public float DamageMultiplier;
         public bool HasHit;
         public bool DidDamage;
     }

@@ -23,6 +23,7 @@ MonoBehaviour:
   _reserve_ammo_stat: 2104
   _reload_time_stat: 2105
   _spread_degrees_stat: 2106
+  _visual: {fileID: 11400000, guid: a5b397ccf768f554e9243b9b56bc0761, type: 2}
   _tracer_lifetime: 0.1
   _tracer_width: 0.02
   _tracer_color: {r: 1, g: 0.85, b: 0.25, a: 1}
