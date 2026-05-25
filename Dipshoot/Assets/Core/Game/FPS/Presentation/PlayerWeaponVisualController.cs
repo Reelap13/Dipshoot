@@ -45,6 +45,21 @@ namespace Game.Players
             bool use_first_person = _visual != null && _visual.IsFirstPersonVisible;
             visual.Trigger(use_first_person, FireTrigger);
             SpawnMuzzleFlash(visual, use_first_person);
+            PlayAudio(visual, use_first_person, visual.Definition?.Audio?.Fire);
+        }
+
+        public bool TryGetShotTracerOrigin(WeaponSlot slot, out Vector3 origin)
+        {
+            origin = default;
+            if (_visual == null || !_visual.IsFirstPersonVisible)
+                return false;
+
+            Transform socket = GetVisual(slot)?.GetMuzzleSocket(true);
+            if (socket == null)
+                return false;
+
+            origin = socket.position;
+            return true;
         }
 
         private void CacheReferences()
@@ -105,7 +120,11 @@ namespace Game.Players
 
             bool is_reloading = _weapon_controller.IsActiveReloading;
             if (is_reloading && !_last_active_reload_state)
+            {
                 GetVisual(active_slot)?.Trigger(show_first_person, ReloadTrigger);
+                WeaponVisualInstance visual = GetVisual(active_slot);
+                PlayAudio(visual, show_first_person, visual?.Definition?.Audio?.Reload);
+            }
 
             _last_active_reload_state = is_reloading;
         }
@@ -168,6 +187,16 @@ namespace Game.Players
             muzzle_flash.transform.localScale = Vector3.one;
 
             muzzle_flash.AddComponent<SelfDestroyer>().Initialize(MuzzleFlashLifetime);
+        }
+
+        private void PlayAudio(WeaponVisualInstance visual, bool use_first_person, AudioCue cue)
+        {
+            if (visual == null || cue == null)
+                return;
+
+            Transform socket = visual.GetMuzzleSocket(use_first_person);
+            Vector3 position = socket == null ? transform.position : socket.position;
+            GameAudioService.Instance.Play(cue, position, use_first_person);
         }
 
         private static Transform FindChildRecursive(Transform root, string name)

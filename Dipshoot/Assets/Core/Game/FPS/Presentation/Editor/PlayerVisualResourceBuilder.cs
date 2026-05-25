@@ -5,6 +5,7 @@ using Scripts.Stats;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.Audio;
 using Object = UnityEngine.Object;
 
 namespace Game.Players.Editor
@@ -17,6 +18,7 @@ namespace Game.Players.Editor
         private const string DependencyRoot = PresentationRoot + "/NeoFPSDependencies";
         private const string CharacterRoot = PresentationRoot + "/Characters/Humanoid";
         private const string WeaponRoot = PresentationRoot + "/Weapons";
+        private const string AudioRoot = PresentationRoot + "/Audio";
 
         private const string FirstPersonArmsModelPath = CharacterRoot + "/Models/Character_FirstPerson_Arms.FBX";
         private const string ThirdPersonCharacterModelPath = CharacterRoot + "/Models/Character_ThirdPerson.fbx";
@@ -25,6 +27,7 @@ namespace Game.Players.Editor
         private const string FirstPersonArmsPrefabPath = CharacterRoot + "/Prefabs/FirstPersonArms.prefab";
         private const string ThirdPersonCharacterPrefabPath = CharacterRoot + "/Prefabs/ThirdPersonCharacter.prefab";
         private const string PlayerVisualDefinitionPath = CharacterRoot + "/PlayerVisualDefinition.asset";
+        private const string FootstepAudioSetPath = AudioRoot + "/Characters/Footsteps/Concrete/ConcreteFootstepAudioSet.asset";
 
         private const string PrimaryFirstPersonModelPath = WeaponRoot + "/Primary/AssaultRifle/Models/Weapon_FP_AssaultRifle.FBX";
         private const string PrimaryThirdPersonModelPath = WeaponRoot + "/Primary/AssaultRifle/Models/Weapon_Low_AssaultRifle.FBX";
@@ -33,6 +36,7 @@ namespace Game.Players.Editor
         private const string PrimaryFirstPersonPrefabPath = WeaponRoot + "/Primary/AssaultRifle/Prefabs/FP_AssaultRifle.prefab";
         private const string PrimaryThirdPersonPrefabPath = WeaponRoot + "/Primary/AssaultRifle/Prefabs/TP_AssaultRifle.prefab";
         private const string PrimaryMuzzlePrefabPath = WeaponRoot + "/Primary/AssaultRifle/Prefabs/MuzzleFlash_AssaultRifle.prefab";
+        private const string PrimaryWeaponAudioPath = AudioRoot + "/Weapons/Primary/AssaultRifle/AssaultRifleAudio.asset";
 
         private const string PistolFirstPersonModelPath = WeaponRoot + "/Secondary/Pistol/Models/Weapon_FP_Pistol.FBX";
         private const string PistolThirdPersonModelPath = WeaponRoot + "/Secondary/Pistol/Models/Weapon_Low_Pistol.FBX";
@@ -41,7 +45,9 @@ namespace Game.Players.Editor
         private const string PistolFirstPersonPrefabPath = WeaponRoot + "/Secondary/Pistol/Prefabs/FP_Pistol.prefab";
         private const string PistolThirdPersonPrefabPath = WeaponRoot + "/Secondary/Pistol/Prefabs/TP_Pistol.prefab";
         private const string PistolMuzzlePrefabPath = WeaponRoot + "/Secondary/Pistol/Prefabs/MuzzleFlash_Pistol.prefab";
+        private const string PistolWeaponAudioPath = AudioRoot + "/Weapons/Secondary/Pistol/PistolAudio.asset";
 
+        private const string MainMixerPath = "Assets/Core/Scripts/Settings/Mixers/Main.mixer";
         private const string PrimaryWeaponDefinitionPath = "Assets/Core/Game/FPS/Weapons/Definitions/PrimaryWeapon.asset";
         private const string PistolWeaponDefinitionPath = "Assets/Core/Game/FPS/Weapons/Definitions/PistolWeapon.asset";
         private const string PrimaryWeaponVisualDefinitionPath = "Assets/Core/Game/FPS/Weapons/Definitions/PrimaryWeaponVisual.asset";
@@ -85,6 +91,35 @@ namespace Game.Players.Editor
                 PistolMuzzleSourcePath),
         };
 
+        private static readonly SourceAsset[] AudioSourceAssets =
+        {
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Slow01.wav", AudioRoot + "/Characters/Footsteps/Concrete/Slow/Audio_Footsteps_Concrete_Slow01.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Slow02.wav", AudioRoot + "/Characters/Footsteps/Concrete/Slow/Audio_Footsteps_Concrete_Slow02.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Slow03.wav", AudioRoot + "/Characters/Footsteps/Concrete/Slow/Audio_Footsteps_Concrete_Slow03.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Std01.wav", AudioRoot + "/Characters/Footsteps/Concrete/Walk/Audio_Footsteps_Concrete_Std01.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Std02.wav", AudioRoot + "/Characters/Footsteps/Concrete/Walk/Audio_Footsteps_Concrete_Std02.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Std03.wav", AudioRoot + "/Characters/Footsteps/Concrete/Walk/Audio_Footsteps_Concrete_Std03.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Std04.wav", AudioRoot + "/Characters/Footsteps/Concrete/Walk/Audio_Footsteps_Concrete_Std04.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Fast01.wav", AudioRoot + "/Characters/Footsteps/Concrete/Run/Audio_Footsteps_Concrete_Fast01.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Fast02.wav", AudioRoot + "/Characters/Footsteps/Concrete/Run/Audio_Footsteps_Concrete_Fast02.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Fast03.wav", AudioRoot + "/Characters/Footsteps/Concrete/Run/Audio_Footsteps_Concrete_Fast03.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Fast04.wav", AudioRoot + "/Characters/Footsteps/Concrete/Run/Audio_Footsteps_Concrete_Fast04.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Jump01.wav", AudioRoot + "/Characters/Footsteps/Concrete/Jump/Audio_Footsteps_Concrete_Jump01.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_Jump02.wav", AudioRoot + "/Characters/Footsteps/Concrete/Jump/Audio_Footsteps_Concrete_Jump02.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_LandStd01.wav", AudioRoot + "/Characters/Footsteps/Concrete/Land/Audio_Footsteps_Concrete_LandStd01.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_LandStd02.wav", AudioRoot + "/Characters/Footsteps/Concrete/Land/Audio_Footsteps_Concrete_LandStd02.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_LandHard01.wav", AudioRoot + "/Characters/Footsteps/Concrete/Land/Audio_Footsteps_Concrete_LandHard01.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Character/Footsteps/Audio_Footsteps_Concrete_LandHard02.wav", AudioRoot + "/Characters/Footsteps/Concrete/Land/Audio_Footsteps_Concrete_LandHard02.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Weapons/AssaultRifle/Audio_Weapon_AssaultRifle_Gunshot01.wav", AudioRoot + "/Weapons/Primary/AssaultRifle/Clips/Audio_Weapon_AssaultRifle_Gunshot01.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Weapons/AssaultRifle/Audio_Weapon_AssaultRifle_Gunshot02.wav", AudioRoot + "/Weapons/Primary/AssaultRifle/Clips/Audio_Weapon_AssaultRifle_Gunshot02.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Weapons/AssaultRifle/Audio_Weapon_AssaultRifle_Gunshot03.wav", AudioRoot + "/Weapons/Primary/AssaultRifle/Clips/Audio_Weapon_AssaultRifle_Gunshot03.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Weapons/AssaultRifle/Audio_Weapon_AssaultRifle_Reload.wav", AudioRoot + "/Weapons/Primary/AssaultRifle/Clips/Audio_Weapon_AssaultRifle_Reload.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Weapons/Pistol/Audio_Weapon_Pistol_Gunshot01.wav", AudioRoot + "/Weapons/Secondary/Pistol/Clips/Audio_Weapon_Pistol_Gunshot01.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Weapons/Pistol/Audio_Weapon_Pistol_Gunshot02.wav", AudioRoot + "/Weapons/Secondary/Pistol/Clips/Audio_Weapon_Pistol_Gunshot02.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Weapons/Pistol/Audio_Weapon_Pistol_Gunshot03.wav", AudioRoot + "/Weapons/Secondary/Pistol/Clips/Audio_Weapon_Pistol_Gunshot03.wav"),
+            new("Assets/Resources/NeoFPS/Samples/Shared/Audio/SoundEffects/Weapons/Pistol/Audio_Weapon_Pistol_Reload.wav", AudioRoot + "/Weapons/Secondary/Pistol/Clips/Audio_Weapon_Pistol_Reload.wav"),
+        };
+
         [InitializeOnLoadMethod]
         private static void BuildAllIfRequested()
         {
@@ -116,6 +151,7 @@ namespace Game.Players.Editor
             EnsureFolder(PresentationRoot);
 
             Dictionary<string, string> copied_paths = CopySourceAssets();
+            CopyAudioAssets();
             AssetDatabase.Refresh();
 
             Dictionary<Object, Object> object_map = BuildObjectMap(copied_paths);
@@ -179,6 +215,24 @@ namespace Game.Players.Editor
                 object_map);
 
             RuntimeAnimatorController third_person_animator = BuildThirdPersonAnimatorController();
+            AudioMixerGroup sfx_group = FindMixerGroup("SFX");
+            FootstepAudioSet footstep_audio = BuildConcreteFootstepAudioSet(sfx_group);
+            WeaponAudioDefinition primary_audio = BuildWeaponAudioDefinition(
+                PrimaryWeaponAudioPath,
+                LoadAudioClips(
+                    AudioRoot + "/Weapons/Primary/AssaultRifle/Clips/Audio_Weapon_AssaultRifle_Gunshot01.wav",
+                    AudioRoot + "/Weapons/Primary/AssaultRifle/Clips/Audio_Weapon_AssaultRifle_Gunshot02.wav",
+                    AudioRoot + "/Weapons/Primary/AssaultRifle/Clips/Audio_Weapon_AssaultRifle_Gunshot03.wav"),
+                LoadAudioClips(AudioRoot + "/Weapons/Primary/AssaultRifle/Clips/Audio_Weapon_AssaultRifle_Reload.wav"),
+                sfx_group);
+            WeaponAudioDefinition pistol_audio = BuildWeaponAudioDefinition(
+                PistolWeaponAudioPath,
+                LoadAudioClips(
+                    AudioRoot + "/Weapons/Secondary/Pistol/Clips/Audio_Weapon_Pistol_Gunshot01.wav",
+                    AudioRoot + "/Weapons/Secondary/Pistol/Clips/Audio_Weapon_Pistol_Gunshot02.wav",
+                    AudioRoot + "/Weapons/Secondary/Pistol/Clips/Audio_Weapon_Pistol_Gunshot03.wav"),
+                LoadAudioClips(AudioRoot + "/Weapons/Secondary/Pistol/Clips/Audio_Weapon_Pistol_Reload.wav"),
+                sfx_group);
             PlayerVisualDefinition player_visual = BuildPlayerVisualDefinition(
                 first_person_arms,
                 third_person_character);
@@ -188,20 +242,22 @@ namespace Game.Players.Editor
                 primary_first_person,
                 primary_third_person,
                 primary_muzzle,
-                AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(PrimaryFirstPersonAnimatorPath));
+                AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(PrimaryFirstPersonAnimatorPath),
+                primary_audio);
             WeaponVisualDefinition pistol_visual = BuildWeaponVisualDefinition(
                 PistolWeaponVisualDefinitionPath,
                 WeaponSlot.Pistol,
                 pistol_first_person,
                 pistol_third_person,
                 pistol_muzzle,
-                AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(PistolFirstPersonAnimatorPath));
+                AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(PistolFirstPersonAnimatorPath),
+                pistol_audio);
 
             ConfigureThirdPersonCharacterAnimator(third_person_character, third_person_animator);
 
             UpdateWeaponDefinitionVisual(PrimaryWeaponDefinitionPath, primary_visual);
             UpdateWeaponDefinitionVisual(PistolWeaponDefinitionPath, pistol_visual);
-            UpdatePlayerCharacterPrefab(player_visual, first_person_arms, third_person_character);
+            UpdatePlayerCharacterPrefab(player_visual, first_person_arms, third_person_character, footstep_audio);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -234,6 +290,17 @@ namespace Game.Players.Editor
                 CopyAssetIfNeeded(copied_path.Key, copied_path.Value);
 
             return copied_paths;
+        }
+
+        private static void CopyAudioAssets()
+        {
+            foreach (SourceAsset source_asset in AudioSourceAssets)
+            {
+                if (AssetDatabase.LoadMainAssetAtPath(source_asset.SourcePath) == null)
+                    throw new FileNotFoundException($"Missing NeoFPS audio source asset: {source_asset.SourcePath}");
+
+                CopyAssetIfNeeded(source_asset.SourcePath, source_asset.DestinationPath);
+            }
         }
 
         private static bool ShouldCopyDependency(string asset_path, HashSet<string> selected_source_paths)
@@ -583,13 +650,183 @@ namespace Game.Players.Editor
             throw new FileNotFoundException($"Missing animation clip in {path}: {string.Join(", ", names)}");
         }
 
+        private static FootstepAudioSet BuildConcreteFootstepAudioSet(AudioMixerGroup sfx_group)
+        {
+            AudioCue crouch = BuildAudioCue(
+                AudioRoot + "/Characters/Footsteps/Concrete/ConcreteCrouchSteps.asset",
+                LoadAudioClips(
+                    AudioRoot + "/Characters/Footsteps/Concrete/Slow/Audio_Footsteps_Concrete_Slow01.wav",
+                    AudioRoot + "/Characters/Footsteps/Concrete/Slow/Audio_Footsteps_Concrete_Slow02.wav",
+                    AudioRoot + "/Characters/Footsteps/Concrete/Slow/Audio_Footsteps_Concrete_Slow03.wav"),
+                sfx_group,
+                new Vector2(0.35f, 0.45f),
+                new Vector2(0.94f, 1.04f),
+                1f,
+                0.08f);
+            AudioCue walk = BuildAudioCue(
+                AudioRoot + "/Characters/Footsteps/Concrete/ConcreteWalkSteps.asset",
+                LoadAudioClips(
+                    AudioRoot + "/Characters/Footsteps/Concrete/Walk/Audio_Footsteps_Concrete_Std01.wav",
+                    AudioRoot + "/Characters/Footsteps/Concrete/Walk/Audio_Footsteps_Concrete_Std02.wav",
+                    AudioRoot + "/Characters/Footsteps/Concrete/Walk/Audio_Footsteps_Concrete_Std03.wav",
+                    AudioRoot + "/Characters/Footsteps/Concrete/Walk/Audio_Footsteps_Concrete_Std04.wav"),
+                sfx_group,
+                new Vector2(0.5f, 0.65f),
+                new Vector2(0.96f, 1.06f),
+                1f,
+                0.06f);
+            AudioCue run = BuildAudioCue(
+                AudioRoot + "/Characters/Footsteps/Concrete/ConcreteRunSteps.asset",
+                LoadAudioClips(
+                    AudioRoot + "/Characters/Footsteps/Concrete/Run/Audio_Footsteps_Concrete_Fast01.wav",
+                    AudioRoot + "/Characters/Footsteps/Concrete/Run/Audio_Footsteps_Concrete_Fast02.wav",
+                    AudioRoot + "/Characters/Footsteps/Concrete/Run/Audio_Footsteps_Concrete_Fast03.wav",
+                    AudioRoot + "/Characters/Footsteps/Concrete/Run/Audio_Footsteps_Concrete_Fast04.wav"),
+                sfx_group,
+                new Vector2(0.65f, 0.8f),
+                new Vector2(0.97f, 1.08f),
+                1f,
+                0.05f);
+            AudioCue jump = BuildAudioCue(
+                AudioRoot + "/Characters/Footsteps/Concrete/ConcreteJump.asset",
+                LoadAudioClips(
+                    AudioRoot + "/Characters/Footsteps/Concrete/Jump/Audio_Footsteps_Concrete_Jump01.wav",
+                    AudioRoot + "/Characters/Footsteps/Concrete/Jump/Audio_Footsteps_Concrete_Jump02.wav"),
+                sfx_group,
+                new Vector2(0.55f, 0.7f),
+                new Vector2(0.96f, 1.06f),
+                1f,
+                0.08f);
+            AudioCue land_soft = BuildAudioCue(
+                AudioRoot + "/Characters/Footsteps/Concrete/ConcreteLandSoft.asset",
+                LoadAudioClips(
+                    AudioRoot + "/Characters/Footsteps/Concrete/Land/Audio_Footsteps_Concrete_LandStd01.wav",
+                    AudioRoot + "/Characters/Footsteps/Concrete/Land/Audio_Footsteps_Concrete_LandStd02.wav"),
+                sfx_group,
+                new Vector2(0.6f, 0.75f),
+                new Vector2(0.96f, 1.05f),
+                1f,
+                0.08f);
+            AudioCue land_hard = BuildAudioCue(
+                AudioRoot + "/Characters/Footsteps/Concrete/ConcreteLandHard.asset",
+                LoadAudioClips(
+                    AudioRoot + "/Characters/Footsteps/Concrete/Land/Audio_Footsteps_Concrete_LandHard01.wav",
+                    AudioRoot + "/Characters/Footsteps/Concrete/Land/Audio_Footsteps_Concrete_LandHard02.wav"),
+                sfx_group,
+                new Vector2(0.85f, 1f),
+                new Vector2(0.94f, 1.02f),
+                1f,
+                0.12f);
+
+            FootstepAudioSet set = GetOrCreateAsset<FootstepAudioSet>(FootstepAudioSetPath);
+            SerializedObject serialized_object = new(set);
+            Set(serialized_object, "_crouch_steps", crouch);
+            Set(serialized_object, "_walk_steps", walk);
+            Set(serialized_object, "_run_steps", run);
+            Set(serialized_object, "_jump", jump);
+            Set(serialized_object, "_land_soft", land_soft);
+            Set(serialized_object, "_land_hard", land_hard);
+            serialized_object.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(set);
+            return set;
+        }
+
+        private static WeaponAudioDefinition BuildWeaponAudioDefinition(
+            string definition_path,
+            AudioClip[] fire_clips,
+            AudioClip[] reload_clips,
+            AudioMixerGroup sfx_group)
+        {
+            AudioCue fire = BuildAudioCue(
+                PathWithoutExtension(definition_path) + "_Fire.asset",
+                fire_clips,
+                sfx_group,
+                new Vector2(0.85f, 1f),
+                new Vector2(0.97f, 1.03f),
+                1f,
+                0.02f);
+            AudioCue reload = BuildAudioCue(
+                PathWithoutExtension(definition_path) + "_Reload.asset",
+                reload_clips,
+                sfx_group,
+                new Vector2(0.75f, 0.9f),
+                new Vector2(0.98f, 1.02f),
+                1f,
+                0.1f);
+
+            WeaponAudioDefinition definition = GetOrCreateAsset<WeaponAudioDefinition>(definition_path);
+            SerializedObject serialized_object = new(definition);
+            Set(serialized_object, "_fire", fire);
+            Set(serialized_object, "_reload", reload);
+            serialized_object.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(definition);
+            return definition;
+        }
+
+        private static AudioCue BuildAudioCue(
+            string cue_path,
+            AudioClip[] clips,
+            AudioMixerGroup output,
+            Vector2 volume_range,
+            Vector2 pitch_range,
+            float spatial_blend,
+            float cooldown)
+        {
+            AudioCue cue = GetOrCreateAsset<AudioCue>(cue_path);
+            SerializedObject serialized_object = new(cue);
+            SerializedProperty clips_property = serialized_object.FindProperty("_clips");
+            clips_property.arraySize = clips.Length;
+            for (int i = 0; i < clips.Length; i++)
+                clips_property.GetArrayElementAtIndex(i).objectReferenceValue = clips[i];
+
+            Set(serialized_object, "_output_mixer_group", output);
+            serialized_object.FindProperty("_volume_range").vector2Value = volume_range;
+            serialized_object.FindProperty("_pitch_range").vector2Value = pitch_range;
+            serialized_object.FindProperty("_spatial_blend").floatValue = spatial_blend;
+            serialized_object.FindProperty("_min_distance").floatValue = 1f;
+            serialized_object.FindProperty("_max_distance").floatValue = 28f;
+            serialized_object.FindProperty("_cooldown").floatValue = cooldown;
+            serialized_object.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(cue);
+            return cue;
+        }
+
+        private static AudioClip[] LoadAudioClips(params string[] paths)
+        {
+            AudioClip[] clips = new AudioClip[paths.Length];
+            for (int i = 0; i < paths.Length; i++)
+            {
+                clips[i] = AssetDatabase.LoadAssetAtPath<AudioClip>(paths[i]);
+                if (clips[i] == null)
+                    throw new FileNotFoundException($"Missing copied audio clip: {paths[i]}");
+            }
+
+            return clips;
+        }
+
+        private static AudioMixerGroup FindMixerGroup(string name)
+        {
+            AudioMixer mixer = AssetDatabase.LoadAssetAtPath<AudioMixer>(MainMixerPath);
+            if (mixer == null)
+                return null;
+
+            AudioMixerGroup[] groups = mixer.FindMatchingGroups(name);
+            return groups == null || groups.Length == 0 ? null : groups[0];
+        }
+
+        private static string PathWithoutExtension(string path)
+        {
+            return path.Substring(0, path.Length - Path.GetExtension(path).Length);
+        }
+
         private static WeaponVisualDefinition BuildWeaponVisualDefinition(
             string definition_path,
             WeaponSlot slot,
             GameObject first_person_prefab,
             GameObject third_person_prefab,
             GameObject muzzle_flash_prefab,
-            RuntimeAnimatorController first_person_animator)
+            RuntimeAnimatorController first_person_animator,
+            WeaponAudioDefinition audio)
         {
             WeaponVisualDefinition definition = GetOrCreateAsset<WeaponVisualDefinition>(definition_path);
             SerializedObject serialized_object = new(definition);
@@ -597,10 +834,11 @@ namespace Game.Players.Editor
             Set(serialized_object, "_first_person_prefab", first_person_prefab);
             Set(serialized_object, "_third_person_prefab", third_person_prefab);
             Set(serialized_object, "_muzzle_flash_prefab", muzzle_flash_prefab);
+            Set(serialized_object, "_audio", audio);
             Set(serialized_object, "_first_person_animator_controller", first_person_animator);
             Set(serialized_object, "_third_person_animator_controller", null);
             serialized_object.FindProperty("_muzzle_socket_name").stringValue = "MuzzleSocket";
-            serialized_object.FindProperty("_first_person_local_position").vector3Value = new Vector3(0f, -0.28f, 0.55f);
+            serialized_object.FindProperty("_first_person_local_position").vector3Value = new Vector3(0f, -0.32f, 0.32f);
             serialized_object.FindProperty("_first_person_local_euler_angles").vector3Value = Vector3.zero;
             serialized_object.FindProperty("_first_person_local_scale").vector3Value = Vector3.one;
             serialized_object.FindProperty("_third_person_local_position").vector3Value = Vector3.zero;
@@ -628,7 +866,8 @@ namespace Game.Players.Editor
         private static void UpdatePlayerCharacterPrefab(
             PlayerVisualDefinition player_visual,
             GameObject first_person_arms,
-            GameObject third_person_character)
+            GameObject third_person_character,
+            FootstepAudioSet footstep_audio)
         {
             GameObject root = PrefabUtility.LoadPrefabContents(PlayerCharacterPrefabPath);
             try
@@ -679,6 +918,7 @@ namespace Game.Players.Editor
                 weapon_visual_serialized_object.ApplyModifiedPropertiesWithoutUndo();
 
                 SerializeAnimationControllerSettings(root, controller, third_person_root);
+                SerializeMovementAudioSettings(root, footstep_audio);
                 PlayerThirdPersonPoseController pose_controller = root.GetComponent<PlayerThirdPersonPoseController>();
                 if (pose_controller != null)
                     Object.DestroyImmediate(pose_controller);
@@ -893,6 +1133,24 @@ namespace Game.Players.Editor
             Set(serialized_object, "_third_person_animator", FindThirdPersonAnimator(third_person_root));
             serialized_object.FindProperty("_server_updates_animator").boolValue = true;
             serialized_object.FindProperty("_client_updates_parameters").boolValue = true;
+            serialized_object.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SerializeMovementAudioSettings(GameObject root, FootstepAudioSet footstep_audio)
+        {
+            PlayerMovementAudioController audio_controller = root.GetComponent<PlayerMovementAudioController>();
+            if (audio_controller == null)
+                audio_controller = root.AddComponent<PlayerMovementAudioController>();
+
+            SerializedObject serialized_object = new(audio_controller);
+            Set(serialized_object, "_character", root.GetComponent<PlayerCharacter>());
+            Set(serialized_object, "_footsteps", footstep_audio);
+            serialized_object.FindProperty("_crouch_step_distance").floatValue = 1.55f;
+            serialized_object.FindProperty("_walk_step_distance").floatValue = 1.35f;
+            serialized_object.FindProperty("_run_step_distance").floatValue = 1.05f;
+            serialized_object.FindProperty("_min_step_speed").floatValue = 0.25f;
+            serialized_object.FindProperty("_run_speed_threshold").floatValue = 5.8f;
+            serialized_object.FindProperty("_hard_land_velocity").floatValue = 8f;
             serialized_object.ApplyModifiedPropertiesWithoutUndo();
         }
 

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d0b66f354f348aabcaf4a8adaa70df6, type: 3}
+  m_Name: ConcreteCrouchSteps
+  m_EditorClassIdentifier: 
+  _clips:
+  - {fileID: 8300000, guid: 8fca2fc2d65c5244dbf02f933890eab7, type: 3}
+  - {fileID: 8300000, guid: 40d8fe6fd2f14ae489729c0c35f11c6a, type: 3}
+  - {fileID: 8300000, guid: 6787f332303cacf479c5773f01061ce2, type: 3}
+  _output_mixer_group: {fileID: 4693966573754120106, guid: 3c994f10ac3869d40bf2795c38374261, type: 2}
+  _volume_range: {x: 0.35, y: 0.45}
+  _pitch_range: {x: 0.94, y: 1.04}
+  _spatial_blend: 1
+  _min_distance: 1
+  _max_distance: 28
+  _cooldown: 0.08

@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbe928453de44227adf55de684b477af, type: 3}
+  m_Name: ConcreteFootstepAudioSet
+  m_EditorClassIdentifier: 
+  _crouch_steps: {fileID: 11400000, guid: d4f3cd8e09a5c7440b5d455bd2fb2760, type: 2}
+  _walk_steps: {fileID: 11400000, guid: 872fcf1ba22403e4eb109be70dcf9f54, type: 2}
+  _run_steps: {fileID: 11400000, guid: dd1c576d83f955e45baa6cc409072cd4, type: 2}
+  _jump: {fileID: 11400000, guid: ce0a3d309f76b75428c8400cd47719fa, type: 2}
+  _land_soft: {fileID: 11400000, guid: 6a10f1254b84a274183956c5fad9c665, type: 2}
+  _land_hard: {fileID: 11400000, guid: 14619567405345d4cabaffc873ed909c, type: 2}

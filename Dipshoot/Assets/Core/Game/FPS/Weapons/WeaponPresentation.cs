@@ -36,7 +36,7 @@ namespace Game.Players
             LineRenderer line_renderer = tracer.AddComponent<LineRenderer>();
             line_renderer.positionCount = 2;
             line_renderer.useWorldSpace = true;
-            line_renderer.SetPosition(0, result.Origin);
+            line_renderer.SetPosition(0, GetTracerOrigin(owner, result));
             line_renderer.SetPosition(1, result.Point);
             line_renderer.startWidth = weapon == null ? 0.03f : weapon.TracerWidth;
             line_renderer.endWidth = weapon == null ? 0.03f : weapon.TracerWidth;
@@ -51,6 +51,18 @@ namespace Game.Players
             line_renderer.endColor = tracer_color;
 
             tracer.AddComponent<SelfDestroyer>().Initialize(weapon == null ? 0.12f : weapon.TracerLifetime);
+        }
+
+        private static Vector3 GetTracerOrigin(MonoBehaviour owner, ShotResult result)
+        {
+            if (owner != null &&
+                owner.TryGetComponent(out PlayerWeaponVisualController weapon_visual_controller) &&
+                weapon_visual_controller.TryGetShotTracerOrigin(result.WeaponSlot, out Vector3 origin))
+            {
+                return origin;
+            }
+
+            return result.Origin;
         }
 
         private static void DrawShotMarker(

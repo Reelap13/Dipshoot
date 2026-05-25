@@ -548,6 +548,8 @@ namespace Core.ClientPresentation.Editor
                 new Color(1f, 1f, 1f, 0.78f));
             weapon_reload_progress_fill.raycastTarget = false;
 
+            GameObject crosshair = CreateCrosshair(root.transform);
+
             SerializedObject serialized_object = new(root.GetComponent<ClientMatchHudLayer>());
             Set(serialized_object, "_phase_banner", phase_banner);
             Set(serialized_object, "_result_panel", result_panel);
@@ -565,9 +567,31 @@ namespace Core.ClientPresentation.Editor
             Set(serialized_object, "_weapon_reserve_text", weapon_reserve_text);
             Set(serialized_object, "_weapon_reload_text", weapon_reload_text);
             Set(serialized_object, "_weapon_reload_progress_fill", weapon_reload_progress_fill);
+            Set(serialized_object, "_crosshair", crosshair);
             serialized_object.ApplyModifiedPropertiesWithoutUndo();
 
             SavePrefab(root, "ClientMatchHudLayer.prefab");
+        }
+
+        private static GameObject CreateCrosshair(Transform parent)
+        {
+            GameObject root = new("Crosshair", typeof(RectTransform));
+            root.transform.SetParent(parent, false);
+
+            RectTransform rect_transform = root.GetComponent<RectTransform>();
+            rect_transform.anchorMin = new Vector2(0.5f, 0.5f);
+            rect_transform.anchorMax = new Vector2(0.5f, 0.5f);
+            rect_transform.pivot = new Vector2(0.5f, 0.5f);
+            rect_transform.anchoredPosition = Vector2.zero;
+            rect_transform.sizeDelta = new Vector2(40f, 40f);
+
+            Color color = new(1f, 1f, 1f, 0.86f);
+            CreateImage("Top", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 9f), new Vector2(2f, 8f), color).raycastTarget = false;
+            CreateImage("Bottom", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -9f), new Vector2(2f, 8f), color).raycastTarget = false;
+            CreateImage("Left", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-9f, 0f), new Vector2(8f, 2f), color).raycastTarget = false;
+            CreateImage("Right", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(9f, 0f), new Vector2(8f, 2f), color).raycastTarget = false;
+
+            return root;
         }
 
         private static GameObject CreateLayerRoot<T>(

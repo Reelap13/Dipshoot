@@ -28,6 +28,8 @@ namespace Core.ClientPresentation
         [SerializeField] private Text _weapon_reserve_text;
         [SerializeField] private Text _weapon_reload_text;
         [SerializeField] private Image _weapon_reload_progress_fill;
+        [SerializeField] private GameObject _crosshair;
+        [SerializeField] private Color _crosshair_color = new(1f, 1f, 1f, 0.86f);
 
         private TeamControlModeController _mode_controller;
         private WeaponController _local_weapon_controller;
@@ -37,6 +39,7 @@ namespace Core.ClientPresentation
         {
             _layer = GetOrAddLayer();
             _layer.Initialize(ClientUiLayerKind.MatchHud);
+            EnsureCrosshair();
         }
 
         private void Update()
@@ -237,6 +240,48 @@ namespace Core.ClientPresentation
         {
             ClientUiLayer layer = gameObject.GetComponent<ClientUiLayer>();
             return layer != null ? layer : gameObject.AddComponent<ClientUiLayer>();
+        }
+
+        private void EnsureCrosshair()
+        {
+            if (_crosshair != null)
+                return;
+
+            _crosshair = new GameObject("Crosshair", typeof(RectTransform));
+            _crosshair.transform.SetParent(transform, false);
+
+            RectTransform rect_transform = _crosshair.GetComponent<RectTransform>();
+            rect_transform.anchorMin = new Vector2(0.5f, 0.5f);
+            rect_transform.anchorMax = new Vector2(0.5f, 0.5f);
+            rect_transform.pivot = new Vector2(0.5f, 0.5f);
+            rect_transform.anchoredPosition = Vector2.zero;
+            rect_transform.sizeDelta = new Vector2(40f, 40f);
+
+            CreateCrosshairLine("Top", _crosshair.transform, new Vector2(0f, 9f), new Vector2(2f, 8f));
+            CreateCrosshairLine("Bottom", _crosshair.transform, new Vector2(0f, -9f), new Vector2(2f, 8f));
+            CreateCrosshairLine("Left", _crosshair.transform, new Vector2(-9f, 0f), new Vector2(8f, 2f));
+            CreateCrosshairLine("Right", _crosshair.transform, new Vector2(9f, 0f), new Vector2(8f, 2f));
+        }
+
+        private void CreateCrosshairLine(
+            string name,
+            Transform parent,
+            Vector2 anchored_position,
+            Vector2 size_delta)
+        {
+            GameObject line = new(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            line.transform.SetParent(parent, false);
+
+            RectTransform rect_transform = line.GetComponent<RectTransform>();
+            rect_transform.anchorMin = new Vector2(0.5f, 0.5f);
+            rect_transform.anchorMax = new Vector2(0.5f, 0.5f);
+            rect_transform.pivot = new Vector2(0.5f, 0.5f);
+            rect_transform.anchoredPosition = anchored_position;
+            rect_transform.sizeDelta = size_delta;
+
+            Image image = line.GetComponent<Image>();
+            image.color = _crosshair_color;
+            image.raycastTarget = false;
         }
     }
 }

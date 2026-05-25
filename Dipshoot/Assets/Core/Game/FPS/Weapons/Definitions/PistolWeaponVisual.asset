@@ -16,10 +16,11 @@ MonoBehaviour:
   _first_person_prefab: {fileID: 2026703293945747500, guid: 6898c1cb494b53241ba8eaac7d5ab260, type: 3}
   _third_person_prefab: {fileID: 4268500430379851694, guid: 634829e65a9d8db438dc7a085659a0b4, type: 3}
   _muzzle_flash_prefab: {fileID: 3193866595975643420, guid: 74d24d65367802d439c562e398ade83c, type: 3}
+  _audio: {fileID: 11400000, guid: 91b98f0ca5f6b2c4fb0948c5ab953474, type: 2}
   _first_person_animator_controller: {fileID: 9100000, guid: fef7966396d11034ba6ebf278cac11bb, type: 2}
   _third_person_animator_controller: {fileID: 0}
   _muzzle_socket_name: MuzzleSocket
-  _first_person_local_position: {x: 0, y: -0.28, z: 0.55}
+  _first_person_local_position: {x: 0, y: -0.32, z: 0.32}
   _first_person_local_euler_angles: {x: 0, y: 0, z: 0}
   _first_person_local_scale: {x: 1, y: 1, z: 1}
   _third_person_local_position: {x: 0, y: 0, z: 0}
