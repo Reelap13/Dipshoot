@@ -10,7 +10,7 @@ namespace Game.Players
         private const string FireTrigger = "Fire";
         private const string ReloadTrigger = "Reload";
         private const string DrawTrigger = "Draw";
-        private const float MuzzleFlashLifetime = 0.08f;
+        private const float MuzzleFlashLifetime = 0.15f;
 
         [SerializeField] private PlayerVisualController _visual;
         [SerializeField] private WeaponController _weapon_controller;
@@ -51,10 +51,10 @@ namespace Game.Players
         public bool TryGetShotTracerOrigin(WeaponSlot slot, out Vector3 origin)
         {
             origin = default;
-            if (_visual == null || !_visual.IsFirstPersonVisible)
+            if (_visual == null)
                 return false;
 
-            Transform socket = GetVisual(slot)?.GetMuzzleSocket(true);
+            Transform socket = GetVisual(slot)?.GetMuzzleSocket(_visual.IsFirstPersonVisible);
             if (socket == null)
                 return false;
 
@@ -177,14 +177,31 @@ namespace Game.Players
         {
             Transform socket = visual.GetMuzzleSocket(use_first_person);
             GameObject prefab = visual.Definition == null ? null : visual.Definition.MuzzleFlashPrefab;
-            if (socket == null || prefab == null)
+            if (socket == null)
+            {
+                WeaponVfxUtility.LogWarningOnce(
+                    this,
+                    $"MissingMuzzleSocket:{visual.Definition?.name}:{use_first_person}",
+                    $"[WeaponVFX] Missing muzzle socket for {visual.Definition?.name}.");
                 return;
+            }
+
+            if (prefab == null)
+            {
+                WeaponVfxUtility.LogWarningOnce(
+                    this,
+                    $"MissingMuzzleFlash:{visual.Definition?.name}",
+                    $"[WeaponVFX] Missing muzzle flash prefab for {visual.Definition?.name}.");
+                return;
+            }
 
             GameObject muzzle_flash = Instantiate(prefab, socket);
             muzzle_flash.name = "MuzzleFlash";
             muzzle_flash.transform.localPosition = Vector3.zero;
             muzzle_flash.transform.localRotation = Quaternion.identity;
             muzzle_flash.transform.localScale = Vector3.one;
+            PlayerVisualLayerUtility.SetLayerRecursive(muzzle_flash.transform, socket.gameObject.layer);
+            WeaponVfxUtility.PlayParticles(muzzle_flash);
 
             muzzle_flash.AddComponent<SelfDestroyer>().Initialize(MuzzleFlashLifetime);
         }

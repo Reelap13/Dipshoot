@@ -46,6 +46,11 @@ namespace Game.Players
                 : has_world_hit
                     ? world_hit.point
                     : origin + direction * weapon_stats.Range;
+            Vector3 normal = has_player_hit
+                ? -direction
+                : has_world_hit
+                    ? world_hit.normal
+                    : -direction;
 
             ShotResult result = new()
             {
@@ -63,6 +68,7 @@ namespace Game.Players
                 Origin = origin,
                 Direction = direction,
                 Point = point,
+                Normal = normal,
                 Damage = weapon_stats.Damage,
                 HitboxType = has_player_hit ? player_hit.HitboxType : PlayerHitboxType.None,
                 DamageMultiplier = has_player_hit ? player_hit.DamageMultiplier : 1f,
@@ -110,6 +116,7 @@ namespace Game.Players
                 Origin = origin,
                 Direction = direction,
                 Point = has_hit ? hit.point : origin + direction * weapon_stats.Range,
+                Normal = has_hit ? hit.normal : -direction,
                 Damage = weapon_stats.Damage,
                 HitboxType = PlayerHitboxType.None,
                 DamageMultiplier = 1f,

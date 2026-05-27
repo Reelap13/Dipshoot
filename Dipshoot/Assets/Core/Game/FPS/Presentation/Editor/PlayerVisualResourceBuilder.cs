@@ -33,19 +33,27 @@ namespace Game.Players.Editor
         private const string PrimaryThirdPersonModelPath = WeaponRoot + "/Primary/AssaultRifle/Models/Weapon_Low_AssaultRifle.FBX";
         private const string PrimaryFirstPersonAnimatorPath = WeaponRoot + "/Primary/AssaultRifle/Animation/AnimCtrl_FP_AssaultRifle.controller";
         private const string PrimaryMuzzleSourcePath = WeaponRoot + "/Primary/AssaultRifle/Effects/RealisticMuzzleFlash_AssaultRifle_Source.prefab";
+        private const string PrimaryTracerSourcePath = WeaponRoot + "/Primary/AssaultRifle/Effects/Projectile_556mm_Source.prefab";
         private const string PrimaryFirstPersonPrefabPath = WeaponRoot + "/Primary/AssaultRifle/Prefabs/FP_AssaultRifle.prefab";
         private const string PrimaryThirdPersonPrefabPath = WeaponRoot + "/Primary/AssaultRifle/Prefabs/TP_AssaultRifle.prefab";
         private const string PrimaryMuzzlePrefabPath = WeaponRoot + "/Primary/AssaultRifle/Prefabs/MuzzleFlash_AssaultRifle.prefab";
+        private const string PrimaryTracerPrefabPath = WeaponRoot + "/Primary/AssaultRifle/Prefabs/Tracer_556mm.prefab";
         private const string PrimaryWeaponAudioPath = AudioRoot + "/Weapons/Primary/AssaultRifle/AssaultRifleAudio.asset";
 
         private const string PistolFirstPersonModelPath = WeaponRoot + "/Secondary/Pistol/Models/Weapon_FP_Pistol.FBX";
         private const string PistolThirdPersonModelPath = WeaponRoot + "/Secondary/Pistol/Models/Weapon_Low_Pistol.FBX";
         private const string PistolFirstPersonAnimatorPath = WeaponRoot + "/Secondary/Pistol/Animation/AnimCtrl_FP_Pistol.controller";
         private const string PistolMuzzleSourcePath = WeaponRoot + "/Secondary/Pistol/Effects/RealisticMuzzleFlash_Pistol_Source.prefab";
+        private const string PistolTracerSourcePath = WeaponRoot + "/Secondary/Pistol/Effects/Projectile_9mm_Source.prefab";
         private const string PistolFirstPersonPrefabPath = WeaponRoot + "/Secondary/Pistol/Prefabs/FP_Pistol.prefab";
         private const string PistolThirdPersonPrefabPath = WeaponRoot + "/Secondary/Pistol/Prefabs/TP_Pistol.prefab";
         private const string PistolMuzzlePrefabPath = WeaponRoot + "/Secondary/Pistol/Prefabs/MuzzleFlash_Pistol.prefab";
+        private const string PistolTracerPrefabPath = WeaponRoot + "/Secondary/Pistol/Prefabs/Tracer_9mm.prefab";
         private const string PistolWeaponAudioPath = AudioRoot + "/Weapons/Secondary/Pistol/PistolAudio.asset";
+        private const string WorldImpactSourcePath = WeaponRoot + "/Shared/Effects/HitFX_Concrete_Source.prefab";
+        private const string PlayerImpactSourcePath = WeaponRoot + "/Shared/Effects/HitFX_Flesh_Source.prefab";
+        private const string WorldImpactPrefabPath = WeaponRoot + "/Shared/Prefabs/HitFX_Concrete.prefab";
+        private const string PlayerImpactPrefabPath = WeaponRoot + "/Shared/Prefabs/HitFX_Flesh.prefab";
 
         private const string MainMixerPath = "Assets/Core/Scripts/Settings/Mixers/Main.mixer";
         private const string PrimaryWeaponDefinitionPath = "Assets/Core/Game/FPS/Weapons/Definitions/PrimaryWeapon.asset";
@@ -78,6 +86,9 @@ namespace Game.Players.Editor
                 "Assets/Resources/NeoFPS/Samples/Shared/Prefabs/Weapons/MuzzleFlashes/RealisticMuzzleFlash_AssaultRifle.prefab",
                 PrimaryMuzzleSourcePath),
             new(
+                "Assets/Resources/NeoFPS/Samples/Shared/Prefabs/Weapons/Projectiles/Projectile_556mm.prefab",
+                PrimaryTracerSourcePath),
+            new(
                 "Assets/Resources/NeoFPS/Samples/Shared/Geometry/Weapons/Weapon_FP_Pistol.FBX",
                 PistolFirstPersonModelPath),
             new(
@@ -89,6 +100,15 @@ namespace Game.Players.Editor
             new(
                 "Assets/Resources/NeoFPS/Samples/Shared/Prefabs/Weapons/MuzzleFlashes/RealisticMuzzleFlash_Pistol.prefab",
                 PistolMuzzleSourcePath),
+            new(
+                "Assets/Resources/NeoFPS/Samples/Shared/Prefabs/Weapons/Projectiles/Projectile_9mm.prefab",
+                PistolTracerSourcePath),
+            new(
+                "Assets/Resources/NeoFPS/Samples/Shared/Effects/Prefabs/HitFX_Concrete.prefab",
+                WorldImpactSourcePath),
+            new(
+                "Assets/Resources/NeoFPS/Samples/Shared/Effects/Prefabs/HitFX_Flesh.prefab",
+                PlayerImpactSourcePath),
         };
 
         private static readonly SourceAsset[] AudioSourceAssets =
@@ -192,6 +212,12 @@ namespace Game.Players.Editor
                 PrimaryMuzzlePrefabPath,
                 "WieldablesFirstPerson",
                 object_map);
+            GameObject primary_tracer = BuildCleanPrefab(
+                "Tracer_556mm",
+                PrimaryTracerSourcePath,
+                PrimaryTracerPrefabPath,
+                "Default",
+                object_map);
 
             GameObject pistol_first_person = BuildModelPrefab(
                 "FP_Pistol",
@@ -212,6 +238,24 @@ namespace Game.Players.Editor
                 PistolMuzzleSourcePath,
                 PistolMuzzlePrefabPath,
                 "WieldablesFirstPerson",
+                object_map);
+            GameObject pistol_tracer = BuildCleanPrefab(
+                "Tracer_9mm",
+                PistolTracerSourcePath,
+                PistolTracerPrefabPath,
+                "Default",
+                object_map);
+            GameObject world_impact = BuildCleanPrefab(
+                "HitFX_Concrete",
+                WorldImpactSourcePath,
+                WorldImpactPrefabPath,
+                "Default",
+                object_map);
+            GameObject player_impact = BuildCleanPrefab(
+                "HitFX_Flesh",
+                PlayerImpactSourcePath,
+                PlayerImpactPrefabPath,
+                "Default",
                 object_map);
 
             RuntimeAnimatorController third_person_animator = BuildThirdPersonAnimatorController();
@@ -242,6 +286,9 @@ namespace Game.Players.Editor
                 primary_first_person,
                 primary_third_person,
                 primary_muzzle,
+                primary_tracer,
+                world_impact,
+                player_impact,
                 AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(PrimaryFirstPersonAnimatorPath),
                 primary_audio);
             WeaponVisualDefinition pistol_visual = BuildWeaponVisualDefinition(
@@ -250,6 +297,9 @@ namespace Game.Players.Editor
                 pistol_first_person,
                 pistol_third_person,
                 pistol_muzzle,
+                pistol_tracer,
+                world_impact,
+                player_impact,
                 AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(PistolFirstPersonAnimatorPath),
                 pistol_audio);
 
@@ -825,6 +875,9 @@ namespace Game.Players.Editor
             GameObject first_person_prefab,
             GameObject third_person_prefab,
             GameObject muzzle_flash_prefab,
+            GameObject tracer_prefab,
+            GameObject world_impact_prefab,
+            GameObject player_impact_prefab,
             RuntimeAnimatorController first_person_animator,
             WeaponAudioDefinition audio)
         {
@@ -834,10 +887,16 @@ namespace Game.Players.Editor
             Set(serialized_object, "_first_person_prefab", first_person_prefab);
             Set(serialized_object, "_third_person_prefab", third_person_prefab);
             Set(serialized_object, "_muzzle_flash_prefab", muzzle_flash_prefab);
+            Set(serialized_object, "_tracer_prefab", tracer_prefab);
+            Set(serialized_object, "_world_impact_prefab", world_impact_prefab);
+            Set(serialized_object, "_player_impact_prefab", player_impact_prefab);
             Set(serialized_object, "_audio", audio);
             Set(serialized_object, "_first_person_animator_controller", first_person_animator);
             Set(serialized_object, "_third_person_animator_controller", null);
             serialized_object.FindProperty("_muzzle_socket_name").stringValue = "MuzzleSocket";
+            serialized_object.FindProperty("_tracer_speed").floatValue = 240f;
+            serialized_object.FindProperty("_tracer_lifetime").floatValue = 0.08f;
+            serialized_object.FindProperty("_impact_lifetime").floatValue = 1.5f;
             serialized_object.FindProperty("_first_person_local_position").vector3Value = new Vector3(0f, -0.32f, 0.32f);
             serialized_object.FindProperty("_first_person_local_euler_angles").vector3Value = Vector3.zero;
             serialized_object.FindProperty("_first_person_local_scale").vector3Value = Vector3.one;

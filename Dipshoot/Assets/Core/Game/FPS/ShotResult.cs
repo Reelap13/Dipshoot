@@ -14,6 +14,7 @@ namespace Game.Players
         public Vector3 Origin;
         public Vector3 Direction;
         public Vector3 Point;
+        public Vector3 Normal;
         public int Damage;
         public PlayerHitboxType HitboxType;
         public float DamageMultiplier;

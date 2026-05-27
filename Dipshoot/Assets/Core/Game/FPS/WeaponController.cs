@@ -187,6 +187,9 @@ namespace Game.Players
                 return;
 
             EnsurePredictedWeaponState(tick);
+            if (WillSwitchPredictedSlot(input))
+                WeaponPresentation.ClearTransientShotVfx(this);
+
             input.ShotSequence = _predicted_shot_sequence + 1;
 
             WeaponSimulationResult simulation_result = WeaponSimulation.Simulate(
@@ -360,6 +363,13 @@ namespace Game.Players
 
             state = _predicted_weapon_state.GetSlotState(_predicted_weapon_state.ActiveSlot);
             return true;
+        }
+
+        private bool WillSwitchPredictedSlot(PlayerInputData input)
+        {
+            return input.RequestedWeaponSlot != WeaponSlot.None &&
+                input.RequestedWeaponSlot != _predicted_weapon_state.ActiveSlot &&
+                GetWeaponDefinition(input.RequestedWeaponSlot) != null;
         }
 
         private bool TryConsumePredictedShot(ShotResult confirmed_result, out ShotResult predicted_result)

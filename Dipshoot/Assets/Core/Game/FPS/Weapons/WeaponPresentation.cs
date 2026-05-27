@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -5,6 +6,7 @@ namespace Game.Players
 {
     public static class WeaponPresentation
     {
+        private static readonly Dictionary<int, List<GameObject>> TransientShotVfx = new();
         private static Material _tracer_material;
 
         public static void DrawShot(
@@ -39,6 +41,20 @@ namespace Game.Players
             PlayShotVisual(owner, result, weapon, true, true, true);
         }
 
+        public static void ClearTransientShotVfx(MonoBehaviour owner)
+        {
+            if (owner == null || !TransientShotVfx.TryGetValue(owner.GetInstanceID(), out List<GameObject> vfx))
+                return;
+
+            for (int i = 0; i < vfx.Count; i++)
+            {
+                if (vfx[i] != null)
+                    Object.Destroy(vfx[i]);
+            }
+
+            vfx.Clear();
+        }
+
         private static void PlayShotVisual(
             MonoBehaviour owner,
             ShotResult result,
@@ -61,11 +77,11 @@ namespace Game.Players
                 animation_controller.PlayShot(result);
             }
 
-            if (draw_tracer && (weapon == null || weapon.ShowDebugTracer))
+            if (draw_tracer)
                 DrawShotTracer(owner, result, weapon);
 
-            if (draw_marker && (weapon == null || weapon.ShowDebugHitMarker))
-                DrawShotMarker(owner, result, weapon);
+            if (draw_marker)
+                DrawShotImpact(owner, result, weapon);
         }
 
         private static void DrawShotTracer(
@@ -73,14 +89,30 @@ namespace Game.Players
             ShotResult result,
             WeaponDefinition weapon)
         {
+            WeaponVisualDefinition visual = weapon == null ? null : weapon.Visual;
+            if (visual != null && visual.TracerPrefab != null)
+            {
+                SpawnProjectileTracer(owner, result, visual);
+                return;
+            }
+
+            WeaponVfxUtility.LogWarningOnce(
+                owner,
+                $"MissingTracer:{weapon?.name}",
+                $"[WeaponVFX] Missing tracer prefab for {weapon?.name}. Using fallback tracer.");
+
             GameObject tracer = new("ShotTracer");
             MoveToObjectScene(owner, tracer);
+            RegisterTransient(owner, tracer);
 
             LineRenderer line_renderer = tracer.AddComponent<LineRenderer>();
             line_renderer.positionCount = 2;
             line_renderer.useWorldSpace = true;
-            line_renderer.SetPosition(0, GetTracerOrigin(owner, result));
-            line_renderer.SetPosition(1, result.Point);
+            Vector3 origin = GetTracerOrigin(owner, result);
+            Vector3 direction = (result.Point - origin).normalized;
+            float distance = Vector3.Distance(origin, result.Point);
+            line_renderer.SetPosition(0, origin);
+            line_renderer.SetPosition(1, origin + direction * Mathf.Min(3f, distance));
             line_renderer.startWidth = weapon == null ? 0.03f : weapon.TracerWidth;
             line_renderer.endWidth = weapon == null ? 0.03f : weapon.TracerWidth;
             line_renderer.numCapVertices = 2;
@@ -96,6 +128,24 @@ namespace Game.Players
             tracer.AddComponent<SelfDestroyer>().Initialize(weapon == null ? 0.12f : weapon.TracerLifetime);
         }
 
+        private static void SpawnProjectileTracer(
+            MonoBehaviour owner,
+            ShotResult result,
+            WeaponVisualDefinition visual)
+        {
+            Vector3 origin = GetTracerOrigin(owner, result);
+            GameObject tracer = Object.Instantiate(visual.TracerPrefab, origin, Quaternion.identity);
+            tracer.name = "ShotTracer";
+            MoveToObjectScene(owner, tracer);
+            RegisterTransient(owner, tracer);
+            WeaponVfxUtility.PlayParticles(tracer);
+            tracer.AddComponent<ProjectileTracerVfx>().Initialize(
+                origin,
+                result.Point,
+                visual.TracerSpeed,
+                visual.TracerLifetime);
+        }
+
         private static Vector3 GetTracerOrigin(MonoBehaviour owner, ShotResult result)
         {
             if (owner != null &&
@@ -108,11 +158,37 @@ namespace Game.Players
             return result.Origin;
         }
 
-        private static void DrawShotMarker(
+        private static void DrawShotImpact(
             MonoBehaviour owner,
             ShotResult result,
             WeaponDefinition weapon)
         {
+            if (!result.HasHit)
+                return;
+
+            WeaponVisualDefinition visual = weapon == null ? null : weapon.Visual;
+            GameObject prefab = result.HitboxType == PlayerHitboxType.None
+                ? visual == null ? null : visual.WorldImpactPrefab
+                : visual == null ? null : visual.PlayerImpactPrefab;
+
+            if (prefab != null)
+            {
+                Quaternion rotation = result.Normal.sqrMagnitude < 0.0001f
+                    ? Quaternion.LookRotation(-result.Direction)
+                    : Quaternion.LookRotation(result.Normal);
+                GameObject impact = Object.Instantiate(prefab, result.Point, rotation);
+                impact.name = result.HitboxType == PlayerHitboxType.None ? "WorldImpact" : "PlayerImpact";
+                MoveToObjectScene(owner, impact);
+                WeaponVfxUtility.PlayParticles(impact);
+                impact.AddComponent<SelfDestroyer>().Initialize(visual.ImpactLifetime);
+                return;
+            }
+
+            WeaponVfxUtility.LogWarningOnce(
+                owner,
+                $"MissingImpact:{weapon?.name}:{result.HitboxType}",
+                $"[WeaponVFX] Missing impact prefab for {weapon?.name}. Using fallback marker.");
+
             GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             marker.name = result.HasHit ? "ShotHitConfirm" : "ShotMissConfirm";
             marker.transform.position = result.Point;
@@ -160,9 +236,33 @@ namespace Game.Players
 
         private static void MoveToObjectScene(MonoBehaviour owner, GameObject target)
         {
+            if (owner == null || target == null)
+                return;
+
             Scene scene = owner.gameObject.scene;
             if (scene.IsValid() && scene.isLoaded)
                 SceneManager.MoveGameObjectToScene(target, scene);
+        }
+
+        private static void RegisterTransient(MonoBehaviour owner, GameObject target)
+        {
+            if (owner == null || target == null)
+                return;
+
+            int id = owner.GetInstanceID();
+            if (!TransientShotVfx.TryGetValue(id, out List<GameObject> vfx))
+            {
+                vfx = new List<GameObject>();
+                TransientShotVfx[id] = vfx;
+            }
+
+            for (int i = vfx.Count - 1; i >= 0; i--)
+            {
+                if (vfx[i] == null)
+                    vfx.RemoveAt(i);
+            }
+
+            vfx.Add(target);
         }
     }
 }

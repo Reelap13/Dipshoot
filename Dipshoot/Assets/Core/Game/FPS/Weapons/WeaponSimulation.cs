@@ -57,11 +57,17 @@ namespace Game.Players
             CompleteReloadIfReady(ref state.Primary, primary_weapon, stats_controller, tick);
             CompleteReloadIfReady(ref state.Pistol, pistol_weapon, stats_controller, tick);
 
+            bool did_switch_slot = false;
             if (has_input)
             {
                 WeaponSlot requested_slot = ResolveRequestedSlot(input);
-                if (requested_slot != WeaponSlot.None && GetWeapon(requested_slot, primary_weapon, pistol_weapon) != null)
+                if (requested_slot != WeaponSlot.None &&
+                    requested_slot != state.ActiveSlot &&
+                    GetWeapon(requested_slot, primary_weapon, pistol_weapon) != null)
+                {
                     state.ActiveSlot = requested_slot;
+                    did_switch_slot = true;
+                }
             }
 
             WeaponDefinition active_weapon = GetWeapon(state.ActiveSlot, primary_weapon, pistol_weapon);
@@ -74,7 +80,7 @@ namespace Game.Players
             if (has_input && input.IsReloadPressed)
                 TryStartReload(ref active_slot_state, active_stats, tick, tick_rate);
 
-            bool wants_fire = has_input && WantsFire(input, active_weapon);
+            bool wants_fire = has_input && !did_switch_slot && WantsFire(input, active_weapon);
             bool did_fire = false;
             if (wants_fire)
             {
