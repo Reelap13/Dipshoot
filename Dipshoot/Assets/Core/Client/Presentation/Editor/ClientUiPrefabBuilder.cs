@@ -548,6 +548,17 @@ namespace Core.ClientPresentation.Editor
                 new Color(1f, 1f, 1f, 0.78f));
             weapon_reload_progress_fill.raycastTarget = false;
 
+            Text health_text = CreateText(
+                "HealthText",
+                root.transform,
+                new Vector2(0f, 0f),
+                new Vector2(0f, 0f),
+                new Vector2(0f, 0f),
+                new Vector2(34f, 34f),
+                new Vector2(220f, 64f),
+                34,
+                TextAnchor.MiddleLeft);
+
             GameObject crosshair = CreateCrosshair(root.transform);
 
             SerializedObject serialized_object = new(root.GetComponent<ClientMatchHudLayer>());
@@ -567,6 +578,7 @@ namespace Core.ClientPresentation.Editor
             Set(serialized_object, "_weapon_reserve_text", weapon_reserve_text);
             Set(serialized_object, "_weapon_reload_text", weapon_reload_text);
             Set(serialized_object, "_weapon_reload_progress_fill", weapon_reload_progress_fill);
+            Set(serialized_object, "_health_text", health_text);
             Set(serialized_object, "_crosshair", crosshair);
             serialized_object.ApplyModifiedPropertiesWithoutUndo();
 

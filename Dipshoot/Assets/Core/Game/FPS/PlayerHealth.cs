@@ -13,9 +13,11 @@ namespace Game.Players
         [SerializeField] private PlayerCharacter _character;
         [SerializeField] private StatsController _stats;
         [SerializeField] private int _max_health = 100;
+        [SerializeField] private float _respawn_invulnerability_seconds = 1.5f;
 
         [SyncVar] private int _current_health;
         [SyncVar(hook = nameof(HandleAliveChanged))] private bool _is_alive = true;
+        private float _invulnerable_until;
 
         private Renderer[] _renderers = Array.Empty<Renderer>();
         private Collider[] _colliders = Array.Empty<Collider>();
@@ -61,7 +63,7 @@ namespace Game.Players
             PlayerHitboxType hitbox_type,
             float damage_multiplier)
         {
-            if (!isServer || !_is_alive || damage <= 0)
+            if (!isServer || !_is_alive || damage <= 0 || Time.time < _invulnerable_until)
                 return false;
 
             DamageInfo damage_info = new(damage_source_net_id, damage, hitbox_type, damage_multiplier);
@@ -94,6 +96,7 @@ namespace Game.Players
 
             CacheReferences();
             _is_alive = true;
+            _invulnerable_until = Time.time + _respawn_invulnerability_seconds;
             ResetHealth();
             CachePresentationTargets();
             ApplyAlive(true);

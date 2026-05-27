@@ -12,16 +12,59 @@ namespace Game.Players
             ShotResult result,
             WeaponDefinition weapon)
         {
-            if (owner != null && owner.TryGetComponent(out PlayerWeaponVisualController weapon_visual_controller))
+            PlayRemoteShot(owner, result, weapon);
+        }
+
+        public static void PlayPredictedShot(
+            MonoBehaviour owner,
+            ShotResult result,
+            WeaponDefinition weapon)
+        {
+            PlayShotVisual(owner, result, weapon, true, true, false);
+        }
+
+        public static void PlayConfirmedOwnerShot(
+            MonoBehaviour owner,
+            ShotResult result,
+            WeaponDefinition weapon)
+        {
+            PlayShotVisual(owner, result, weapon, false, false, true);
+        }
+
+        public static void PlayRemoteShot(
+            MonoBehaviour owner,
+            ShotResult result,
+            WeaponDefinition weapon)
+        {
+            PlayShotVisual(owner, result, weapon, true, true, true);
+        }
+
+        private static void PlayShotVisual(
+            MonoBehaviour owner,
+            ShotResult result,
+            WeaponDefinition weapon,
+            bool play_weapon_visual,
+            bool draw_tracer,
+            bool draw_marker)
+        {
+            if (play_weapon_visual &&
+                owner != null &&
+                owner.TryGetComponent(out PlayerWeaponVisualController weapon_visual_controller))
+            {
                 weapon_visual_controller.PlayShot(result);
+            }
 
-            if (owner != null && owner.TryGetComponent(out PlayerAnimationController animation_controller))
+            if (play_weapon_visual &&
+                owner != null &&
+                owner.TryGetComponent(out PlayerAnimationController animation_controller))
+            {
                 animation_controller.PlayShot(result);
+            }
 
-            if (weapon == null || weapon.ShowDebugTracer)
+            if (draw_tracer && (weapon == null || weapon.ShowDebugTracer))
                 DrawShotTracer(owner, result, weapon);
 
-            if (weapon == null || weapon.ShowDebugHitMarker)
+            if (draw_marker && (weapon == null || weapon.ShowDebugHitMarker))
                 DrawShotMarker(owner, result, weapon);
         }
 

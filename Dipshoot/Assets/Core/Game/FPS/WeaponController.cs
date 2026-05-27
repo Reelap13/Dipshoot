@@ -2,6 +2,8 @@ using Game.Players.Input;
 using Game.TickSystem;
 using Mirror;
 using Scripts.Stats;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Game.Players
@@ -11,6 +13,9 @@ namespace Game.Players
     {
         private const string LogPrefix = "[NetTick][Weapon]";
         private const int MaxShotHits = 32;
+        private const float PredictedShotPointWarningThreshold = 0.35f;
+        private const float PredictedShotAngleWarningThreshold = 0.5f;
+        private const int PredictedShotTimeoutTicks = 96;
 
         [SerializeField] private PlayerCharacter _character;
         [SerializeField] private StatsController _stats;
@@ -37,6 +42,10 @@ namespace Game.Players
         private WeaponRuntimeState _weapon_state;
         private bool _has_weapon_state;
         private int _last_processed_input_tick = -1;
+        private WeaponRuntimeState _predicted_weapon_state;
+        private bool _has_predicted_weapon_state;
+        private int _predicted_shot_sequence;
+        private readonly Dictionary<PredictedShotKey, PredictedShot> _predicted_shots = new();
 
         public TickLayer TickLayer => TickLayer.WeaponSimulation;
         public int TickOrder => 0;
@@ -45,8 +54,8 @@ namespace Game.Players
         public int PrimaryReserveAmmo => _primary_reserve_ammo;
         public int PistolAmmo => _pistol_ammo;
         public int PistolReserveAmmo => _pistol_reserve_ammo;
-        public int ActiveAmmo => _active_slot == WeaponSlot.Pistol ? _pistol_ammo : _primary_ammo;
-        public int ActiveReserveAmmo => _active_slot == WeaponSlot.Pistol ? _pistol_reserve_ammo : _primary_reserve_ammo;
+        public int ActiveAmmo => TryGetPredictedActiveSlotState(out WeaponSlotState state) ? state.AmmoInMagazine : _active_slot == WeaponSlot.Pistol ? _pistol_ammo : _primary_ammo;
+        public int ActiveReserveAmmo => TryGetPredictedActiveSlotState(out WeaponSlotState state) ? state.ReserveAmmo : _active_slot == WeaponSlot.Pistol ? _pistol_reserve_ammo : _primary_reserve_ammo;
         public bool IsActiveReloading => GetIsReloading(_active_slot);
         public float ActiveReloadProgress => GetReloadProgress(_active_slot);
         public string ActiveWeaponDisplayName => GetWeaponDefinition(_active_slot)?.DisplayName ?? _active_slot.ToString();
@@ -68,6 +77,7 @@ namespace Game.Players
         {
             CacheReferences();
             TryRegisterTickSystem();
+            CleanupPredictedShots();
         }
 
         private void OnDisable()
@@ -171,6 +181,54 @@ namespace Game.Players
             RpcRegisterShot(shot_result);
         }
 
+        public void PredictOwnerInput(ref PlayerInputData input, int tick)
+        {
+            if (!isClient || !isOwned || isServer || _character == null || _character.TickManager == null)
+                return;
+
+            EnsurePredictedWeaponState(tick);
+            input.ShotSequence = _predicted_shot_sequence + 1;
+
+            WeaponSimulationResult simulation_result = WeaponSimulation.Simulate(
+                _predicted_weapon_state,
+                input,
+                true,
+                _primary_weapon,
+                _pistol_weapon,
+                _stats,
+                tick,
+                _character.TickManager.TickRate);
+
+            _predicted_weapon_state = simulation_result.State;
+            if (!simulation_result.DidFire)
+            {
+                input.ShotSequence = 0;
+                return;
+            }
+
+            _predicted_shot_sequence = input.ShotSequence;
+            if (!_character.StateBuffer.TryGet(tick, out PlayerState shot_state) &&
+                !_character.StateBuffer.TryGetLastAtOrBefore(tick, out shot_state))
+            {
+                return;
+            }
+
+            ShotResult result = WeaponShotResolver.ResolvePredicted(
+                _character,
+                simulation_result.FiredWeapon,
+                simulation_result.FiredWeaponStats,
+                shot_state,
+                input,
+                _eye_offset,
+                _hit_mask,
+                _trigger_interaction,
+                _hits);
+
+            _predicted_shots[new PredictedShotKey(result.WeaponSlot, result.ShotSequence)] =
+                new PredictedShot(result, tick);
+            WeaponPresentation.PlayPredictedShot(this, result, simulation_result.FiredWeapon);
+        }
+
         private void EnsureWeaponState(int tick)
         {
             if (_has_weapon_state)
@@ -241,7 +299,16 @@ namespace Game.Players
         [ClientRpc]
         private void RpcRegisterShot(ShotResult result)
         {
-            WeaponPresentation.DrawShot(this, result, GetWeaponDefinition(result.WeaponSlot));
+            if (isOwned && TryConsumePredictedShot(result, out ShotResult predicted_result))
+            {
+                WarnIfPredictedShotMismatch(predicted_result, result);
+                WeaponPresentation.PlayConfirmedOwnerShot(this, result, GetWeaponDefinition(result.WeaponSlot));
+                if (_predicted_shots.Count == 0)
+                    ResetPredictedStateFromSync();
+                return;
+            }
+
+            WeaponPresentation.PlayRemoteShot(this, result, GetWeaponDefinition(result.WeaponSlot));
         }
 
         public void ResetSimulation()
@@ -253,6 +320,149 @@ namespace Game.Players
                 InitializeWeaponState(_character == null || _character.TickManager == null
                     ? 0
                     : _character.TickManager.CurrentTick);
+
+            _has_predicted_weapon_state = false;
+            _predicted_shot_sequence = 0;
+            _predicted_shots.Clear();
+        }
+
+        private void EnsurePredictedWeaponState(int tick)
+        {
+            if (_has_predicted_weapon_state)
+                return;
+
+            ResetPredictedStateFromSync();
+            _has_predicted_weapon_state = true;
+        }
+
+        private void ResetPredictedStateFromSync()
+        {
+            _predicted_weapon_state = new WeaponRuntimeState
+            {
+                ActiveSlot = _active_slot,
+                Primary = new WeaponSlotState(WeaponSlot.Primary, _primary_ammo, _primary_reserve_ammo, GetCurrentTick()),
+                Pistol = new WeaponSlotState(WeaponSlot.Pistol, _pistol_ammo, _pistol_reserve_ammo, GetCurrentTick()),
+            };
+            _predicted_weapon_state.Primary.IsReloading = _primary_is_reloading;
+            _predicted_weapon_state.Primary.ReloadStartTick = _primary_reload_start_tick;
+            _predicted_weapon_state.Primary.ReloadEndTick = _primary_reload_end_tick;
+            _predicted_weapon_state.Pistol.IsReloading = _pistol_is_reloading;
+            _predicted_weapon_state.Pistol.ReloadStartTick = _pistol_reload_start_tick;
+            _predicted_weapon_state.Pistol.ReloadEndTick = _pistol_reload_end_tick;
+            _has_predicted_weapon_state = true;
+        }
+
+        private bool TryGetPredictedActiveSlotState(out WeaponSlotState state)
+        {
+            state = default;
+            if (!isClient || !isOwned || !_has_predicted_weapon_state)
+                return false;
+
+            state = _predicted_weapon_state.GetSlotState(_predicted_weapon_state.ActiveSlot);
+            return true;
+        }
+
+        private bool TryConsumePredictedShot(ShotResult confirmed_result, out ShotResult predicted_result)
+        {
+            PredictedShotKey key = new(confirmed_result.WeaponSlot, confirmed_result.ShotSequence);
+            if (_predicted_shots.TryGetValue(key, out PredictedShot shot))
+            {
+                predicted_result = shot.Result;
+                _predicted_shots.Remove(key);
+                return true;
+            }
+
+            predicted_result = default;
+            return false;
+        }
+
+        private void WarnIfPredictedShotMismatch(ShotResult predicted_result, ShotResult server_result)
+        {
+            float point_distance = Vector3.Distance(predicted_result.Point, server_result.Point);
+            float direction_angle = Vector3.Angle(predicted_result.Direction, server_result.Direction);
+            if (point_distance <= PredictedShotPointWarningThreshold &&
+                direction_angle <= PredictedShotAngleWarningThreshold)
+            {
+                return;
+            }
+
+            Debug.LogWarning(
+                $"{LogPrefix} Predicted shot mismatch. netId={netId} slot={server_result.WeaponSlot} " +
+                $"inputTick={server_result.InputTick} sequence={server_result.ShotSequence} " +
+                $"pointDistance={point_distance:0.###} directionAngle={direction_angle:0.###}");
+        }
+
+        private void CleanupPredictedShots()
+        {
+            if (!isClient || !isOwned || _predicted_shots.Count == 0 || _character == null || _character.TickManager == null)
+                return;
+
+            int current_tick = _character.TickManager.CurrentTick;
+            List<PredictedShotKey> expired_keys = null;
+            foreach (KeyValuePair<PredictedShotKey, PredictedShot> pair in _predicted_shots)
+            {
+                if (current_tick - pair.Value.CreatedTick <= PredictedShotTimeoutTicks)
+                    continue;
+
+                expired_keys ??= new List<PredictedShotKey>();
+                expired_keys.Add(pair.Key);
+            }
+
+            if (expired_keys == null)
+                return;
+
+            for (int i = 0; i < expired_keys.Count; i++)
+                _predicted_shots.Remove(expired_keys[i]);
+
+            Debug.LogWarning($"{LogPrefix} Predicted shot was not confirmed. netId={netId} count={expired_keys.Count}");
+            if (_predicted_shots.Count == 0)
+                ResetPredictedStateFromSync();
+        }
+
+        private int GetCurrentTick()
+        {
+            return _character == null || _character.TickManager == null
+                ? 0
+                : _character.TickManager.CurrentTick;
+        }
+
+        private readonly struct PredictedShot
+        {
+            public readonly ShotResult Result;
+            public readonly int CreatedTick;
+
+            public PredictedShot(ShotResult result, int created_tick)
+            {
+                Result = result;
+                CreatedTick = created_tick;
+            }
+        }
+
+        private readonly struct PredictedShotKey : IEquatable<PredictedShotKey>
+        {
+            private readonly WeaponSlot _slot;
+            private readonly int _sequence;
+
+            public PredictedShotKey(WeaponSlot slot, int sequence)
+            {
+                _slot = slot;
+                _sequence = sequence;
+            }
+
+            public bool Equals(PredictedShotKey other)
+            {
+                return _slot == other._slot && _sequence == other._sequence;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is PredictedShotKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                return ((int)_slot * 397) ^ _sequence;
+            }
         }
     }
 }

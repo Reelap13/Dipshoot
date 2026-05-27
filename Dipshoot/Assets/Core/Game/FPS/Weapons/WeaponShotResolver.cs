@@ -20,7 +20,8 @@ namespace Game.Players
             RaycastHit[] hits)
         {
             Vector3 origin = GetShotOrigin(shot_state, eye_offset);
-            Vector3 direction = GetShotDirection(shot_state, weapon_stats, shooter.netId, input.Tick, weapon.Slot);
+            int spread_seed = WeaponShotSeed.Get(shooter.netId, input.Tick, weapon.Slot, input.ShotSequence);
+            Vector3 direction = GetShotDirection(shot_state, weapon_stats, spread_seed);
             bool has_world_hit = TryGetWorldHit(
                 shooter,
                 origin,
@@ -55,6 +56,8 @@ namespace Game.Players
                         ? GetHitNetId(world_hit)
                         : 0,
                 WeaponSlot = weapon.Slot,
+                ShotSequence = input.ShotSequence,
+                SpreadSeed = spread_seed,
                 InputTick = input.Tick,
                 ServerTick = server_tick,
                 Origin = origin,
@@ -71,38 +74,73 @@ namespace Game.Players
             return result;
         }
 
-        private static Vector3 GetShotOrigin(PlayerState state, Vector3 eye_offset)
+        public static ShotResult ResolvePredicted(
+            PlayerCharacter shooter,
+            WeaponDefinition weapon,
+            WeaponStats weapon_stats,
+            PlayerState shot_state,
+            PlayerInputData input,
+            Vector3 eye_offset,
+            LayerMask hit_mask,
+            QueryTriggerInteraction trigger_interaction,
+            RaycastHit[] hits)
+        {
+            Vector3 origin = GetShotOrigin(shot_state, eye_offset);
+            int spread_seed = WeaponShotSeed.Get(shooter.netId, input.Tick, weapon.Slot, input.ShotSequence);
+            Vector3 direction = GetShotDirection(shot_state, weapon_stats, spread_seed);
+            bool has_hit = TryGetVisualHit(
+                shooter,
+                origin,
+                direction,
+                weapon_stats.Range,
+                hit_mask,
+                trigger_interaction,
+                hits,
+                out RaycastHit hit);
+
+            return new ShotResult
+            {
+                ShooterNetId = shooter.netId,
+                HitNetId = has_hit ? GetHitNetId(hit) : 0,
+                WeaponSlot = weapon.Slot,
+                ShotSequence = input.ShotSequence,
+                SpreadSeed = spread_seed,
+                InputTick = input.Tick,
+                ServerTick = -1,
+                Origin = origin,
+                Direction = direction,
+                Point = has_hit ? hit.point : origin + direction * weapon_stats.Range,
+                Damage = weapon_stats.Damage,
+                HitboxType = PlayerHitboxType.None,
+                DamageMultiplier = 1f,
+                HasHit = has_hit,
+                DidDamage = false,
+            };
+        }
+
+        public static Vector3 GetShotOrigin(PlayerState state, Vector3 eye_offset)
         {
             return state.Position + state.Rotation * eye_offset;
         }
 
-        private static Vector3 GetShotDirection(
+        public static Vector3 GetShotDirection(
             PlayerState state,
             WeaponStats weapon_stats,
-            uint shooter_net_id,
-            int input_tick,
-            WeaponSlot weapon_slot)
+            int spread_seed)
         {
             Quaternion pitch_rotation = Quaternion.Euler(state.CameraPitch, 0f, 0f);
-            Quaternion spread_rotation = GetSpreadRotation(
-                weapon_stats.SpreadDegrees,
-                shooter_net_id,
-                input_tick,
-                weapon_slot);
+            Quaternion spread_rotation = GetSpreadRotation(weapon_stats.SpreadDegrees, spread_seed);
 
             return state.Rotation * pitch_rotation * spread_rotation * Vector3.forward;
         }
 
         private static Quaternion GetSpreadRotation(
             float spread_degrees,
-            uint shooter_net_id,
-            int input_tick,
-            WeaponSlot weapon_slot)
+            int seed)
         {
             if (spread_degrees <= 0f)
                 return Quaternion.identity;
 
-            int seed = unchecked((int)shooter_net_id * 73856093 ^ input_tick * 19349663 ^ (int)weapon_slot * 83492791);
             float yaw = LerpHash(seed, -spread_degrees, spread_degrees);
             float pitch = LerpHash(seed + 1, -spread_degrees, spread_degrees);
             return Quaternion.Euler(pitch, yaw, 0f);
@@ -168,6 +206,47 @@ namespace Game.Players
 
                 if (current_hit.distance >= closest_distance)
                     continue;
+
+                closest_distance = current_hit.distance;
+                hit = current_hit;
+                has_hit = true;
+            }
+
+            return has_hit;
+        }
+
+        private static bool TryGetVisualHit(
+            PlayerCharacter shooter,
+            Vector3 origin,
+            Vector3 direction,
+            float range,
+            LayerMask hit_mask,
+            QueryTriggerInteraction trigger_interaction,
+            RaycastHit[] hits,
+            out RaycastHit hit)
+        {
+            hit = default;
+            float closest_distance = float.MaxValue;
+            bool has_hit = false;
+            int hits_count = RaycastScene(
+                shooter.gameObject,
+                origin,
+                direction,
+                range,
+                hit_mask,
+                trigger_interaction,
+                hits);
+
+            for (int i = 0; i < hits_count; i++)
+            {
+                RaycastHit current_hit = hits[i];
+                if (current_hit.collider == null ||
+                    current_hit.collider.isTrigger ||
+                    IsOwnCollider(shooter.transform, current_hit.collider) ||
+                    current_hit.distance >= closest_distance)
+                {
+                    continue;
+                }
 
                 closest_distance = current_hit.distance;
                 hit = current_hit;

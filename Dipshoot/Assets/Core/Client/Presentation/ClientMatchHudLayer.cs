@@ -28,6 +28,7 @@ namespace Core.ClientPresentation
         [SerializeField] private Text _weapon_reserve_text;
         [SerializeField] private Text _weapon_reload_text;
         [SerializeField] private Image _weapon_reload_progress_fill;
+        [SerializeField] private Text _health_text;
         [SerializeField] private GameObject _crosshair;
         [SerializeField] private Color _crosshair_color = new(1f, 1f, 1f, 0.86f);
 
@@ -45,6 +46,7 @@ namespace Core.ClientPresentation
         private void Update()
         {
             UpdateWeaponPanel();
+            UpdateHealth();
 
             _mode_controller = ClientAppRoot.Instance.MatchStore.ModeController;
             if (_mode_controller == null || _score_text == null)
@@ -85,6 +87,21 @@ namespace Core.ClientPresentation
 
             _weapon_reload_progress_fill.rectTransform.anchorMax =
                 new Vector2(is_reloading ? weapon_controller.ActiveReloadProgress : 0f, 1f);
+        }
+
+        private void UpdateHealth()
+        {
+            if (_health_text == null)
+                return;
+
+            WeaponController weapon_controller = ResolveLocalWeaponController();
+            PlayerHealth health = weapon_controller == null
+                ? null
+                : weapon_controller.GetComponent<PlayerHealth>();
+
+            _health_text.text = health == null
+                ? string.Empty
+                : $"HP {health.CurrentHealth}/{health.MaxHealth}";
         }
 
         private void UpdateScorePanel()

@@ -12,6 +12,7 @@ namespace Game.Players.Input
         public Vector2 Look;
         public bool IsShootPressed;
         public bool IsShootHeld;
+        public int ShotSequence;
         public bool IsReloadPressed;
         public WeaponSlot RequestedWeaponSlot;
         public bool IsJumpPressed;
