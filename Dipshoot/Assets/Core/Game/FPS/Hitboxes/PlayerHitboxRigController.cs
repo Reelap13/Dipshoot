@@ -11,32 +11,56 @@ namespace Game.Players
         private const string HitboxSuffix = "Hitbox";
         private const string HitboxLayerName = "CharacterPhysics";
 
-        private static readonly HitboxBinding[] Bindings =
+        private static readonly PlayerHitboxRigProfile.HitboxBinding[] DefaultBindings =
         {
-            HitboxBinding.Sphere("Head", "FpsChar_Head_Bone", PlayerHitboxType.Head, 2f, new Vector3(0f, 0.04f, 0f), 0.22f),
-            HitboxBinding.Capsule("Chest", "FpsChar_Spine_Bone", "FpsChar_Neck_Bone", PlayerHitboxType.Chest, 1f, 0.28f, 0.04f),
-            HitboxBinding.Capsule("Pelvis", "FpsChar_Pelvis_Bone", "FpsChar_Spine_Bone", PlayerHitboxType.Pelvis, 0.9f, 0.26f, 0.02f),
-            HitboxBinding.Capsule("LeftUpperArm", "FpsChar_LArm_Upper_Bone", "FpsChar_LArm_Lower_Bone", PlayerHitboxType.Arm, 0.75f, 0.105f, 0.01f),
-            HitboxBinding.Capsule("LeftLowerArm", "FpsChar_LArm_Lower_Bone", "FpsChar_LHand_Bone", PlayerHitboxType.Arm, 0.75f, 0.09f, 0.01f),
-            HitboxBinding.Capsule("RightUpperArm", "FpsChar_RArm_Upper_Bone", "FpsChar_RArm_Lower_Bone", PlayerHitboxType.Arm, 0.75f, 0.105f, 0.01f),
-            HitboxBinding.Capsule("RightLowerArm", "FpsChar_RArm_Lower_Bone", "FpsChar_RHand_Bone", PlayerHitboxType.Arm, 0.75f, 0.09f, 0.01f),
-            HitboxBinding.Capsule("LeftUpperLeg", "FpsChar_LLeg_Upper_Bone", "FpsChar_LLeg_Lower_Bone", PlayerHitboxType.Leg, 0.75f, 0.13f, 0.02f),
-            HitboxBinding.Capsule("LeftLowerLeg", "FpsChar_LLeg_Lower_Bone", "FpsChar_LLeg_Foot_Bone", PlayerHitboxType.Leg, 0.75f, 0.105f, 0.02f),
-            HitboxBinding.Capsule("RightUpperLeg", "FpsChar_RLeg_Upper_Bone", "FpsChar_RLeg_Lower_Bone", PlayerHitboxType.Leg, 0.75f, 0.13f, 0.02f),
-            HitboxBinding.Capsule("RightLowerLeg", "FpsChar_RLeg_Lower_Bone", "FpsChar_RLeg_Foot_Bone", PlayerHitboxType.Leg, 0.75f, 0.105f, 0.02f),
+            Sphere("Head", "FpsChar_Head_Bone", PlayerHitboxType.Head, 2f, new Vector3(0f, 0.04f, 0f), 0.22f),
+            Capsule("Chest", "FpsChar_Spine_Bone", "FpsChar_Neck_Bone", PlayerHitboxType.Chest, 1f, 0.28f, 0.04f),
+            Capsule("Pelvis", "FpsChar_Pelvis_Bone", "FpsChar_Spine_Bone", PlayerHitboxType.Pelvis, 0.9f, 0.26f, 0.02f),
+            Capsule("LeftUpperArm", "FpsChar_LArm_Upper_Bone", "FpsChar_LArm_Lower_Bone", PlayerHitboxType.Arm, 0.75f, 0.105f, 0.01f),
+            Capsule("LeftLowerArm", "FpsChar_LArm_Lower_Bone", "FpsChar_LHand_Bone", PlayerHitboxType.Arm, 0.75f, 0.09f, 0.01f),
+            Capsule("RightUpperArm", "FpsChar_RArm_Upper_Bone", "FpsChar_RArm_Lower_Bone", PlayerHitboxType.Arm, 0.75f, 0.105f, 0.01f),
+            Capsule("RightLowerArm", "FpsChar_RArm_Lower_Bone", "FpsChar_RHand_Bone", PlayerHitboxType.Arm, 0.75f, 0.09f, 0.01f),
+            Capsule("LeftUpperLeg", "FpsChar_LLeg_Upper_Bone", "FpsChar_LLeg_Lower_Bone", PlayerHitboxType.Leg, 0.75f, 0.13f, 0.02f),
+            Capsule("LeftLowerLeg", "FpsChar_LLeg_Lower_Bone", "FpsChar_LLeg_Foot_Bone", PlayerHitboxType.Leg, 0.75f, 0.105f, 0.02f),
+            Capsule("RightUpperLeg", "FpsChar_RLeg_Upper_Bone", "FpsChar_RLeg_Lower_Bone", PlayerHitboxType.Leg, 0.75f, 0.13f, 0.02f),
+            Capsule("RightLowerLeg", "FpsChar_RLeg_Lower_Bone", "FpsChar_RLeg_Foot_Bone", PlayerHitboxType.Leg, 0.75f, 0.105f, 0.02f),
         };
 
         [SerializeField] private PlayerHealth _health;
         [SerializeField] private Transform _skeleton_root;
+        [SerializeField] private PlayerHitboxRigProfile _profile;
         [SerializeField] private bool _rebuild_on_awake = true;
         [SerializeField] private bool _remove_legacy_root = true;
+
+        private int _pending_rebuild_frames;
+        private int _last_created_count;
+
+        public int HitboxCount => _last_created_count;
 
         private void Awake()
         {
             EnsureLagCompensation();
 
             if (_rebuild_on_awake)
-                Rebuild();
+                RequestRebuild();
+        }
+
+        private void LateUpdate()
+        {
+            if (_pending_rebuild_frames <= 0)
+                return;
+
+            _pending_rebuild_frames--;
+            Rebuild();
+
+            if (_last_created_count > 0)
+                _pending_rebuild_frames = 0;
+        }
+
+        public void RequestRebuild()
+        {
+            _pending_rebuild_frames = 5;
+            Rebuild();
         }
 
         public void Rebuild()
@@ -49,9 +73,21 @@ namespace Game.Players
             if (_remove_legacy_root)
                 RemoveLegacyHitboxRoot();
 
-            for (int i = 0; i < Bindings.Length; i++)
-                CreateOrUpdateHitbox(Bindings[i]);
+            PlayerHitboxRigProfile.HitboxBinding[] bindings = GetBindings();
+            int created_count = 0;
+            for (int i = 0; i < bindings.Length; i++)
+            {
+                if (CreateOrUpdateHitbox(bindings[i]))
+                    created_count++;
+            }
 
+            if (created_count == 0)
+            {
+                Debug.LogWarning(
+                    $"[HitboxRig] No hitboxes created for {name}. Skeleton={_skeleton_root?.name}, Profile={_profile?.name}.");
+            }
+
+            _last_created_count = created_count;
             _health.RefreshPresentationTargets();
             RefreshLagCompensation();
         }
@@ -61,7 +97,20 @@ namespace Game.Players
             if (_health == null)
                 _health = GetComponent<PlayerHealth>();
 
-            Transform skeleton_root = FindChildRecursive(transform, "ThirdPersonCharacter");
+            if (_profile == null &&
+                TryGetComponent(out PlayerVisualController visual_controller) &&
+                visual_controller.Definition != null)
+            {
+                _profile = visual_controller.Definition.HitboxRigProfile;
+            }
+
+            Transform skeleton_root = null;
+            if (TryGetComponent(out PlayerVisualController current_visual_controller))
+                skeleton_root = FindChildRecursive(current_visual_controller.ThirdPersonRoot, "ThirdPersonCharacter");
+
+            if (skeleton_root == null)
+                skeleton_root = FindChildRecursive(transform, "ThirdPersonCharacter");
+
             if (skeleton_root != null)
                 _skeleton_root = skeleton_root;
 
@@ -99,17 +148,24 @@ namespace Game.Players
                 DestroyImmediate(legacy_root.gameObject);
         }
 
-        private void CreateOrUpdateHitbox(HitboxBinding binding)
+        private PlayerHitboxRigProfile.HitboxBinding[] GetBindings()
+        {
+            return _profile != null && _profile.Bindings != null && _profile.Bindings.Length > 0
+                ? _profile.Bindings
+                : DefaultBindings;
+        }
+
+        private bool CreateOrUpdateHitbox(PlayerHitboxRigProfile.HitboxBinding binding)
         {
             Transform start_bone = FindChildRecursive(_skeleton_root, binding.StartBoneName);
             if (start_bone == null)
-                return;
+                return false;
 
-            Transform end_bone = binding.Shape == Shape.Capsule
+            Transform end_bone = binding.Shape == PlayerHitboxRigProfile.HitboxShape.Capsule
                 ? FindChildRecursive(_skeleton_root, binding.EndBoneName)
                 : null;
-            if (binding.Shape == Shape.Capsule && end_bone == null)
-                return;
+            if (binding.Shape == PlayerHitboxRigProfile.HitboxShape.Capsule && end_bone == null)
+                return false;
 
             Transform hitbox_transform = FindDirectChild(start_bone, binding.Name + HitboxSuffix);
             GameObject hitbox_object = hitbox_transform == null
@@ -127,16 +183,17 @@ namespace Game.Players
                 hitbox = hitbox_object.AddComponent<PlayerHitbox>();
 
             hitbox.Initialize(_health, hitbox_collider, binding.Type, binding.DamageMultiplier);
+            return true;
         }
 
         private static float ApplyHitboxTransform(
             Transform hitbox,
             Transform start_bone,
             Transform end_bone,
-            HitboxBinding binding)
+            PlayerHitboxRigProfile.HitboxBinding binding)
         {
             hitbox.localScale = Vector3.one;
-            if (binding.Shape != Shape.Capsule)
+            if (binding.Shape != PlayerHitboxRigProfile.HitboxShape.Capsule)
             {
                 hitbox.localPosition = binding.LocalPosition;
                 hitbox.localRotation = Quaternion.identity;
@@ -157,18 +214,18 @@ namespace Game.Players
                 direction.magnitude + binding.Radius * 2f + binding.LengthPadding);
         }
 
-        private static Collider EnsureCollider(GameObject target, HitboxBinding binding, float capsule_height)
+        private static Collider EnsureCollider(GameObject target, PlayerHitboxRigProfile.HitboxBinding binding, float capsule_height)
         {
             RemoveWrongColliders(target, binding.Shape);
             return binding.Shape switch
             {
-                Shape.Sphere => ConfigureSphere(target, binding),
-                Shape.Capsule => ConfigureCapsule(target, binding, capsule_height),
+                PlayerHitboxRigProfile.HitboxShape.Sphere => ConfigureSphere(target, binding),
+                PlayerHitboxRigProfile.HitboxShape.Capsule => ConfigureCapsule(target, binding, capsule_height),
                 _ => ConfigureBox(target, binding),
             };
         }
 
-        private static BoxCollider ConfigureBox(GameObject target, HitboxBinding binding)
+        private static BoxCollider ConfigureBox(GameObject target, PlayerHitboxRigProfile.HitboxBinding binding)
         {
             BoxCollider collider = target.GetComponent<BoxCollider>();
             if (collider == null)
@@ -180,7 +237,7 @@ namespace Game.Players
             return collider;
         }
 
-        private static SphereCollider ConfigureSphere(GameObject target, HitboxBinding binding)
+        private static SphereCollider ConfigureSphere(GameObject target, PlayerHitboxRigProfile.HitboxBinding binding)
         {
             SphereCollider collider = target.GetComponent<SphereCollider>();
             if (collider == null)
@@ -192,7 +249,7 @@ namespace Game.Players
             return collider;
         }
 
-        private static CapsuleCollider ConfigureCapsule(GameObject target, HitboxBinding binding, float capsule_height)
+        private static CapsuleCollider ConfigureCapsule(GameObject target, PlayerHitboxRigProfile.HitboxBinding binding, float capsule_height)
         {
             CapsuleCollider collider = target.GetComponent<CapsuleCollider>();
             if (collider == null)
@@ -206,7 +263,7 @@ namespace Game.Players
             return collider;
         }
 
-        private static void RemoveWrongColliders(GameObject target, Shape shape)
+        private static void RemoveWrongColliders(GameObject target, PlayerHitboxRigProfile.HitboxShape shape)
         {
             Collider[] colliders = target.GetComponents<Collider>();
             for (int i = 0; i < colliders.Length; i++)
@@ -221,12 +278,12 @@ namespace Game.Players
             }
         }
 
-        private static bool IsExpectedCollider(Collider collider, Shape shape)
+        private static bool IsExpectedCollider(Collider collider, PlayerHitboxRigProfile.HitboxShape shape)
         {
             return shape switch
             {
-                Shape.Sphere => collider is SphereCollider,
-                Shape.Capsule => collider is CapsuleCollider,
+                PlayerHitboxRigProfile.HitboxShape.Sphere => collider is SphereCollider,
+                PlayerHitboxRigProfile.HitboxShape.Capsule => collider is CapsuleCollider,
                 _ => collider is BoxCollider,
             };
         }
@@ -287,93 +344,48 @@ namespace Game.Players
             return null;
         }
 
-        private enum Shape
+        private static PlayerHitboxRigProfile.HitboxBinding Sphere(
+            string name,
+            string bone_name,
+            PlayerHitboxType type,
+            float damage_multiplier,
+            Vector3 local_position,
+            float radius)
         {
-            Box,
-            Sphere,
-            Capsule,
+            return new PlayerHitboxRigProfile.HitboxBinding
+            {
+                Name = name,
+                StartBoneName = bone_name,
+                Type = type,
+                DamageMultiplier = damage_multiplier,
+                Shape = PlayerHitboxRigProfile.HitboxShape.Sphere,
+                LocalPosition = local_position,
+                Size = Vector3.one * radius * 2f,
+                Radius = radius,
+            };
         }
 
-        [Serializable]
-        private readonly struct HitboxBinding
+        private static PlayerHitboxRigProfile.HitboxBinding Capsule(
+            string name,
+            string start_bone_name,
+            string end_bone_name,
+            PlayerHitboxType type,
+            float damage_multiplier,
+            float radius,
+            float length_padding)
         {
-            public readonly string Name;
-            public readonly string StartBoneName;
-            public readonly string EndBoneName;
-            public readonly PlayerHitboxType Type;
-            public readonly float DamageMultiplier;
-            public readonly Shape Shape;
-            public readonly Vector3 LocalPosition;
-            public readonly Vector3 Size;
-            public readonly float Radius;
-            public readonly float LengthPadding;
-
-            public HitboxBinding(
-                string name,
-                string start_bone_name,
-                string end_bone_name,
-                PlayerHitboxType type,
-                float damage_multiplier,
-                Shape shape,
-                Vector3 local_position,
-                Vector3 size,
-                float radius,
-                float length_padding)
+            return new PlayerHitboxRigProfile.HitboxBinding
             {
-                Name = name;
-                StartBoneName = start_bone_name;
-                EndBoneName = end_bone_name;
-                Type = type;
-                DamageMultiplier = damage_multiplier;
-                Shape = shape;
-                LocalPosition = local_position;
-                Size = size;
-                Radius = radius;
-                LengthPadding = length_padding;
-            }
-
-            public static HitboxBinding Sphere(
-                string name,
-                string bone_name,
-                PlayerHitboxType type,
-                float damage_multiplier,
-                Vector3 local_position,
-                float radius)
-            {
-                return new HitboxBinding(
-                    name,
-                    bone_name,
-                    null,
-                    type,
-                    damage_multiplier,
-                    Shape.Sphere,
-                    local_position,
-                    Vector3.one * radius * 2f,
-                    radius,
-                    0f);
-            }
-
-            public static HitboxBinding Capsule(
-                string name,
-                string start_bone_name,
-                string end_bone_name,
-                PlayerHitboxType type,
-                float damage_multiplier,
-                float radius,
-                float length_padding)
-            {
-                return new HitboxBinding(
-                    name,
-                    start_bone_name,
-                    end_bone_name,
-                    type,
-                    damage_multiplier,
-                    Shape.Capsule,
-                    Vector3.zero,
-                    new Vector3(radius * 2f, radius * 2f, radius * 2f),
-                    radius,
-                    length_padding);
-            }
+                Name = name,
+                StartBoneName = start_bone_name,
+                EndBoneName = end_bone_name,
+                Type = type,
+                DamageMultiplier = damage_multiplier,
+                Shape = PlayerHitboxRigProfile.HitboxShape.Capsule,
+                Size = new Vector3(radius * 2f, radius * 2f, radius * 2f),
+                Radius = radius,
+                LengthPadding = length_padding,
+            };
         }
     }
 }

@@ -59,6 +59,7 @@ namespace Game.Players
         public bool IsActiveReloading => GetIsReloading(_active_slot);
         public float ActiveReloadProgress => GetReloadProgress(_active_slot);
         public string ActiveWeaponDisplayName => GetWeaponDefinition(_active_slot)?.DisplayName ?? _active_slot.ToString();
+        public float ActiveRecoilRecovery => GetWeaponDefinition(_active_slot)?.GetStats(_stats).RecoilRecovery ?? 0f;
         public WeaponDefinition PrimaryWeaponDefinition => _primary_weapon;
         public WeaponDefinition PistolWeaponDefinition => _pistol_weapon;
 
@@ -161,7 +162,7 @@ namespace Game.Players
             ShotResult shot_result = WeaponShotResolver.Resolve(
                 _character,
                 simulation_result.FiredWeapon,
-                simulation_result.FiredWeaponStats,
+                simulation_result.FiredWeaponStats.WithSpread(simulation_result.FiredSpreadDegrees),
                 shot_state,
                 input,
                 server_tick,
@@ -176,8 +177,11 @@ namespace Game.Players
                 $"hit={shot_result.HasHit} hitNetId={shot_result.HitNetId} " +
                 $"hitbox={shot_result.HitboxType} damage={shot_result.DidDamage} " +
                 $"appliedDamage={shot_result.Damage} multiplier={shot_result.DamageMultiplier:0.##} " +
+                $"spread={simulation_result.FiredSpreadDegrees:0.##} " +
+                $"recoil=({simulation_result.RecoilPitch:0.##},{simulation_result.RecoilYaw:0.##}) " +
                 $"ammo={simulation_result.FiredSlotState.AmmoInMagazine}/{simulation_result.FiredSlotState.ReserveAmmo}");
 
+            ApplyRecoil(simulation_result.RecoilPitch, simulation_result.RecoilYaw);
             RpcRegisterShot(shot_result);
         }
 
@@ -219,7 +223,7 @@ namespace Game.Players
             ShotResult result = WeaponShotResolver.ResolvePredicted(
                 _character,
                 simulation_result.FiredWeapon,
-                simulation_result.FiredWeaponStats,
+                simulation_result.FiredWeaponStats.WithSpread(simulation_result.FiredSpreadDegrees),
                 shot_state,
                 input,
                 _eye_offset,
@@ -229,6 +233,7 @@ namespace Game.Players
 
             _predicted_shots[new PredictedShotKey(result.WeaponSlot, result.ShotSequence)] =
                 new PredictedShot(result, tick);
+            ApplyRecoil(simulation_result.RecoilPitch, simulation_result.RecoilYaw);
             WeaponPresentation.PlayPredictedShot(this, result, simulation_result.FiredWeapon);
         }
 
@@ -302,6 +307,9 @@ namespace Game.Players
         [ClientRpc]
         private void RpcRegisterShot(ShotResult result)
         {
+            if (isOwned && isServer)
+                WeaponPresentation.PlayOwnerHitFeedback(result);
+
             if (isOwned && TryConsumePredictedShot(result, out ShotResult predicted_result))
             {
                 WarnIfPredictedShotMismatch(predicted_result, result);
@@ -370,6 +378,17 @@ namespace Game.Players
             return input.RequestedWeaponSlot != WeaponSlot.None &&
                 input.RequestedWeaponSlot != _predicted_weapon_state.ActiveSlot &&
                 GetWeaponDefinition(input.RequestedWeaponSlot) != null;
+        }
+
+        private void ApplyRecoil(float pitch, float yaw)
+        {
+            if ((pitch <= 0f && Mathf.Abs(yaw) <= 0f) ||
+                !TryGetComponent(out AimController aim_controller))
+            {
+                return;
+            }
+
+            aim_controller.ApplyRecoil(pitch, yaw);
         }
 
         private bool TryConsumePredictedShot(ShotResult confirmed_result, out ShotResult predicted_result)

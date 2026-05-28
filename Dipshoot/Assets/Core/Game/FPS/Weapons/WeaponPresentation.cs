@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Core.ClientPresentation;
+using Mirror;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -23,6 +25,29 @@ namespace Game.Players
             WeaponDefinition weapon)
         {
             PlayShotVisual(owner, result, weapon, true, true, false);
+            PlayOwnerHitFeedback(result);
+        }
+
+        public static void PlayOwnerHitFeedback(ShotResult result)
+        {
+            if (!result.DidDamage)
+                return;
+
+            ClientMatchHudLayer.PlayLocalHitMarker();
+
+            if (result.HitNetId == 0 ||
+                !NetworkClient.spawned.TryGetValue(result.HitNetId, out NetworkIdentity identity) ||
+                identity == null)
+            {
+                return;
+            }
+
+            PlayerHitHighlightController highlight_controller =
+                identity.GetComponent<PlayerHitHighlightController>();
+            if (highlight_controller == null)
+                highlight_controller = identity.gameObject.AddComponent<PlayerHitHighlightController>();
+
+            highlight_controller.Play();
         }
 
         public static void PlayConfirmedOwnerShot(

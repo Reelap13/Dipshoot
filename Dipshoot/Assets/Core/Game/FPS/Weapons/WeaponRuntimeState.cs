@@ -8,6 +8,9 @@ namespace Game.Players
         public int NextFireTick;
         public int ReloadStartTick;
         public int ReloadEndTick;
+        public int ConsecutiveShots;
+        public int LastShotTick;
+        public float SpreadDegrees;
         public bool IsReloading;
 
         public WeaponSlotState(
@@ -22,6 +25,9 @@ namespace Game.Players
             NextFireTick = tick;
             ReloadStartTick = -1;
             ReloadEndTick = -1;
+            ConsecutiveShots = 0;
+            LastShotTick = -1;
+            SpreadDegrees = 0f;
             IsReloading = false;
         }
     }

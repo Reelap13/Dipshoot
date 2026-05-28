@@ -40,6 +40,16 @@ namespace Game.Players
         [SerializeField] private string _template_airborne_parameter = "airborne";
         [SerializeField] private string _template_sprinting_parameter = "sprinting";
         [SerializeField] private string _template_dead_parameter = "dead";
+        [SerializeField] private string _kinemation_velocity_parameter = "Velocity";
+        [SerializeField] private string _kinemation_moving_parameter = "Moving";
+        [SerializeField] private string _kinemation_crouching_parameter = "Crouching";
+        [SerializeField] private string _kinemation_in_air_parameter = "InAir";
+        [SerializeField] private string _kinemation_sprinting_parameter = "Sprinting";
+        [SerializeField] private string _kinemation_crouch_weight_parameter = "CrouchWeight";
+        [SerializeField] private string _kinemation_sprint_pose_weight_parameter = "SprintPoseWeight";
+        [SerializeField] private string _kinemation_full_body_weight_parameter = "FullBodyWeight";
+        [SerializeField] private string _kinemation_proning_parameter = "Proning";
+        [SerializeField] private string _kinemation_prone_weight_parameter = "ProneWeight";
 
         private TickManager _registered_tick_manager;
         private AnimatorParameterCache _parameter_cache;
@@ -123,8 +133,15 @@ namespace Game.Players
             if (_weapon_controller == null)
                 _weapon_controller = GetComponent<WeaponController>();
 
-            if (_skeleton_root == null && _visual != null)
-                _skeleton_root = FindChildRecursive(_visual.ThirdPersonRoot, "ThirdPersonCharacter");
+            Transform current_skeleton_root = _visual == null
+                ? null
+                : FindChildRecursive(_visual.ThirdPersonRoot, "ThirdPersonCharacter");
+            if (current_skeleton_root != null && current_skeleton_root != _skeleton_root)
+            {
+                _skeleton_root = current_skeleton_root;
+                _third_person_animator = null;
+                _parameter_cache = default;
+            }
 
             if (_skeleton_root == null)
                 _skeleton_root = FindChildRecursive(transform, "ThirdPersonCharacter");
@@ -146,6 +163,9 @@ namespace Game.Players
                 _parameter_cache = default;
                 return;
             }
+
+            for (int i = 0; i < _third_person_animator.layerCount; i++)
+                _third_person_animator.SetLayerWeight(i, 1f);
 
             if (_parameter_cache.Animator != _third_person_animator)
                 _parameter_cache = new AnimatorParameterCache(_third_person_animator);
@@ -199,7 +219,7 @@ namespace Game.Players
                 IsFalling = !state.IsGrounded && state.Velocity.y < -0.1f,
                 WeaponSlot = _weapon_controller == null ? (int)WeaponSlot.None : (int)_weapon_controller.ActiveSlot,
                 FireSequence = _has_fire_sequence ? _last_fire_sequence : 0,
-                AimPitch = state.CameraPitch,
+                AimPitch = PlayerAimUtility.GetEffectiveCameraPitch(state),
             };
         }
 
@@ -247,6 +267,17 @@ namespace Game.Players
             SetBoolIfExists(_template_airborne_parameter, !state.IsGrounded);
             SetBoolIfExists(_template_sprinting_parameter, state.IsSprinting);
             SetBoolIfExists(_template_dead_parameter, false);
+
+            SetFloatIfExists(_kinemation_velocity_parameter, state.Speed01);
+            SetBoolIfExists(_kinemation_moving_parameter, state.Speed01 > 0.01f);
+            SetBoolIfExists(_kinemation_crouching_parameter, state.IsCrouching);
+            SetBoolIfExists(_kinemation_in_air_parameter, !state.IsGrounded);
+            SetFloatIfExists(_kinemation_sprinting_parameter, state.IsSprinting ? 1f : 0f);
+            SetFloatIfExists(_kinemation_crouch_weight_parameter, state.IsCrouching ? 1f : 0f);
+            SetFloatIfExists(_kinemation_sprint_pose_weight_parameter, state.IsSprinting ? 1f : 0f);
+            SetFloatIfExists(_kinemation_full_body_weight_parameter, 1f);
+            SetBoolIfExists(_kinemation_proning_parameter, false);
+            SetFloatIfExists(_kinemation_prone_weight_parameter, 0f);
 
             if (did_leave_ground)
                 TriggerIfExists(_template_jump_parameter);

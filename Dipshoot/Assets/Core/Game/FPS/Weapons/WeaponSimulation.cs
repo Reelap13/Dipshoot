@@ -10,6 +10,9 @@ namespace Game.Players
         public readonly WeaponDefinition FiredWeapon;
         public readonly WeaponStats FiredWeaponStats;
         public readonly WeaponSlotState FiredSlotState;
+        public readonly float FiredSpreadDegrees;
+        public readonly float RecoilPitch;
+        public readonly float RecoilYaw;
         public readonly bool DidFire;
 
         public WeaponSimulationResult(
@@ -17,12 +20,18 @@ namespace Game.Players
             WeaponDefinition fired_weapon,
             WeaponStats fired_weapon_stats,
             WeaponSlotState fired_slot_state,
+            float fired_spread_degrees,
+            float recoil_pitch,
+            float recoil_yaw,
             bool did_fire)
         {
             State = state;
             FiredWeapon = fired_weapon;
             FiredWeaponStats = fired_weapon_stats;
             FiredSlotState = fired_slot_state;
+            FiredSpreadDegrees = fired_spread_degrees;
+            RecoilPitch = recoil_pitch;
+            RecoilYaw = recoil_yaw;
             DidFire = did_fire;
         }
     }
@@ -72,16 +81,20 @@ namespace Game.Players
 
             WeaponDefinition active_weapon = GetWeapon(state.ActiveSlot, primary_weapon, pistol_weapon);
             if (active_weapon == null)
-                return new WeaponSimulationResult(state, null, default, default, false);
+                return new WeaponSimulationResult(state, null, default, default, 0f, 0f, 0f, false);
 
             WeaponStats active_stats = active_weapon.GetStats(stats_controller);
             WeaponSlotState active_slot_state = state.GetSlotState(state.ActiveSlot);
+            RecoverSpread(ref active_slot_state, active_stats, tick_rate);
 
             if (has_input && input.IsReloadPressed)
                 TryStartReload(ref active_slot_state, active_stats, tick, tick_rate);
 
             bool wants_fire = has_input && !did_switch_slot && WantsFire(input, active_weapon);
             bool did_fire = false;
+            float fired_spread = active_slot_state.SpreadDegrees;
+            float recoil_pitch = 0f;
+            float recoil_yaw = 0f;
             if (wants_fire)
             {
                 if (active_slot_state.IsReloading)
@@ -98,6 +111,13 @@ namespace Game.Players
                 {
                     active_slot_state.AmmoInMagazine--;
                     active_slot_state.NextFireTick = tick + SecondsToTicks(active_stats.FireInterval, tick_rate);
+                    active_slot_state.ConsecutiveShots = IsSprayReset(active_slot_state, active_stats, tick, tick_rate)
+                        ? 1
+                        : active_slot_state.ConsecutiveShots + 1;
+                    active_slot_state.LastShotTick = tick;
+                    fired_spread = GetEffectiveSpread(active_slot_state, active_stats, input);
+                    IncreaseSpread(ref active_slot_state, active_stats);
+                    GetRecoil(active_slot_state, active_stats, out recoil_pitch, out recoil_yaw);
                     did_fire = true;
                 }
             }
@@ -108,6 +128,9 @@ namespace Game.Players
                 did_fire ? active_weapon : null,
                 did_fire ? active_stats : default,
                 did_fire ? active_slot_state : default,
+                fired_spread,
+                recoil_pitch,
+                recoil_yaw,
                 did_fire);
         }
 
@@ -147,6 +170,63 @@ namespace Game.Players
             return weapon.FireMode == WeaponFireMode.Automatic
                 ? input.IsShootHeld
                 : input.IsShootPressed;
+        }
+
+        private static float GetEffectiveSpread(
+            WeaponSlotState state,
+            WeaponStats stats,
+            PlayerInputData input)
+        {
+            float spread = stats.SpreadDegrees + state.SpreadDegrees;
+            if (input.Move.sqrMagnitude > 0.01f)
+                spread += stats.MoveSpread;
+
+            return Mathf.Min(stats.MaxSpread, spread);
+        }
+
+        private static void IncreaseSpread(ref WeaponSlotState state, WeaponStats stats)
+        {
+            state.SpreadDegrees = Mathf.Min(
+                stats.MaxSpread,
+                state.SpreadDegrees + stats.SpreadPerShot);
+        }
+
+        private static void RecoverSpread(
+            ref WeaponSlotState state,
+            WeaponStats stats,
+            int tick_rate)
+        {
+            if (tick_rate <= 0)
+                return;
+
+            state.SpreadDegrees = Mathf.MoveTowards(
+                state.SpreadDegrees,
+                0f,
+                stats.SpreadRecovery / tick_rate);
+        }
+
+        private static bool IsSprayReset(
+            WeaponSlotState state,
+            WeaponStats stats,
+            int tick,
+            int tick_rate)
+        {
+            if (state.LastShotTick < 0 || tick_rate <= 0)
+                return true;
+
+            return tick - state.LastShotTick > SecondsToTicks(stats.FireInterval * 2.5f, tick_rate);
+        }
+
+        private static void GetRecoil(
+            WeaponSlotState state,
+            WeaponStats stats,
+            out float pitch,
+            out float yaw)
+        {
+            float shot_index = Mathf.Max(1, state.ConsecutiveShots);
+            pitch = Mathf.Min(stats.RecoilMax, stats.RecoilPitch * Mathf.Sqrt(shot_index));
+            float side = (state.ConsecutiveShots % 2 == 0) ? -1f : 1f;
+            yaw = side * stats.RecoilYaw * Mathf.Min(1f, shot_index / 4f);
         }
 
         private static void CompleteReloadIfReady(

@@ -23,6 +23,16 @@ MonoBehaviour:
   _reserve_ammo_stat: 2104
   _reload_time_stat: 2105
   _spread_degrees_stat: 2106
+  _spread_per_shot_stat: 2107
+  _spread_recovery_stat: 2108
+  _max_spread_stat: 2109
+  _move_spread_stat: 2110
+  _air_spread_stat: 2111
+  _crouch_spread_multiplier_stat: 2112
+  _recoil_pitch_stat: 2113
+  _recoil_yaw_stat: 2114
+  _recoil_recovery_stat: 2115
+  _recoil_max_stat: 2116
   _visual: {fileID: 11400000, guid: a5b397ccf768f554e9243b9b56bc0761, type: 2}
   _show_debug_tracer: 1
   _show_debug_hit_marker: 0

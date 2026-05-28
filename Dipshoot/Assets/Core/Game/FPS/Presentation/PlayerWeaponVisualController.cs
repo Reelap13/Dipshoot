@@ -131,8 +131,13 @@ namespace Game.Players
 
         private Transform GetThirdPersonWeaponRoot()
         {
-            Transform hand = FindChildRecursive(_visual.ThirdPersonRoot, ThirdPersonWeaponSocketName);
-            return hand == null ? _visual.ThirdPersonRoot : hand;
+            if (_visual.ThirdPersonCharacterInstance == null)
+                return null;
+
+            string socket_name = _visual.Definition == null
+                ? ThirdPersonWeaponSocketName
+                : _visual.Definition.ThirdPersonWeaponSocketName;
+            return FindChildRecursive(_visual.ThirdPersonCharacterInstance.transform, socket_name);
         }
 
         private string GetFirstPersonWeaponLayer()
@@ -265,7 +270,9 @@ namespace Game.Players
             {
                 if (_definition == definition &&
                     ParentMatches(_first_person_instance, first_person_parent) &&
-                    ParentMatches(_third_person_instance, third_person_parent))
+                    ParentMatches(_third_person_instance, third_person_parent) &&
+                    !NeedsInstance(_first_person_instance, definition?.FirstPersonPrefab, first_person_parent) &&
+                    !NeedsInstance(_third_person_instance, definition?.ThirdPersonPrefab, third_person_parent))
                 {
                     return;
                 }
@@ -382,6 +389,11 @@ namespace Game.Players
             private static bool ParentMatches(GameObject instance, Transform parent)
             {
                 return instance == null || instance.transform.parent == parent;
+            }
+
+            private static bool NeedsInstance(GameObject instance, GameObject prefab, Transform parent)
+            {
+                return instance == null && prefab != null && parent != null;
             }
 
             private static bool HasParameter(Animator animator, string parameter_name)

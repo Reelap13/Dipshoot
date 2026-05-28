@@ -11,6 +11,8 @@ namespace Game.Players.State
         public Vector3 Velocity;
         public Quaternion Rotation;
         public float CameraPitch;
+        public float RecoilPitch;
+        public float RecoilYaw;
         public bool IsGrounded;
         public MovementStance Stance;
         public float TimeSinceGrounded;
@@ -29,6 +31,8 @@ namespace Game.Players.State
                 Velocity = state.Velocity,
                 Rotation = state.Rotation,
                 CameraPitch = state.CameraPitch,
+                RecoilPitch = state.RecoilPitch,
+                RecoilYaw = state.RecoilYaw,
                 IsGrounded = state.IsGrounded,
                 Stance = state.Stance,
                 TimeSinceGrounded = state.TimeSinceGrounded,
@@ -45,6 +49,8 @@ namespace Game.Players.State
                 Velocity = Velocity,
                 Rotation = Rotation,
                 CameraPitch = CameraPitch,
+                RecoilPitch = RecoilPitch,
+                RecoilYaw = RecoilYaw,
                 IsGrounded = IsGrounded,
                 Stance = Stance,
                 TimeSinceGrounded = TimeSinceGrounded,

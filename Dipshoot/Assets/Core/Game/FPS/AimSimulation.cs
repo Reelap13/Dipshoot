@@ -12,6 +12,7 @@ namespace Game.Players
             float pitch_sensitivity,
             float min_camera_pitch,
             float max_camera_pitch,
+            float recoil_recovery,
             int tick)
         {
             float yaw = previous_state.Rotation.eulerAngles.y + input.Look.x * yaw_sensitivity;
@@ -20,6 +21,8 @@ namespace Game.Players
                 previous_state.CameraPitch - input.Look.y * pitch_sensitivity,
                 min_camera_pitch,
                 max_camera_pitch);
+            previous_state.RecoilPitch = Mathf.MoveTowards(previous_state.RecoilPitch, 0f, recoil_recovery);
+            previous_state.RecoilYaw = Mathf.MoveTowards(previous_state.RecoilYaw, 0f, recoil_recovery);
             previous_state.Tick = tick;
 
             return previous_state;

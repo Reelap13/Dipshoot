@@ -10,6 +10,7 @@ namespace Game.Players
         [SerializeField] private float _pitch_sensitivity = 0.15f;
         [SerializeField] private float _min_camera_pitch = -80f;
         [SerializeField] private float _max_camera_pitch = 80f;
+        [SerializeField] private WeaponController _weapon_controller;
 
         private int _last_server_processed_input_tick = -1;
 
@@ -65,7 +66,19 @@ namespace Game.Players
                 _pitch_sensitivity,
                 _min_camera_pitch,
                 _max_camera_pitch,
+                GetRecoilRecoveryPerTick(),
                 tick);
+        }
+
+        public void ApplyRecoil(float pitch, float yaw)
+        {
+            int tick = Character.TickManager == null ? 0 : Character.TickManager.CurrentTick;
+            if (!Character.StateBuffer.TryGetLastAtOrBefore(tick, out PlayerState state))
+                return;
+
+            state.RecoilPitch += pitch;
+            state.RecoilYaw += yaw;
+            Character.StateBuffer.Add(state);
         }
 
         private bool TryGetPreviousStateForTick(int tick, out PlayerState previous_state)
@@ -107,6 +120,17 @@ namespace Game.Players
         public override void ResetSimulation()
         {
             _last_server_processed_input_tick = -1;
+        }
+
+        private float GetRecoilRecoveryPerTick()
+        {
+            if (_weapon_controller == null)
+                _weapon_controller = GetComponent<WeaponController>();
+
+            if (_weapon_controller == null || Character.TickManager == null)
+                return 0f;
+
+            return _weapon_controller.ActiveRecoilRecovery / Character.TickManager.TickRate;
         }
     }
 }

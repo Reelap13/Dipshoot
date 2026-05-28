@@ -17,6 +17,8 @@ namespace Game.Players
         public Vector3 Velocity;
         public Quaternion Rotation;
         public float CameraPitch;
+        public float RecoilPitch;
+        public float RecoilYaw;
         public bool IsGrounded;
         public MovementStance Stance;
         public float TimeSinceGrounded;

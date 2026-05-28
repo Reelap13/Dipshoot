@@ -89,6 +89,8 @@ namespace Game.Players.State
                 Velocity = Vector3.Lerp(from_state.Velocity, to_state.Velocity, t),
                 Rotation = Quaternion.Slerp(from_state.Rotation, to_state.Rotation, t),
                 CameraPitch = Mathf.Lerp(from_state.CameraPitch, to_state.CameraPitch, t),
+                RecoilPitch = Mathf.Lerp(from_state.RecoilPitch, to_state.RecoilPitch, t),
+                RecoilYaw = Mathf.Lerp(from_state.RecoilYaw, to_state.RecoilYaw, t),
                 IsGrounded = t < 0.5f ? from_state.IsGrounded : to_state.IsGrounded,
                 Stance = t < 0.5f ? from_state.Stance : to_state.Stance,
                 TimeSinceGrounded = Mathf.Lerp(

@@ -9,6 +9,16 @@ namespace Game.Players
         public readonly int ReserveAmmo;
         public readonly float ReloadTime;
         public readonly float SpreadDegrees;
+        public readonly float SpreadPerShot;
+        public readonly float SpreadRecovery;
+        public readonly float MaxSpread;
+        public readonly float MoveSpread;
+        public readonly float AirSpread;
+        public readonly float CrouchSpreadMultiplier;
+        public readonly float RecoilPitch;
+        public readonly float RecoilYaw;
+        public readonly float RecoilRecovery;
+        public readonly float RecoilMax;
 
         public WeaponStats(
             int damage,
@@ -17,7 +27,17 @@ namespace Game.Players
             int magazine_size,
             int reserve_ammo,
             float reload_time,
-            float spread_degrees)
+            float spread_degrees,
+            float spread_per_shot,
+            float spread_recovery,
+            float max_spread,
+            float move_spread,
+            float air_spread,
+            float crouch_spread_multiplier,
+            float recoil_pitch,
+            float recoil_yaw,
+            float recoil_recovery,
+            float recoil_max)
         {
             Damage = damage;
             Range = range;
@@ -26,6 +46,38 @@ namespace Game.Players
             ReserveAmmo = reserve_ammo;
             ReloadTime = reload_time;
             SpreadDegrees = spread_degrees;
+            SpreadPerShot = spread_per_shot;
+            SpreadRecovery = spread_recovery;
+            MaxSpread = max_spread;
+            MoveSpread = move_spread;
+            AirSpread = air_spread;
+            CrouchSpreadMultiplier = crouch_spread_multiplier;
+            RecoilPitch = recoil_pitch;
+            RecoilYaw = recoil_yaw;
+            RecoilRecovery = recoil_recovery;
+            RecoilMax = recoil_max;
+        }
+
+        public WeaponStats WithSpread(float spread_degrees)
+        {
+            return new WeaponStats(
+                Damage,
+                Range,
+                FireInterval,
+                MagazineSize,
+                ReserveAmmo,
+                ReloadTime,
+                spread_degrees,
+                SpreadPerShot,
+                SpreadRecovery,
+                MaxSpread,
+                MoveSpread,
+                AirSpread,
+                CrouchSpreadMultiplier,
+                RecoilPitch,
+                RecoilYaw,
+                RecoilRecovery,
+                RecoilMax);
         }
     }
 }

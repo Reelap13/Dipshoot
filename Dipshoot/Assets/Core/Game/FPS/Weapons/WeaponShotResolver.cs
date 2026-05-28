@@ -103,11 +103,17 @@ namespace Game.Players
                 trigger_interaction,
                 hits,
                 out RaycastHit hit);
+            PlayerHitbox hitbox = has_hit
+                ? hit.collider.GetComponentInParent<PlayerHitbox>()
+                : null;
+            PlayerHealth hit_health = hitbox == null ? null : hitbox.Health;
+            float damage_multiplier = hitbox == null ? 1f : hitbox.DamageMultiplier;
+            bool did_damage = hit_health != null && !IsFriendlyTarget(shooter, hit_health);
 
             return new ShotResult
             {
                 ShooterNetId = shooter.netId,
-                HitNetId = has_hit ? GetHitNetId(hit) : 0,
+                HitNetId = hit_health != null ? hit_health.netId : has_hit ? GetHitNetId(hit) : 0,
                 WeaponSlot = weapon.Slot,
                 ShotSequence = input.ShotSequence,
                 SpreadSeed = spread_seed,
@@ -117,11 +123,11 @@ namespace Game.Players
                 Direction = direction,
                 Point = has_hit ? hit.point : origin + direction * weapon_stats.Range,
                 Normal = has_hit ? hit.normal : -direction,
-                Damage = weapon_stats.Damage,
-                HitboxType = PlayerHitboxType.None,
-                DamageMultiplier = 1f,
+                Damage = did_damage ? CalculateDamage(weapon_stats.Damage, damage_multiplier) : weapon_stats.Damage,
+                HitboxType = hitbox == null ? PlayerHitboxType.None : hitbox.Type,
+                DamageMultiplier = damage_multiplier,
                 HasHit = has_hit,
-                DidDamage = false,
+                DidDamage = did_damage,
             };
         }
 
@@ -135,10 +141,22 @@ namespace Game.Players
             WeaponStats weapon_stats,
             int spread_seed)
         {
-            Quaternion pitch_rotation = Quaternion.Euler(state.CameraPitch, 0f, 0f);
-            Quaternion spread_rotation = GetSpreadRotation(weapon_stats.SpreadDegrees, spread_seed);
+            Quaternion pitch_rotation = PlayerAimUtility.GetEffectivePitchRotation(state);
+            float spread_degrees = GetStateSpread(state, weapon_stats);
+            Quaternion spread_rotation = GetSpreadRotation(spread_degrees, spread_seed);
 
             return state.Rotation * pitch_rotation * spread_rotation * Vector3.forward;
+        }
+
+        private static float GetStateSpread(PlayerState state, WeaponStats weapon_stats)
+        {
+            float spread = weapon_stats.SpreadDegrees;
+            if (!state.IsGrounded)
+                spread += weapon_stats.AirSpread;
+            if (state.Stance == MovementStance.Crouching)
+                spread *= weapon_stats.CrouchSpreadMultiplier;
+
+            return Mathf.Min(weapon_stats.MaxSpread, spread);
         }
 
         private static Quaternion GetSpreadRotation(
@@ -248,8 +266,9 @@ namespace Game.Players
             {
                 RaycastHit current_hit = hits[i];
                 if (current_hit.collider == null ||
-                    current_hit.collider.isTrigger ||
                     IsOwnCollider(shooter.transform, current_hit.collider) ||
+                    IsNonHitboxPlayerCollider(current_hit.collider) ||
+                    IsIgnoredVisualTrigger(current_hit.collider) ||
                     current_hit.distance >= closest_distance)
                 {
                     continue;
@@ -333,6 +352,17 @@ namespace Game.Players
         {
             return target.GetComponentInParent<PlayerHealth>() != null ||
                 target.GetComponentInParent<PlayerHitbox>() != null;
+        }
+
+        private static bool IsIgnoredVisualTrigger(Collider target)
+        {
+            return target.isTrigger && target.GetComponentInParent<PlayerHitbox>() == null;
+        }
+
+        private static bool IsNonHitboxPlayerCollider(Collider target)
+        {
+            return target.GetComponentInParent<PlayerHitbox>() == null &&
+                target.GetComponentInParent<PlayerHealth>() != null;
         }
 
         private static bool IsFriendlyTarget(PlayerCharacter shooter, PlayerHealth target_health)

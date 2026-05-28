@@ -1,3 +1,4 @@
+using System;
 using Game.MatchMode;
 using Game.Players;
 using UnityEngine;
@@ -7,6 +8,14 @@ namespace Core.ClientPresentation
 {
     public class ClientMatchHudLayer : MonoBehaviour
     {
+        private const float HitMarkerDuration = 0.42f;
+        private const float HitMarkerFadeInDuration = 0.055f;
+        private const float HitMarkerHoldDuration = 0.12f;
+        private const float HitMarkerStartOffset = 8f;
+        private const float HitMarkerEndOffset = 22f;
+
+        private static ClientMatchHudLayer _active_instance;
+
         [SerializeField] private Color _red_color = new(0.95f, 0.18f, 0.14f, 1f);
         [SerializeField] private Color _blue_color = new(0.16f, 0.45f, 1f, 1f);
         [SerializeField] private Color _neutral_color = new(0.7f, 0.7f, 0.7f, 1f);
@@ -31,20 +40,44 @@ namespace Core.ClientPresentation
         [SerializeField] private Text _health_text;
         [SerializeField] private GameObject _crosshair;
         [SerializeField] private Color _crosshair_color = new(1f, 1f, 1f, 0.86f);
+        [SerializeField] private GameObject _hit_marker;
+        [SerializeField] private Color _hit_marker_color = new(1f, 0.96f, 0.72f, 1f);
 
         private TeamControlModeController _mode_controller;
         private WeaponController _local_weapon_controller;
         private ClientUiLayer _layer;
+        private Image[] _hit_marker_lines = Array.Empty<Image>();
+        private RectTransform[] _hit_marker_line_rects = Array.Empty<RectTransform>();
+        private float _hit_marker_started_at = -1f;
+
+        public static void PlayLocalHitMarker()
+        {
+            if (_active_instance != null)
+                _active_instance.PlayHitMarker();
+        }
 
         private void Awake()
         {
             _layer = GetOrAddLayer();
             _layer.Initialize(ClientUiLayerKind.MatchHud);
             EnsureCrosshair();
+            EnsureHitMarker();
+        }
+
+        private void OnEnable()
+        {
+            _active_instance = this;
+        }
+
+        private void OnDisable()
+        {
+            if (_active_instance == this)
+                _active_instance = null;
         }
 
         private void Update()
         {
+            UpdateHitMarker();
             UpdateWeaponPanel();
             UpdateHealth();
 
@@ -299,6 +332,129 @@ namespace Core.ClientPresentation
             Image image = line.GetComponent<Image>();
             image.color = _crosshair_color;
             image.raycastTarget = false;
+        }
+
+        private void EnsureHitMarker()
+        {
+            if (_hit_marker == null)
+            {
+                _hit_marker = new GameObject("HitMarker", typeof(RectTransform));
+                _hit_marker.transform.SetParent(transform, false);
+
+                RectTransform rect_transform = _hit_marker.GetComponent<RectTransform>();
+                rect_transform.anchorMin = new Vector2(0.5f, 0.5f);
+                rect_transform.anchorMax = new Vector2(0.5f, 0.5f);
+                rect_transform.pivot = new Vector2(0.5f, 0.5f);
+                rect_transform.anchoredPosition = Vector2.zero;
+                rect_transform.sizeDelta = new Vector2(96f, 96f);
+            }
+
+            if (_hit_marker.GetComponentsInChildren<Image>(true).Length < 4)
+            {
+                CreateHitMarkerLine("TopRight", _hit_marker.transform, -45f);
+                CreateHitMarkerLine("TopLeft", _hit_marker.transform, 45f);
+                CreateHitMarkerLine("BottomLeft", _hit_marker.transform, -45f);
+                CreateHitMarkerLine("BottomRight", _hit_marker.transform, 45f);
+            }
+
+            CacheHitMarkerLines();
+            _hit_marker.SetActive(false);
+        }
+
+        private void CreateHitMarkerLine(string name, Transform parent, float z_rotation)
+        {
+            GameObject line = new(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            line.transform.SetParent(parent, false);
+
+            RectTransform rect_transform = line.GetComponent<RectTransform>();
+            rect_transform.anchorMin = new Vector2(0.5f, 0.5f);
+            rect_transform.anchorMax = new Vector2(0.5f, 0.5f);
+            rect_transform.pivot = new Vector2(0.5f, 0.5f);
+            rect_transform.anchoredPosition = Vector2.zero;
+            rect_transform.sizeDelta = new Vector2(2f, 14f);
+            rect_transform.localRotation = Quaternion.Euler(0f, 0f, z_rotation);
+
+            Image image = line.GetComponent<Image>();
+            image.color = new Color(_hit_marker_color.r, _hit_marker_color.g, _hit_marker_color.b, 0f);
+            image.raycastTarget = false;
+        }
+
+        private void CacheHitMarkerLines()
+        {
+            _hit_marker_lines = _hit_marker == null
+                ? Array.Empty<Image>()
+                : _hit_marker.GetComponentsInChildren<Image>(true);
+            _hit_marker_line_rects = new RectTransform[_hit_marker_lines.Length];
+
+            for (int i = 0; i < _hit_marker_lines.Length; i++)
+                _hit_marker_line_rects[i] = _hit_marker_lines[i] == null
+                    ? null
+                    : _hit_marker_lines[i].rectTransform;
+        }
+
+        private void PlayHitMarker()
+        {
+            EnsureHitMarker();
+            _hit_marker_started_at = Time.unscaledTime;
+            _hit_marker.SetActive(true);
+        }
+
+        private void UpdateHitMarker()
+        {
+            if (_hit_marker == null || _hit_marker_started_at < 0f)
+                return;
+
+            float elapsed = Time.unscaledTime - _hit_marker_started_at;
+            if (elapsed >= HitMarkerDuration)
+            {
+                _hit_marker_started_at = -1f;
+                _hit_marker.SetActive(false);
+                return;
+            }
+
+            float alpha = GetHitMarkerAlpha(elapsed);
+            float offset = Mathf.Lerp(
+                HitMarkerStartOffset,
+                HitMarkerEndOffset,
+                Mathf.SmoothStep(0f, 1f, elapsed / HitMarkerDuration));
+
+            ApplyHitMarkerLine(0, new Vector2(1f, 1f), offset, alpha);
+            ApplyHitMarkerLine(1, new Vector2(-1f, 1f), offset, alpha);
+            ApplyHitMarkerLine(2, new Vector2(-1f, -1f), offset, alpha);
+            ApplyHitMarkerLine(3, new Vector2(1f, -1f), offset, alpha);
+        }
+
+        private float GetHitMarkerAlpha(float elapsed)
+        {
+            if (elapsed < HitMarkerFadeInDuration)
+                return Mathf.Lerp(0f, 1f, elapsed / HitMarkerFadeInDuration);
+
+            if (elapsed < HitMarkerFadeInDuration + HitMarkerHoldDuration)
+                return 1f;
+
+            return Mathf.Lerp(
+                1f,
+                0f,
+                (elapsed - HitMarkerFadeInDuration - HitMarkerHoldDuration) /
+                Mathf.Max(0.001f, HitMarkerDuration - HitMarkerFadeInDuration - HitMarkerHoldDuration));
+        }
+
+        private void ApplyHitMarkerLine(int index, Vector2 direction, float offset, float alpha)
+        {
+            if (index < 0 || index >= _hit_marker_lines.Length || index >= _hit_marker_line_rects.Length)
+                return;
+
+            Image image = _hit_marker_lines[index];
+            RectTransform rect_transform = _hit_marker_line_rects[index];
+            if (image == null || rect_transform == null)
+                return;
+
+            rect_transform.anchoredPosition = direction.normalized * offset;
+            image.color = new Color(
+                _hit_marker_color.r,
+                _hit_marker_color.g,
+                _hit_marker_color.b,
+                _hit_marker_color.a * alpha);
         }
     }
 }

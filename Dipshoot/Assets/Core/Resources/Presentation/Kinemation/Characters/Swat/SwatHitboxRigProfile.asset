@@ -1,0 +1,125 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4053d3559b254533b70999d628fb293f, type: 3}
+  m_Name: SwatHitboxRigProfile
+  m_EditorClassIdentifier: 
+  _bindings:
+  - Name: Head
+    StartBoneName: mixamorig:Head
+    EndBoneName: 
+    Type: 2
+    DamageMultiplier: 2
+    Shape: 1
+    LocalPosition: {x: 0, y: 0.06, z: 0}
+    Size: {x: 0.44, y: 0.44, z: 0.44}
+    Radius: 0.22
+    LengthPadding: 0
+  - Name: Chest
+    StartBoneName: mixamorig:Spine1
+    EndBoneName: mixamorig:Neck
+    Type: 3
+    DamageMultiplier: 1
+    Shape: 2
+    LocalPosition: {x: 0, y: 0, z: 0}
+    Size: {x: 0.56, y: 0.56, z: 0.56}
+    Radius: 0.28
+    LengthPadding: 0.04
+  - Name: Pelvis
+    StartBoneName: mixamorig:Hips
+    EndBoneName: mixamorig:Spine
+    Type: 4
+    DamageMultiplier: 0.9
+    Shape: 2
+    LocalPosition: {x: 0, y: 0, z: 0}
+    Size: {x: 0.52, y: 0.52, z: 0.52}
+    Radius: 0.26
+    LengthPadding: 0.02
+  - Name: LeftUpperArm
+    StartBoneName: mixamorig:LeftArm
+    EndBoneName: mixamorig:LeftForeArm
+    Type: 5
+    DamageMultiplier: 0.75
+    Shape: 2
+    LocalPosition: {x: 0, y: 0, z: 0}
+    Size: {x: 0.21, y: 0.21, z: 0.21}
+    Radius: 0.105
+    LengthPadding: 0.01
+  - Name: LeftLowerArm
+    StartBoneName: mixamorig:LeftForeArm
+    EndBoneName: mixamorig:LeftHand
+    Type: 5
+    DamageMultiplier: 0.75
+    Shape: 2
+    LocalPosition: {x: 0, y: 0, z: 0}
+    Size: {x: 0.18, y: 0.18, z: 0.18}
+    Radius: 0.09
+    LengthPadding: 0.01
+  - Name: RightUpperArm
+    StartBoneName: mixamorig:RightArm
+    EndBoneName: mixamorig:RightForeArm
+    Type: 5
+    DamageMultiplier: 0.75
+    Shape: 2
+    LocalPosition: {x: 0, y: 0, z: 0}
+    Size: {x: 0.21, y: 0.21, z: 0.21}
+    Radius: 0.105
+    LengthPadding: 0.01
+  - Name: RightLowerArm
+    StartBoneName: mixamorig:RightForeArm
+    EndBoneName: mixamorig:RightHand
+    Type: 5
+    DamageMultiplier: 0.75
+    Shape: 2
+    LocalPosition: {x: 0, y: 0, z: 0}
+    Size: {x: 0.18, y: 0.18, z: 0.18}
+    Radius: 0.09
+    LengthPadding: 0.01
+  - Name: LeftUpperLeg
+    StartBoneName: mixamorig:LeftUpLeg
+    EndBoneName: mixamorig:LeftLeg
+    Type: 6
+    DamageMultiplier: 0.75
+    Shape: 2
+    LocalPosition: {x: 0, y: 0, z: 0}
+    Size: {x: 0.26, y: 0.26, z: 0.26}
+    Radius: 0.13
+    LengthPadding: 0.02
+  - Name: LeftLowerLeg
+    StartBoneName: mixamorig:LeftLeg
+    EndBoneName: mixamorig:LeftFoot
+    Type: 6
+    DamageMultiplier: 0.75
+    Shape: 2
+    LocalPosition: {x: 0, y: 0, z: 0}
+    Size: {x: 0.21, y: 0.21, z: 0.21}
+    Radius: 0.105
+    LengthPadding: 0.02
+  - Name: RightUpperLeg
+    StartBoneName: mixamorig:RightUpLeg
+    EndBoneName: mixamorig:RightLeg
+    Type: 6
+    DamageMultiplier: 0.75
+    Shape: 2
+    LocalPosition: {x: 0, y: 0, z: 0}
+    Size: {x: 0.26, y: 0.26, z: 0.26}
+    Radius: 0.13
+    LengthPadding: 0.02
+  - Name: RightLowerLeg
+    StartBoneName: mixamorig:RightLeg
+    EndBoneName: mixamorig:RightFoot
+    Type: 6
+    DamageMultiplier: 0.75
+    Shape: 2
+    LocalPosition: {x: 0, y: 0, z: 0}
+    Size: {x: 0.21, y: 0.21, z: 0.21}
+    Radius: 0.105
+    LengthPadding: 0.02

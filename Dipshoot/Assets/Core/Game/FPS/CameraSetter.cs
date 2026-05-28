@@ -139,7 +139,7 @@ namespace Game.Players
             if (!_character.StateBuffer.TryGetLastAtOrBefore(_character.TickManager.CurrentTick, out PlayerState state))
                 return;
 
-            _camera_point.localRotation = Quaternion.Euler(state.CameraPitch, 0f, 0f);
+            _camera_point.localRotation = PlayerAimUtility.GetEffectivePitchRotation(state);
         }
     }
 }

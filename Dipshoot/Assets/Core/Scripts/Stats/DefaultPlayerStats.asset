@@ -83,3 +83,43 @@ MonoBehaviour:
     Value: 0.8
   - Preset: {fileID: 11400000, guid: 068b22adcc894989a867b0590ec9d07f, type: 2}
     Value: 0.6
+  - Preset: {fileID: 11400000, guid: a1000000000000000000000000002007, type: 2}
+    Value: 0.25
+  - Preset: {fileID: 11400000, guid: a1000000000000000000000000002008, type: 2}
+    Value: 5
+  - Preset: {fileID: 11400000, guid: a1000000000000000000000000002009, type: 2}
+    Value: 5
+  - Preset: {fileID: 11400000, guid: a1000000000000000000000000002010, type: 2}
+    Value: 0.65
+  - Preset: {fileID: 11400000, guid: a1000000000000000000000000002011, type: 2}
+    Value: 1.8
+  - Preset: {fileID: 11400000, guid: a1000000000000000000000000002012, type: 2}
+    Value: 0.65
+  - Preset: {fileID: 11400000, guid: a1000000000000000000000000002013, type: 2}
+    Value: 0.45
+  - Preset: {fileID: 11400000, guid: a1000000000000000000000000002014, type: 2}
+    Value: 0.22
+  - Preset: {fileID: 11400000, guid: a1000000000000000000000000002015, type: 2}
+    Value: 9
+  - Preset: {fileID: 11400000, guid: a1000000000000000000000000002016, type: 2}
+    Value: 12
+  - Preset: {fileID: 11400000, guid: a2000000000000000000000000002107, type: 2}
+    Value: 0.18
+  - Preset: {fileID: 11400000, guid: a2000000000000000000000000002108, type: 2}
+    Value: 7
+  - Preset: {fileID: 11400000, guid: a2000000000000000000000000002109, type: 2}
+    Value: 3
+  - Preset: {fileID: 11400000, guid: a2000000000000000000000000002110, type: 2}
+    Value: 0.35
+  - Preset: {fileID: 11400000, guid: a2000000000000000000000000002111, type: 2}
+    Value: 1.2
+  - Preset: {fileID: 11400000, guid: a2000000000000000000000000002112, type: 2}
+    Value: 0.65
+  - Preset: {fileID: 11400000, guid: a2000000000000000000000000002113, type: 2}
+    Value: 0.75
+  - Preset: {fileID: 11400000, guid: a2000000000000000000000000002114, type: 2}
+    Value: 0.28
+  - Preset: {fileID: 11400000, guid: a2000000000000000000000000002115, type: 2}
+    Value: 12
+  - Preset: {fileID: 11400000, guid: a2000000000000000000000000002116, type: 2}
+    Value: 8

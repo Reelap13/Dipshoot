@@ -7,6 +7,9 @@ namespace Game.Players
     [DisallowMultipleComponent]
     public class PlayerVisualController : NetworkBehaviour
     {
+        private const string FirstPersonArmsName = "FirstPersonArms";
+        private const string ThirdPersonCharacterName = "ThirdPersonCharacter";
+
         [SerializeField] private PlayerCharacter _character;
         [SerializeField] private PlayerVisualDefinition _definition;
         [SerializeField] private Transform _camera_point;
@@ -21,6 +24,9 @@ namespace Game.Players
 
         private GameObject _first_person_arms_instance;
         private GameObject _third_person_character_instance;
+        private GameObject _last_third_person_prefab;
+        private PlayerMatchIdentity _match_identity;
+        private Game.MatchMode.TeamId _last_team_id;
         private Renderer[] _third_person_renderers;
         private bool _has_visibility_state;
         private bool _last_first_person_visible;
@@ -31,8 +37,10 @@ namespace Game.Players
         public Transform FirstPersonRoot => _first_person_root;
         public Transform ThirdPersonRoot => _third_person_root;
         public GameObject FirstPersonArmsInstance => _first_person_arms_instance;
+        public GameObject ThirdPersonCharacterInstance => _third_person_character_instance;
         public bool IsFirstPersonVisible => isClient && isOwned;
         public bool IsThirdPersonVisible => isClient && !isOwned;
+        private bool ShouldSpawnThirdPersonCharacter => !(isClient && isOwned && !isServer);
 
         private void Awake()
         {
@@ -87,6 +95,9 @@ namespace Game.Players
 
             if (_stats == null)
                 _stats = GetComponent<StatsController>();
+
+            if (_match_identity == null)
+                _match_identity = GetComponent<PlayerMatchIdentity>();
         }
 
         private void EnsureVisualRoots()
@@ -122,21 +133,50 @@ namespace Game.Players
             }
 
             if (_first_person_arms_instance == null)
-                _first_person_arms_instance = FindDirectChildGameObject(_first_person_root, "FirstPersonArms");
+                _first_person_arms_instance = FindDirectChildGameObject(_first_person_root, FirstPersonArmsName);
+
+            if (_first_person_arms_instance != null && _definition.FirstPersonArmsPrefab == null)
+            {
+                Destroy(_first_person_arms_instance);
+                _first_person_arms_instance = null;
+            }
 
             if (_first_person_arms_instance == null && _definition.FirstPersonArmsPrefab != null)
             {
                 _first_person_arms_instance = Instantiate(_definition.FirstPersonArmsPrefab, _first_person_root);
-                _first_person_arms_instance.name = "FirstPersonArms";
+                _first_person_arms_instance.name = FirstPersonArmsName;
+                PlayerVisualLayerUtility.SetLayerRecursive(_first_person_arms_instance, _definition.FirstPersonCharacterLayer);
             }
 
             if (_third_person_character_instance == null)
-                _third_person_character_instance = FindDirectChildGameObject(_third_person_root, "ThirdPersonCharacter");
+                _third_person_character_instance = FindDirectChildGameObject(_third_person_root, ThirdPersonCharacterName);
 
-            if (_third_person_character_instance == null && _definition.ThirdPersonCharacterPrefab != null)
+            if (!ShouldSpawnThirdPersonCharacter)
             {
-                _third_person_character_instance = Instantiate(_definition.ThirdPersonCharacterPrefab, _third_person_root);
-                _third_person_character_instance.name = "ThirdPersonCharacter";
+                DestroyThirdPersonCharacter();
+                ApplyLegacyRendererVisibility(!HasRenderer(_first_person_root));
+                return;
+            }
+
+            GameObject third_person_prefab = GetThirdPersonPrefab();
+            _last_team_id = GetTeamId();
+            if (_third_person_character_instance != null &&
+                third_person_prefab != null &&
+                _last_third_person_prefab != third_person_prefab)
+            {
+                Destroy(_third_person_character_instance);
+                _third_person_character_instance = null;
+                _third_person_renderers = null;
+                _has_visibility_state = false;
+            }
+
+            if (_third_person_character_instance == null && third_person_prefab != null)
+            {
+                _third_person_character_instance = Instantiate(third_person_prefab, _third_person_root);
+                _third_person_character_instance.name = ThirdPersonCharacterName;
+                ApplyThirdPersonLocalTransform(_third_person_character_instance.transform);
+                _last_third_person_prefab = third_person_prefab;
+                PlayerVisualLayerUtility.SetLayerRecursive(_third_person_character_instance, _definition.ThirdPersonCharacterLayer);
                 AssignThirdPersonAnimatorController();
                 CacheThirdPersonRenderers();
                 RebuildHitboxRig();
@@ -179,7 +219,7 @@ namespace Game.Players
         {
             PlayerHitboxRigController hitbox_rig = GetComponent<PlayerHitboxRigController>();
             if (hitbox_rig != null)
-                hitbox_rig.Rebuild();
+                hitbox_rig.RequestRebuild();
         }
 
         private void AssignThirdPersonAnimatorController()
@@ -233,6 +273,16 @@ namespace Game.Players
             _third_person_root.localPosition = position;
         }
 
+        private void ApplyThirdPersonLocalTransform(Transform target)
+        {
+            if (target == null || _definition == null)
+                return;
+
+            target.localPosition = _definition.ThirdPersonLocalPosition;
+            target.localRotation = Quaternion.Euler(_definition.ThirdPersonLocalEulerAngles);
+            target.localScale = _definition.ThirdPersonLocalScale;
+        }
+
         private float GetStandHeight()
         {
             return _stats == null
@@ -265,8 +315,39 @@ namespace Game.Players
         private bool NeedsVisualInstanceRefresh()
         {
             return _definition != null &&
+                (_last_team_id != GetTeamId() ||
                 ((_first_person_arms_instance == null && _definition.FirstPersonArmsPrefab != null) ||
-                (_third_person_character_instance == null && _definition.ThirdPersonCharacterPrefab != null));
+                (!ShouldSpawnThirdPersonCharacter && _third_person_character_instance != null) ||
+                (ShouldSpawnThirdPersonCharacter && _third_person_character_instance == null && GetThirdPersonPrefab() != null)));
+        }
+
+        private void DestroyThirdPersonCharacter()
+        {
+            if (_third_person_character_instance == null)
+                return;
+
+            Destroy(_third_person_character_instance);
+            _third_person_character_instance = null;
+            _last_third_person_prefab = null;
+            _third_person_renderers = null;
+            _has_visibility_state = false;
+        }
+
+        private GameObject GetThirdPersonPrefab()
+        {
+            return _definition == null
+                ? null
+                : _definition.GetThirdPersonCharacterPrefab(GetTeamId());
+        }
+
+        private Game.MatchMode.TeamId GetTeamId()
+        {
+            if (_match_identity == null)
+                _match_identity = GetComponent<PlayerMatchIdentity>();
+
+            return _match_identity == null
+                ? Game.MatchMode.TeamId.None
+                : _match_identity.TeamId;
         }
 
         private void ApplyLegacyRendererVisibility(bool is_visible)

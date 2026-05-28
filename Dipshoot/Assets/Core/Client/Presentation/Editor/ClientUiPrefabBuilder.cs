@@ -560,6 +560,7 @@ namespace Core.ClientPresentation.Editor
                 TextAnchor.MiddleLeft);
 
             GameObject crosshair = CreateCrosshair(root.transform);
+            GameObject hit_marker = CreateHitMarker(root.transform);
 
             SerializedObject serialized_object = new(root.GetComponent<ClientMatchHudLayer>());
             Set(serialized_object, "_phase_banner", phase_banner);
@@ -580,6 +581,7 @@ namespace Core.ClientPresentation.Editor
             Set(serialized_object, "_weapon_reload_progress_fill", weapon_reload_progress_fill);
             Set(serialized_object, "_health_text", health_text);
             Set(serialized_object, "_crosshair", crosshair);
+            Set(serialized_object, "_hit_marker", hit_marker);
             serialized_object.ApplyModifiedPropertiesWithoutUndo();
 
             SavePrefab(root, "ClientMatchHudLayer.prefab");
@@ -604,6 +606,46 @@ namespace Core.ClientPresentation.Editor
             CreateImage("Right", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(9f, 0f), new Vector2(8f, 2f), color).raycastTarget = false;
 
             return root;
+        }
+
+        private static GameObject CreateHitMarker(Transform parent)
+        {
+            GameObject root = new("HitMarker", typeof(RectTransform));
+            root.transform.SetParent(parent, false);
+
+            RectTransform rect_transform = root.GetComponent<RectTransform>();
+            rect_transform.anchorMin = new Vector2(0.5f, 0.5f);
+            rect_transform.anchorMax = new Vector2(0.5f, 0.5f);
+            rect_transform.pivot = new Vector2(0.5f, 0.5f);
+            rect_transform.anchoredPosition = Vector2.zero;
+            rect_transform.sizeDelta = new Vector2(96f, 96f);
+
+            Color color = new(1f, 0.96f, 0.72f, 0f);
+            CreateHitMarkerLine("TopRight", root.transform, -45f, color);
+            CreateHitMarkerLine("TopLeft", root.transform, 45f, color);
+            CreateHitMarkerLine("BottomLeft", root.transform, -45f, color);
+            CreateHitMarkerLine("BottomRight", root.transform, 45f, color);
+            root.SetActive(false);
+            return root;
+        }
+
+        private static void CreateHitMarkerLine(
+            string name,
+            Transform parent,
+            float z_rotation,
+            Color color)
+        {
+            Image line = CreateImage(
+                name,
+                parent,
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                new Vector2(2f, 14f),
+                color);
+            line.rectTransform.localRotation = Quaternion.Euler(0f, 0f, z_rotation);
+            line.raycastTarget = false;
         }
 
         private static GameObject CreateLayerRoot<T>(

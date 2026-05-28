@@ -23,6 +23,16 @@ MonoBehaviour:
   _reserve_ammo_stat: 2004
   _reload_time_stat: 2005
   _spread_degrees_stat: 2006
+  _spread_per_shot_stat: 2007
+  _spread_recovery_stat: 2008
+  _max_spread_stat: 2009
+  _move_spread_stat: 2010
+  _air_spread_stat: 2011
+  _crouch_spread_multiplier_stat: 2012
+  _recoil_pitch_stat: 2013
+  _recoil_yaw_stat: 2014
+  _recoil_recovery_stat: 2015
+  _recoil_max_stat: 2016
   _visual: {fileID: 11400000, guid: 1a438f2f68b55be4087b059e13ea1d4f, type: 2}
   _show_debug_tracer: 1
   _show_debug_hit_marker: 0
