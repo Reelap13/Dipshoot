@@ -27,6 +27,8 @@ namespace Game.Players
         private TickManager _registered_tick_manager;
         private bool _has_server_tick_offset;
         private double _server_tick_offset;
+        private bool _has_render_state;
+        private PlayerState _render_state;
         private readonly RemoteInterpolationBuffer _remote_interpolation_buffer = new();
 
         public TickLayer TickLayer => TickLayer.StateSnapshot;
@@ -72,6 +74,12 @@ namespace Game.Players
         public void Tick(GameTickContext context)
         {
             SendAuthoritativeState();
+        }
+
+        public bool TryGetRenderState(out PlayerState state)
+        {
+            state = _render_state;
+            return _has_render_state;
         }
 
         private void TryRegisterTickSystem()
@@ -176,12 +184,12 @@ namespace Game.Players
             if (_character.StateBuffer.TryGet(current_tick, out PlayerState replayed_state))
             {
                 _movement.ApplyState(replayed_state);
-                LastAppliedStateTick = replayed_state.Tick;
+                SetRenderState(replayed_state);
             }
             else
             {
                 _movement.ApplyState(state);
-                LastAppliedStateTick = state.Tick;
+                SetRenderState(state);
             }
 
             AcknowledgeProcessedInputs(snapshot.LastProcessedInputTick);
@@ -216,7 +224,7 @@ namespace Game.Players
         {
             _character.StateBuffer.Add(state);
             _movement.ApplyState(state);
-            LastAppliedStateTick = state.Tick;
+            SetRenderState(state);
         }
 
         private void AcknowledgeProcessedInputs(int last_processed_input_tick)
@@ -254,8 +262,15 @@ namespace Game.Players
                 return;
 
             _movement.ApplyState(interpolated_state);
-            LastAppliedStateTick = interpolated_state.Tick;
+            SetRenderState(interpolated_state);
             _remote_interpolation_buffer.RemoveUpTo(Mathf.FloorToInt(render_tick) - 1);
+        }
+
+        private void SetRenderState(PlayerState state)
+        {
+            _render_state = state;
+            _has_render_state = true;
+            LastAppliedStateTick = state.Tick;
         }
 
         private void UpdateServerTickEstimate(int server_tick)

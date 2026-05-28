@@ -13,6 +13,7 @@ namespace Game.Players
         [SerializeField] private PlayerCharacter _character;
         [SerializeField] private PlayerVisualController _visual;
         [SerializeField] private WeaponController _weapon_controller;
+        [SerializeField] private StateSynchronizer _state_synchronizer;
         [SerializeField] private Transform _skeleton_root;
         [SerializeField] private Animator _third_person_animator;
         [SerializeField] private bool _server_updates_animator = true;
@@ -133,6 +134,9 @@ namespace Game.Players
             if (_weapon_controller == null)
                 _weapon_controller = GetComponent<WeaponController>();
 
+            if (_state_synchronizer == null)
+                _state_synchronizer = GetComponent<StateSynchronizer>();
+
             Transform current_skeleton_root = _visual == null
                 ? null
                 : FindChildRecursive(_visual.ThirdPersonRoot, "ThirdPersonCharacter");
@@ -225,6 +229,15 @@ namespace Game.Players
 
         private PlayerState GetLatestState()
         {
+            if (_character != null &&
+                _character.isClient &&
+                !_character.isOwned &&
+                _state_synchronizer != null &&
+                _state_synchronizer.TryGetRenderState(out PlayerState render_state))
+            {
+                return render_state;
+            }
+
             if (_character != null &&
                 _character.TickManager != null &&
                 _character.StateBuffer.TryGetLastAtOrBefore(_character.TickManager.CurrentTick, out PlayerState state))
