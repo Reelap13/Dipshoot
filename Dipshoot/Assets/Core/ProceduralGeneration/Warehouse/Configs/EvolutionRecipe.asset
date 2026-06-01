@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9c00ad92356a144b8b84d495eaea5c0, type: 3}
+  m_Name: EvolutionRecipe
+  m_EditorClassIdentifier: 
+  MapWidth: 15
+  MapHeight: 30
+  CellSize: 3
+  SpawnAPosition: {x: 7.5, y: 1}
+  SpawnBPosition: {x: 7.5, y: 29}
+  CapturePointPosition: {x: 7.5, y: 15}
+  SpawnClearRadius: 2
+  CaptureClearRadius: 3
+  SymmetryMode: 0
+  InitialStructureCellRatio: 0.4
+  TargetStructureCellRatio: 0.55
+  MinStructureCellRatio: 0.4
+  MaxStructureCellRatio: 0.7
+  TargetCoverCellRatio: 0.12
+  StructurePlacementAttempts: 1200
+  CoverPlacementAttempts: 700
+  HighContainerChance: 0.15
+  BridgeChance: 0.25
+  BridgePlacementAttempts: 300
+  MaxBridgeCellsPerHalf: 6
+  MaxBridgePairCountPerHalf: 2
+  MaxBridgeBlockedContainerSides: 3
+  TopCoverChance: 0.45
+  FullCoverChance: 0.45
+  StructureCellsPerLadder: 8
+  ExtraCoverPairs: 0
+  StructureDensityPenalty: 10
+  MinTopComponentSizeForLadder: 2
+  CoverClusterRadius: 2
+  MaxCoverNeighbors: 3
+  CoverClusterPenalty: 50
+  MaxPathCostDifference: 8
+  ContainerLowHeight: 2.7
+  ContainerHighHeight: 5.4
+  BridgeHeight: 0.25
+  ContainerLowPrefab: {fileID: 4583103351965881283, guid: f9b9014102a2347499d533a4e61df5ee, type: 3}
+  ContainerHighPrefab: {fileID: 510176864729870452, guid: 8352cc53ec1b10044962d04c26529b33, type: 3}
+  BridgePrefab: {fileID: 6200000000000000001, guid: c5d41c1f2b6f41bfb43c647b43c154b1, type: 3}
+  LadderPrefab: {fileID: 7541435699971633257, guid: 4f12c399b9938ae43b775f2026125cc7, type: 3}
+  PartialCoverPrefab: {fileID: 2102440690204817838, guid: a25386e1d2a8cf34ead8de6a9e30cb55, type: 3}
+  FullCoverPrefab: {fileID: 6130014764269459892, guid: 1a467380be355aa46a152e3123f68bd7, type: 3}
+  FloorPrefab: {fileID: 5927626330356073840, guid: cafa3e3f5e769574b9681eda9fa5fb92, type: 3}
+  WallPrefab: {fileID: 6442687450418211264, guid: 80eb524ff5c8e5349baad9784c98753e, type: 3}
+  SpawnMarkerPrefab: {fileID: 2817191206490059506, guid: a84f0ee1b13782f428d286e7c082e9cc, type: 3}
+  CapturePointMarkerPrefab: {fileID: 1604473248831348406, guid: 97217c1081a8ce9449755eaf0920de1f, type: 3}
+  PartialCoverVariants: []
+  FullCoverVariants: []
+  PopulationSize: 32
+  Generations: 40
+  EliteCount: 4
+  TournamentSize: 4
+  BaselineSeedCount: 4
+  MutationRate: 0.35
+  MinMutationSteps: 1
+  MaxMutationSteps: 5
+  AggressiveMutationSteps: 9
+  DuplicateGenomePenalty: 200

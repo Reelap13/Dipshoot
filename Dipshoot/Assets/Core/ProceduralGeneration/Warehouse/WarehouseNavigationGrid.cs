@@ -67,6 +67,45 @@ namespace Game.ProcGen.Warehouse
             return FindPathCost(startPosition, endPosition, allowVerticalMovement: false);
         }
 
+        public bool TryFindGroundPath(Vector2 startPosition, Vector2 endPosition, List<Vector2Int> path)
+        {
+            path.Clear();
+            Vector2Int start = GridPointToCell(startPosition);
+            Vector2Int end = GridPointToCell(endPosition);
+            if (!IsWalkable(start, 0) || !IsWalkable(end, 0))
+                return false;
+
+            bool[,] visited = new bool[Width, Height];
+            Vector2Int[,] previous = new Vector2Int[Width, Height];
+            Queue<Vector2Int> queue = new();
+            visited[start.x, start.y] = true;
+            previous[start.x, start.y] = new Vector2Int(-1, -1);
+            queue.Enqueue(start);
+
+            while (queue.Count > 0)
+            {
+                Vector2Int current = queue.Dequeue();
+                if (current == end)
+                {
+                    BuildPath(previous, end, path);
+                    return true;
+                }
+
+                for (int i = 0; i < CardinalDirections.Length; i++)
+                {
+                    Vector2Int next = current + CardinalDirections[i];
+                    if (!IsInside(next) || visited[next.x, next.y] || !IsWalkable(next, 0))
+                        continue;
+
+                    visited[next.x, next.y] = true;
+                    previous[next.x, next.y] = current;
+                    queue.Enqueue(next);
+                }
+            }
+
+            return false;
+        }
+
         private int FindPathCost(Vector2 startPosition, Vector2 endPosition, bool allowVerticalMovement)
         {
             Vector2Int start = GridPointToCell(startPosition);
@@ -276,6 +315,18 @@ namespace Game.ProcGen.Warehouse
                 for (int x = 0; x < placement.Size.x; x++)
                     action(new Vector2Int(placement.Origin.x + x, placement.Origin.y + y));
             }
+        }
+
+        private static void BuildPath(Vector2Int[,] previous, Vector2Int end, List<Vector2Int> path)
+        {
+            Vector2Int current = end;
+            while (current.x >= 0 && current.y >= 0)
+            {
+                path.Add(current);
+                current = previous[current.x, current.y];
+            }
+
+            path.Reverse();
         }
 
         public static Vector2Int DirectionToVector(WarehouseDirection direction)

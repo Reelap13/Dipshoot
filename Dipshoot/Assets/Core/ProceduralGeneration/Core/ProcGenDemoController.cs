@@ -1,32 +1,33 @@
-using Game.ProcGen.Chunked;
-using Game.ProcGen.City;
 using Game.ProcGen.Warehouse;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.ProcGen
 {
     public enum ProcGenDemoKind
     {
-        City,
-        ChunkedTerrain,
-        Warehouse,
-        WarehouseEvolution
+        AgentRuleBased,
+        Evolutionary,
+        WaveFunctionCollapse
     }
 
     public sealed class ProcGenDemoController : MonoBehaviour
     {
-        [SerializeField] private ProcGenDemoKind _generator = ProcGenDemoKind.Warehouse;
-        [SerializeField] private CityRecipe _cityRecipe;
-        [SerializeField] private ChunkedTerrainRecipe _chunkedTerrainRecipe;
-        [SerializeField] private WarehouseRecipe _warehouseRecipe;
-        [SerializeField] private WarehouseEvolutionRecipe _warehouseEvolutionRecipe;
+        [SerializeField] private ProcGenDemoKind _generator = ProcGenDemoKind.AgentRuleBased;
+        [FormerlySerializedAs("_warehouseRecipe")]
+        [SerializeField] private WarehouseRecipe _agentRuleBasedRecipe;
+        [FormerlySerializedAs("_warehouseEvolutionRecipe")]
+        [SerializeField] private WarehouseEvolutionRecipe _evolutionaryRecipe;
+        [SerializeField] private WarehouseWfcRecipe _waveFunctionCollapseRecipe;
+        [SerializeField] private Transform _agentRuleBasedOutputRoot;
+        [SerializeField] private Transform _evolutionaryOutputRoot;
+        [SerializeField] private Transform _waveFunctionCollapseOutputRoot;
         [SerializeField] private int _seed = 444;
         [SerializeField] private bool _randomizeSeedOnGenerate;
         [SerializeField] private bool _generateOnStart = true;
         [SerializeField] private bool _logDiagnostics = true;
 
         private readonly GenerationPipeline _pipeline = new();
-        private readonly PipelineMapGenerator _mapGenerator = new();
 
         private void Start()
         {
@@ -39,65 +40,60 @@ namespace Game.ProcGen
             int seed = ResolveSeed();
             switch (_generator)
             {
-                case ProcGenDemoKind.City:
-                    GenerateCity(seed);
+                case ProcGenDemoKind.AgentRuleBased:
+                    GenerateAgentRuleBased(seed);
                     break;
-                case ProcGenDemoKind.ChunkedTerrain:
-                    GenerateChunkedTerrain(seed);
+                case ProcGenDemoKind.Evolutionary:
+                    GenerateEvolutionary(seed);
                     break;
-                case ProcGenDemoKind.Warehouse:
-                    GenerateWarehouse(seed);
-                    break;
-                case ProcGenDemoKind.WarehouseEvolution:
-                    GenerateWarehouseEvolution(seed);
+                case ProcGenDemoKind.WaveFunctionCollapse:
+                    GenerateWaveFunctionCollapse(seed);
                     break;
             }
         }
 
         public void ClearGenerated()
         {
-            DestroyChild("GeneratedCity");
-            DestroyChild("GeneratedMap");
-            DestroyChild("GeneratedWarehouse");
-            DestroyChild("GeneratedWarehouseEvolution");
+            DestroyGenerated(_agentRuleBasedOutputRoot);
+            DestroyGenerated(_evolutionaryOutputRoot);
+            DestroyGenerated(_waveFunctionCollapseOutputRoot);
+            DestroyDirectChild("GeneratedWarehouse");
+            DestroyDirectChild("GeneratedWarehouseEvolution");
+            DestroyDirectChild("GeneratedCity");
+            DestroyDirectChild("GeneratedMap");
         }
 
-        private void GenerateCity(int seed)
+        [ContextMenu("Ensure Algorithm Roots")]
+        public void EnsureAlgorithmRoots()
         {
-            CityRecipe recipe = GetOrCreateCityRecipe();
-            GenerationRequest request = new(seed, true);
-            GenerationResult result = _pipeline.Generate(request, recipe);
-            LogDiagnostics(result);
-            CityBuildPlan plan = result.GetRequired(CityKeys.BuildPlan);
-            CityPlanExecutor.Execute(plan, transform, recipe, "GeneratedCity", request.ClearPreviousOutput);
+            _agentRuleBasedOutputRoot = GetOrCreateOutputRoot(_agentRuleBasedOutputRoot, "Agent Rule-Based");
+            _evolutionaryOutputRoot = GetOrCreateOutputRoot(_evolutionaryOutputRoot, "Evolutionary");
+            _waveFunctionCollapseOutputRoot = GetOrCreateOutputRoot(_waveFunctionCollapseOutputRoot, "Wave Function Collapse");
         }
 
-        private void GenerateChunkedTerrain(int seed)
+        private void GenerateAgentRuleBased(int seed)
         {
-            ChunkedTerrainRecipe recipe = GetOrCreateChunkedTerrainRecipe();
-            GenerationRequest request = new(seed, true);
-            MapBuildPlan plan = _mapGenerator.Generate(request, recipe);
-            ChunkedTerrainPlanExecutor.Execute(plan, transform, recipe, "GeneratedMap", request.ClearPreviousOutput);
+            GenerateWarehouse(seed, GetOrCreateAgentRuleBasedRecipe(), ref _agentRuleBasedOutputRoot, "Agent Rule-Based");
         }
 
-        private void GenerateWarehouse(int seed)
+        private void GenerateEvolutionary(int seed)
         {
-            WarehouseRecipe recipe = GetOrCreateWarehouseRecipe();
+            GenerateWarehouse(seed, GetOrCreateEvolutionaryRecipe(), ref _evolutionaryOutputRoot, "Evolutionary");
+        }
+
+        private void GenerateWaveFunctionCollapse(int seed)
+        {
+            GenerateWarehouse(seed, GetOrCreateWaveFunctionCollapseRecipe(), ref _waveFunctionCollapseOutputRoot, "Wave Function Collapse");
+        }
+
+        private void GenerateWarehouse(int seed, WarehouseRecipe recipe, ref Transform outputRoot, string rootName)
+        {
+            outputRoot = GetOrCreateOutputRoot(outputRoot, rootName);
             GenerationRequest request = new(seed, true);
             GenerationResult result = _pipeline.Generate(request, recipe);
             LogDiagnostics(result);
             WarehouseBuildPlan plan = result.GetRequired(WarehouseKeys.BuildPlan);
-            WarehousePlanExecutor.Execute(plan, transform, recipe, "GeneratedWarehouse", request.ClearPreviousOutput);
-        }
-
-        private void GenerateWarehouseEvolution(int seed)
-        {
-            WarehouseEvolutionRecipe recipe = GetOrCreateWarehouseEvolutionRecipe();
-            GenerationRequest request = new(seed, true);
-            GenerationResult result = _pipeline.Generate(request, recipe);
-            LogDiagnostics(result);
-            WarehouseBuildPlan plan = result.GetRequired(WarehouseKeys.BuildPlan);
-            WarehousePlanExecutor.Execute(plan, transform, recipe, "GeneratedWarehouseEvolution", request.ClearPreviousOutput);
+            WarehousePlanExecutor.Execute(plan, outputRoot, recipe, "Generated", request.ClearPreviousOutput);
         }
 
         private int ResolveSeed()
@@ -112,44 +108,48 @@ namespace Game.ProcGen
             }
         }
 
-        private CityRecipe GetOrCreateCityRecipe()
+        private WarehouseRecipe GetOrCreateAgentRuleBasedRecipe()
         {
-            if (_cityRecipe != null)
-                return _cityRecipe;
+            if (_agentRuleBasedRecipe != null)
+                return _agentRuleBasedRecipe;
 
-            _cityRecipe = ScriptableObject.CreateInstance<CityRecipe>();
-            _cityRecipe.name = "RuntimeCityRecipe";
-            return _cityRecipe;
+            _agentRuleBasedRecipe = ScriptableObject.CreateInstance<WarehouseRecipe>();
+            _agentRuleBasedRecipe.name = "RuntimeAgentRuleBasedRecipe";
+            return _agentRuleBasedRecipe;
         }
 
-        private ChunkedTerrainRecipe GetOrCreateChunkedTerrainRecipe()
+        private WarehouseEvolutionRecipe GetOrCreateEvolutionaryRecipe()
         {
-            if (_chunkedTerrainRecipe != null)
-                return _chunkedTerrainRecipe;
+            if (_evolutionaryRecipe != null)
+                return _evolutionaryRecipe;
 
-            _chunkedTerrainRecipe = ScriptableObject.CreateInstance<ChunkedTerrainRecipe>();
-            _chunkedTerrainRecipe.name = "RuntimeChunkedTerrainRecipe";
-            return _chunkedTerrainRecipe;
+            _evolutionaryRecipe = ScriptableObject.CreateInstance<WarehouseEvolutionRecipe>();
+            _evolutionaryRecipe.name = "RuntimeEvolutionaryRecipe";
+            return _evolutionaryRecipe;
         }
 
-        private WarehouseRecipe GetOrCreateWarehouseRecipe()
+        private WarehouseWfcRecipe GetOrCreateWaveFunctionCollapseRecipe()
         {
-            if (_warehouseRecipe != null)
-                return _warehouseRecipe;
+            if (_waveFunctionCollapseRecipe != null)
+                return _waveFunctionCollapseRecipe;
 
-            _warehouseRecipe = ScriptableObject.CreateInstance<WarehouseRecipe>();
-            _warehouseRecipe.name = "RuntimeWarehouseRecipe";
-            return _warehouseRecipe;
+            _waveFunctionCollapseRecipe = ScriptableObject.CreateInstance<WarehouseWfcRecipe>();
+            _waveFunctionCollapseRecipe.name = "RuntimeWaveFunctionCollapseRecipe";
+            return _waveFunctionCollapseRecipe;
         }
 
-        private WarehouseEvolutionRecipe GetOrCreateWarehouseEvolutionRecipe()
+        private Transform GetOrCreateOutputRoot(Transform current, string rootName)
         {
-            if (_warehouseEvolutionRecipe != null)
-                return _warehouseEvolutionRecipe;
+            if (current != null)
+                return current;
 
-            _warehouseEvolutionRecipe = ScriptableObject.CreateInstance<WarehouseEvolutionRecipe>();
-            _warehouseEvolutionRecipe.name = "RuntimeWarehouseEvolutionRecipe";
-            return _warehouseEvolutionRecipe;
+            Transform existing = transform.Find(rootName);
+            if (existing != null)
+                return existing;
+
+            Transform root = new GameObject(rootName).transform;
+            root.SetParent(transform, false);
+            return root;
         }
 
         private void LogDiagnostics(GenerationResult result)
@@ -169,7 +169,22 @@ namespace Game.ProcGen
             }
         }
 
-        private void DestroyChild(string childName)
+        private static void DestroyGenerated(Transform outputRoot)
+        {
+            if (outputRoot == null)
+                return;
+
+            Transform child = outputRoot.Find("Generated");
+            if (child == null)
+                return;
+
+            if (Application.isPlaying)
+                Destroy(child.gameObject);
+            else
+                DestroyImmediate(child.gameObject);
+        }
+
+        private void DestroyDirectChild(string childName)
         {
             Transform child = transform.Find(childName);
             if (child == null)
