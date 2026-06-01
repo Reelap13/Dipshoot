@@ -17,7 +17,7 @@ namespace Game.ProcGen.Warehouse
     }
 
     [CreateAssetMenu(menuName = "Dipshoot/ProcGen/Warehouse Recipe", fileName = "WarehouseRecipe")]
-    public sealed class WarehouseRecipe : ProcGenRecipe
+    public class WarehouseRecipe : ProcGenRecipe
     {
         [Header("Map")]
         public int MapWidth = 15;

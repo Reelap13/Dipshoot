@@ -9,7 +9,8 @@ namespace Game.ProcGen
     {
         City,
         ChunkedTerrain,
-        Warehouse
+        Warehouse,
+        WarehouseEvolution
     }
 
     public sealed class ProcGenDemoController : MonoBehaviour
@@ -18,6 +19,7 @@ namespace Game.ProcGen
         [SerializeField] private CityRecipe _cityRecipe;
         [SerializeField] private ChunkedTerrainRecipe _chunkedTerrainRecipe;
         [SerializeField] private WarehouseRecipe _warehouseRecipe;
+        [SerializeField] private WarehouseEvolutionRecipe _warehouseEvolutionRecipe;
         [SerializeField] private int _seed = 444;
         [SerializeField] private bool _randomizeSeedOnGenerate;
         [SerializeField] private bool _generateOnStart = true;
@@ -46,6 +48,9 @@ namespace Game.ProcGen
                 case ProcGenDemoKind.Warehouse:
                     GenerateWarehouse(seed);
                     break;
+                case ProcGenDemoKind.WarehouseEvolution:
+                    GenerateWarehouseEvolution(seed);
+                    break;
             }
         }
 
@@ -54,6 +59,7 @@ namespace Game.ProcGen
             DestroyChild("GeneratedCity");
             DestroyChild("GeneratedMap");
             DestroyChild("GeneratedWarehouse");
+            DestroyChild("GeneratedWarehouseEvolution");
         }
 
         private void GenerateCity(int seed)
@@ -82,6 +88,16 @@ namespace Game.ProcGen
             LogDiagnostics(result);
             WarehouseBuildPlan plan = result.GetRequired(WarehouseKeys.BuildPlan);
             WarehousePlanExecutor.Execute(plan, transform, recipe, "GeneratedWarehouse", request.ClearPreviousOutput);
+        }
+
+        private void GenerateWarehouseEvolution(int seed)
+        {
+            WarehouseEvolutionRecipe recipe = GetOrCreateWarehouseEvolutionRecipe();
+            GenerationRequest request = new(seed, true);
+            GenerationResult result = _pipeline.Generate(request, recipe);
+            LogDiagnostics(result);
+            WarehouseBuildPlan plan = result.GetRequired(WarehouseKeys.BuildPlan);
+            WarehousePlanExecutor.Execute(plan, transform, recipe, "GeneratedWarehouseEvolution", request.ClearPreviousOutput);
         }
 
         private int ResolveSeed()
@@ -124,6 +140,16 @@ namespace Game.ProcGen
             _warehouseRecipe = ScriptableObject.CreateInstance<WarehouseRecipe>();
             _warehouseRecipe.name = "RuntimeWarehouseRecipe";
             return _warehouseRecipe;
+        }
+
+        private WarehouseEvolutionRecipe GetOrCreateWarehouseEvolutionRecipe()
+        {
+            if (_warehouseEvolutionRecipe != null)
+                return _warehouseEvolutionRecipe;
+
+            _warehouseEvolutionRecipe = ScriptableObject.CreateInstance<WarehouseEvolutionRecipe>();
+            _warehouseEvolutionRecipe.name = "RuntimeWarehouseEvolutionRecipe";
+            return _warehouseEvolutionRecipe;
         }
 
         private void LogDiagnostics(GenerationResult result)
