@@ -29,6 +29,20 @@ namespace Game.Level
                 : GetRandomSpawnPoint();
         }
 
+        public void ConfigureGeneratedLevel(
+            List<Transform> spawn_points,
+            List<Transform> red_spawn_points,
+            List<Transform> blue_spawn_points,
+            Transform capture_point,
+            float capture_marker_radius)
+        {
+            _spawn_points = spawn_points;
+            _red_spawn_points = red_spawn_points;
+            _blue_spawn_points = blue_spawn_points;
+            _capture_point = capture_point;
+            _capture_marker_radius = capture_marker_radius;
+        }
+
         private void Start()
         {
             if (_terrainGenerated)

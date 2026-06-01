@@ -11,12 +11,12 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ac42bc3fb0dbdb946bf8dfacadb9c44b, type: 3}
   m_Name: DefaultPlayerStats
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   _stats:
   - Preset: {fileID: 11400000, guid: 04b2fd6eef9ae29479032952abe11ddc, type: 2}
     Value: 100
   - Preset: {fileID: 11400000, guid: 5ed0779a06ecd49498e2f5ea91fb68a2, type: 2}
-    Value: 25
+    Value: 35
   - Preset: {fileID: 11400000, guid: c5c2c989f6d4484e98be0f3e5d72e8cd, type: 2}
     Value: 100
   - Preset: {fileID: 11400000, guid: 4a4ddc1fa04e4e5ca6c9ddccbb3f01b1, type: 2}
@@ -30,11 +30,11 @@ MonoBehaviour:
   - Preset: {fileID: 11400000, guid: e6a03ecfb96448e68b8288a4833f3928, type: 2}
     Value: 0.25
   - Preset: {fileID: 11400000, guid: 7c74c3a9554b47499f265491f6d87346, type: 2}
-    Value: 35
+    Value: 50
   - Preset: {fileID: 11400000, guid: b79e44b0cfd342a284a0e89638e25d1a, type: 2}
     Value: 75
   - Preset: {fileID: 11400000, guid: 3f33c0e677ae40f784e2673368ab90cb, type: 2}
-    Value: 0.28
+    Value: 0.5
   - Preset: {fileID: 11400000, guid: 9b67d3199ab14c1ca468e88e0252fd10, type: 2}
     Value: 12
   - Preset: {fileID: 11400000, guid: 3c88af15189e4be28077bc5808b279d6, type: 2}

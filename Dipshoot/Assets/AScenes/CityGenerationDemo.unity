@@ -359,7 +359,7 @@ GameObject:
   - component: {fileID: 100201}
   - component: {fileID: 100202}
   m_Layer: 0
-  m_Name: City Generator
+  m_Name: ProcGen Demo Controller
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -389,13 +389,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 100200}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f97f9f565fe44ee099910b4246a07826, type: 3}
+  m_Script: {fileID: 11500000, guid: 8b7f05327f7d4f6fa6a89c2d2b9a30e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _recipe: {fileID: 0}
-  _seed: 444
-  _randomizeSeedOnStart: 0
-  _generatedRootName: GeneratedCity
+  _generator: 2
+  _cityRecipe: {fileID: 0}
+  _chunkedTerrainRecipe: {fileID: 0}
+  _warehouseRecipe: {fileID: 0}
+  _seed: 12345
+  _randomizeSeedOnGenerate: 0
   _generateOnStart: 1
   _logDiagnostics: 1
 --- !u!1660057539 &9223372036854775807

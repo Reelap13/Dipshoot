@@ -26,7 +26,7 @@ MonoBehaviour:
   _tracer_speed: 240
   _tracer_lifetime: 0.08
   _impact_lifetime: 1.5
-  _first_person_local_position: {x: 0, y: 0, z: 0}
+  _first_person_local_position: {x: 0, y: -0.04, z: -0.05}
   _first_person_local_euler_angles: {x: 0, y: 0, z: 0}
   _first_person_local_scale: {x: 1, y: 1, z: 1}
   _third_person_local_position: {x: 0, y: 0, z: 0}

@@ -17,6 +17,10 @@ namespace Game.Players.Input
         private bool _was_primary_weapon_pressed;
         private bool _was_pistol_weapon_pressed;
         private bool _was_jump_pressed;
+        private bool _is_look_action_subscribed;
+        private Vector2 _mouse_look_delta;
+        private Vector2 _analog_look;
+        private InputAction _look_action;
         private InputAction _jump_action;
         private InputAction _sprint_action;
         private InputAction _crouch_action;
@@ -57,7 +61,7 @@ namespace Game.Players.Input
             bool is_jump_pressed = _jump_action.IsPressed();
 
             input.Move = controls.Player.Move.ReadValue<Vector2>();
-            input.Look = controls.Player.Look.ReadValue<Vector2>();
+            input.Look = ConsumeLookInput();
             input.IsShootPressed = is_shoot_pressed && !_was_shoot_pressed;
             input.IsShootHeld = is_shoot_pressed;
             input.IsReloadPressed = is_reload_pressed && !_was_reload_pressed;
@@ -85,11 +89,19 @@ namespace Game.Players.Input
             _was_primary_weapon_pressed = false;
             _was_pistol_weapon_pressed = false;
             _was_jump_pressed = false;
+            _mouse_look_delta = Vector2.zero;
+            _analog_look = Vector2.zero;
+        }
+
+        private void OnDestroy()
+        {
+            UnsubscribeLookAction();
         }
 
         private void CacheInputActions(Controls controls)
         {
-            if (_jump_action != null &&
+            if (_look_action != null &&
+                _jump_action != null &&
                 _sprint_action != null &&
                 _crouch_action != null &&
                 _reload_action != null &&
@@ -99,12 +111,60 @@ namespace Game.Players.Input
                 return;
             }
 
+            _look_action = controls.FindAction("Player/Look", true);
             _jump_action = controls.FindAction("Player/Jump", true);
             _sprint_action = controls.FindAction("Player/Sprint", true);
             _crouch_action = controls.FindAction("Player/Crouch", true);
             _reload_action = controls.FindAction("Player/Reload", false);
             _primary_weapon_action = controls.FindAction("Player/PrimaryWeapon", false);
             _pistol_weapon_action = controls.FindAction("Player/PistolWeapon", false);
+            SubscribeLookAction();
+        }
+
+        private Vector2 ConsumeLookInput()
+        {
+            Vector2 look = _mouse_look_delta + _analog_look;
+            _mouse_look_delta = Vector2.zero;
+            return look;
+        }
+
+        private void SubscribeLookAction()
+        {
+            if (_is_look_action_subscribed || _look_action == null)
+                return;
+
+            _look_action.performed += HandleLookPerformed;
+            _look_action.canceled += HandleLookCanceled;
+            _is_look_action_subscribed = true;
+        }
+
+        private void UnsubscribeLookAction()
+        {
+            if (!_is_look_action_subscribed || _look_action == null)
+                return;
+
+            _look_action.performed -= HandleLookPerformed;
+            _look_action.canceled -= HandleLookCanceled;
+            _is_look_action_subscribed = false;
+        }
+
+        private void HandleLookPerformed(InputAction.CallbackContext context)
+        {
+            if (context.control != null && context.control.device is Pointer)
+            {
+                _mouse_look_delta += context.ReadValue<Vector2>();
+                return;
+            }
+
+            _analog_look = context.ReadValue<Vector2>();
+        }
+
+        private void HandleLookCanceled(InputAction.CallbackContext context)
+        {
+            if (context.control != null && context.control.device is Pointer)
+                return;
+
+            _analog_look = Vector2.zero;
         }
 
         private static bool IsActionPressed(InputAction action)
