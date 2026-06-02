@@ -8,8 +8,6 @@ namespace Game.ProcGen.Warehouse
     public static class WarehousePlanExecutor
     {
         private const float FloorThickness = 0.2f;
-        private const float WallHeight = 3.2f;
-        private const float WallThickness = 0.5f;
         private const float MarkerThickness = 0.04f;
         private const float SpawnMarkerDiameter = 0.6f;
 
@@ -59,13 +57,52 @@ namespace Game.ProcGen.Warehouse
             float mapHeight = layout.Height * GetCellSizeZ(layout);
             float halfWidth = mapWidth * 0.5f;
             float halfHeight = mapHeight * 0.5f;
-            float wallY = WallHeight * 0.5f;
             GameObject wallPrefab = recipe.GetWallPrefab();
+            GameObject topPrefab = recipe.GetWallTopPrefab();
+            float levelHeight = Mathf.Max(0.1f, recipe.ContainerLowHeight);
+            Transform wallsRoot = CreateRoot("Walls", parent);
 
-            InstantiatePrefab(wallPrefab, "NorthWall", parent, new Vector3(0f, wallY, halfHeight), Quaternion.identity, new Vector3(mapWidth, WallHeight, WallThickness));
-            InstantiatePrefab(wallPrefab, "SouthWall", parent, new Vector3(0f, wallY, -halfHeight), Quaternion.identity, new Vector3(mapWidth, WallHeight, WallThickness));
-            InstantiatePrefab(wallPrefab, "EastWall", parent, new Vector3(halfWidth, wallY, 0f), Quaternion.identity, new Vector3(WallThickness, WallHeight, mapHeight));
-            InstantiatePrefab(wallPrefab, "WestWall", parent, new Vector3(-halfWidth, wallY, 0f), Quaternion.identity, new Vector3(WallThickness, WallHeight, mapHeight));
+            for (int x = 0; x < layout.Width; x++)
+            {
+                float worldX = (x + 0.5f - layout.Width * 0.5f) * GetCellSizeX(layout);
+                BuildWallStack(wallPrefab, topPrefab, wallsRoot, "NorthWall", new Vector3(worldX, 0f, halfHeight), Quaternion.Euler(0f, 180f, 0f), levelHeight);
+                BuildWallStack(wallPrefab, topPrefab, wallsRoot, "SouthWall", new Vector3(worldX, 0f, -halfHeight), Quaternion.identity, levelHeight);
+            }
+
+            for (int y = 0; y < layout.Height; y++)
+            {
+                float worldZ = (y + 0.5f - layout.Height * 0.5f) * GetCellSizeZ(layout);
+                BuildWallStack(wallPrefab, topPrefab, wallsRoot, "EastWall", new Vector3(halfWidth, 0f, worldZ), Quaternion.Euler(0f, 270f, 0f), levelHeight);
+                BuildWallStack(wallPrefab, topPrefab, wallsRoot, "WestWall", new Vector3(-halfWidth, 0f, worldZ), Quaternion.Euler(0f, 90f, 0f), levelHeight);
+            }
+        }
+
+        private static void BuildWallStack(
+            GameObject wallPrefab,
+            GameObject topPrefab,
+            Transform parent,
+            string name,
+            Vector3 basePosition,
+            Quaternion rotation,
+            float levelHeight)
+        {
+            InstantiateWallLevel(wallPrefab, name, parent, basePosition, rotation, levelHeight, 0);
+            InstantiateWallLevel(wallPrefab, name, parent, basePosition, rotation, levelHeight, 1);
+            InstantiateWallLevel(topPrefab, $"{name}Top", parent, basePosition, rotation, levelHeight, 2);
+        }
+
+        private static void InstantiateWallLevel(
+            GameObject prefab,
+            string name,
+            Transform parent,
+            Vector3 basePosition,
+            Quaternion rotation,
+            float levelHeight,
+            int level)
+        {
+            Vector3 position = basePosition;
+            position.y = levelHeight * (level + 0.5f);
+            InstantiatePrefab(prefab, $"{name}_{level}", parent, position, rotation, Vector3.one);
         }
 
         private static void BuildObjects(WarehouseLayoutData layout, Transform parent, WarehouseRecipe recipe)

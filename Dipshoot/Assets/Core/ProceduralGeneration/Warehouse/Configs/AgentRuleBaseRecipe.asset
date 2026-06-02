@@ -68,7 +68,8 @@ MonoBehaviour:
   PartialCoverPrefab: {fileID: 2102440690204817838, guid: a25386e1d2a8cf34ead8de6a9e30cb55, type: 3}
   FullCoverPrefab: {fileID: 6130014764269459892, guid: 1a467380be355aa46a152e3123f68bd7, type: 3}
   FloorPrefab: {fileID: 5927626330356073840, guid: cafa3e3f5e769574b9681eda9fa5fb92, type: 3}
-  WallPrefab: {fileID: 6442687450418211264, guid: 80eb524ff5c8e5349baad9784c98753e, type: 3}
+  WallPrefab: {fileID: 702439790330653081, guid: 94ca0d15f0d608e4ba1a04fe53191ec9, type: 3}
+  WallTopPrefab: {fileID: 6486063222734141199, guid: 862add5b61d31b84a8da2af2cb54a9a0, type: 3}
   SpawnMarkerPrefab: {fileID: 2817191206490059506, guid: a84f0ee1b13782f428d286e7c082e9cc, type: 3}
   CapturePointMarkerPrefab: {fileID: 1604473248831348406, guid: 97217c1081a8ce9449755eaf0920de1f, type: 3}
   ClimbAccessVariants:
@@ -79,6 +80,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9bd0f3e08da648b469981c1c93a248fb, type: 2}
   BridgeVariants:
   - {fileID: 11400000, guid: b744fd5d51418bd48818acbea26fc9ac, type: 2}
+  - {fileID: 11400000, guid: c07fa24682265a140940d32a16c58edc, type: 2}
+  - {fileID: 11400000, guid: 4ea3350e997c9bb469d852276c2d0750, type: 2}
+  - {fileID: 11400000, guid: c490929ba02fadb44aad8dbb765f0d77, type: 2}
   PartialCoverVariants: []
   FullCoverVariants: []
   ContainerPalette: {fileID: 11400000, guid: ab37f8ac07214eefbc7d0f4e112d06dd, type: 2}

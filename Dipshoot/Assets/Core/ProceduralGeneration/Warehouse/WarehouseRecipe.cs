@@ -89,6 +89,7 @@ namespace Game.ProcGen.Warehouse
         public GameObject FullCoverPrefab;
         public GameObject FloorPrefab;
         public GameObject WallPrefab;
+        public GameObject WallTopPrefab;
         public GameObject SpawnMarkerPrefab;
         public GameObject CapturePointMarkerPrefab;
 
@@ -218,6 +219,11 @@ namespace Game.ProcGen.Warehouse
         public GameObject GetWallPrefab()
         {
             return WallPrefab != null ? WallPrefab : LoadPrefab("WarehouseWall");
+        }
+
+        public GameObject GetWallTopPrefab()
+        {
+            return WallTopPrefab != null ? WallTopPrefab : GetWallPrefab();
         }
 
         public GameObject GetSpawnMarkerPrefab()

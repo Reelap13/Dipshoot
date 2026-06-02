@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7a3c4d5e6b74c8a90123456789abcdf, type: 3}
+  m_Name: Bridge4F
+  m_EditorClassIdentifier: 
+  Kind: 2
+  Prefab: {fileID: 380759109098400179, guid: ef792fdfb73f70348884780b33d5e11f, type: 3}
+  Weight: 1
+  AllowedDirections: -1
+  ForwardRule: 0
+  BackRule: 0
+  LeftRule: 0
+  RightRule: 0
+  ConnectionType: 0
