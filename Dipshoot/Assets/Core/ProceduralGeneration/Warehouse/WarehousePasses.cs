@@ -862,17 +862,10 @@ namespace Game.ProcGen.Warehouse
             Vector2Int ladderCell,
             Vector2Int topCell)
         {
-            for (int i = 0; i < WarehouseGenerationUtility.CardinalDirections.Length; i++)
-            {
-                Vector2Int approach = ladderCell + WarehouseGenerationUtility.CardinalDirections[i];
-                if (approach == topCell || !WarehouseGenerationUtility.IsCellInSourceHalf(layout, approach))
-                    continue;
-
-                if (!structureOccupied[approach.x, approach.y] && !ladderOccupied[approach.x, approach.y])
-                    return true;
-            }
-
-            return false;
+            Vector2Int approach = ladderCell - (topCell - ladderCell);
+            return WarehouseGenerationUtility.IsCellInSourceHalf(layout, approach) &&
+                   !structureOccupied[approach.x, approach.y] &&
+                   !ladderOccupied[approach.x, approach.y];
         }
 
         private static bool HasContainerLowAt(WarehouseLayoutData layout, Vector2Int cell)
@@ -1127,6 +1120,9 @@ namespace Game.ProcGen.Warehouse
             float rotationY = 0f)
         {
             if (!CanPlaceCover(layout, structureOccupied, playableTopOccupied, ladderOccupied, groundCoverOccupied, topCoverOccupied, cell, surface))
+                return false;
+
+            if (!WarehousePlacementRules.TryChooseCoverRotation(layout, cell, surface, random, out rotationY))
                 return false;
 
             layout.Objects.Add(new WarehouseObjectPlacement
@@ -1407,14 +1403,7 @@ namespace Game.ProcGen.Warehouse
 
         private static bool ViolatesLadderTarget(WarehouseLayoutData layout, WarehouseObjectPlacement obj)
         {
-            if (!obj.IsLadder)
-                return false;
-
-            Vector2Int topCell = obj.Origin + WarehouseNavigationGrid.DirectionToVector(obj.Direction);
-            return !layout.IsInside(topCell) ||
-                   !HasContainerLowAt(layout, topCell) ||
-                   HasStructureAt(layout, obj.Origin) ||
-                   !HasWalkableGroundApproach(layout, obj, topCell);
+            return obj.IsLadder && !WarehousePlacementRules.IsLadderPlacementValid(layout, obj);
         }
 
         private static bool ViolatesCoverSurface(WarehouseLayoutData layout, WarehouseObjectPlacement obj)
@@ -1422,12 +1411,16 @@ namespace Game.ProcGen.Warehouse
             if (!obj.IsCover)
                 return false;
 
-            bool hasStructure = HasStructureAt(layout, obj.Origin);
-            bool hasLadder = HasLadderAt(layout, obj.Origin);
-            bool hasPlayableTop = HasPlayableTopAt(layout, obj.Origin);
-            return obj.Surface == WarehousePlacementSurface.StructureTop
-                ? !hasPlayableTop || hasLadder
-                : hasStructure || hasLadder;
+            if (WarehousePlacementRules.IsCoverPlacementValid(layout, obj))
+                return false;
+
+            if (WarehousePlacementRules.TryChooseCoverRotation(layout, obj.Origin, obj.Surface, null, out float rotationY, obj))
+            {
+                obj.RotationY = rotationY;
+                return false;
+            }
+
+            return true;
         }
 
         private static bool OverlapsPreviousStructure(WarehouseLayoutData layout, WarehouseObjectPlacement obj, int index)
@@ -1665,8 +1658,69 @@ namespace Game.ProcGen.Warehouse
 
         public override void Execute(GenerationContext context)
         {
+            WarehouseRecipe recipe = context.GetRecipe<WarehouseRecipe>();
             WarehouseLayoutData layout = context.Blackboard.GetRequired(WarehouseKeys.Layout);
-            context.Blackboard.Set(WarehouseKeys.Navigation, new WarehouseNavigationGrid(layout));
+            context.Blackboard.Set(WarehouseKeys.Navigation, new WarehouseNavigationGrid(
+                layout,
+                recipe.PartialCoverPathCost,
+                recipe.FullCoverPathCost));
+        }
+    }
+
+    public sealed class WarehouseValidationPass : ProcGenPass
+    {
+        public override string Id => "warehouse-validation";
+
+        public override void Declare(GenerationPassContract contract)
+        {
+            contract.Read(WarehouseKeys.Layout);
+            contract.Write(WarehouseKeys.Layout);
+        }
+
+        public override void Execute(GenerationContext context)
+        {
+            WarehouseRecipe recipe = context.GetRecipe<WarehouseRecipe>();
+            WarehouseLayoutData layout = context.Blackboard.GetRequired(WarehouseKeys.Layout);
+            bool[,] reservedGround = WarehouseGenerationUtility.BuildReservedGroundMask(layout);
+            int changes = WarehousePlacementRules.CleanupLayout(layout, reservedGround, recipe.TallContainerProbability);
+            if (changes > 0)
+                context.Diagnostics.Info($"Applied {changes} final warehouse validation changes.", Id);
+        }
+    }
+
+    public sealed class WarehouseGroundPocketSealPass : ProcGenPass
+    {
+        public override string Id => "warehouse-ground-pocket-seal";
+
+        public override void Declare(GenerationPassContract contract)
+        {
+            contract.Read(WarehouseKeys.Layout);
+            contract.Write(WarehouseKeys.Layout);
+        }
+
+        public override void Execute(GenerationContext context)
+        {
+            WarehouseRecipe recipe = context.GetRecipe<WarehouseRecipe>();
+            if (recipe.GroundPocketSealIterationCount <= 0 || recipe.MaxGroundPocketSealCellCount <= 0)
+                return;
+
+            WarehouseLayoutData layout = context.Blackboard.GetRequired(WarehouseKeys.Layout);
+            bool[,] reservedGround = WarehouseGenerationUtility.BuildReservedGroundMask(layout);
+            int changes = 0;
+            for (int i = 0; i < recipe.GroundPocketSealIterationCount; i++)
+            {
+                int iterationChanges = WarehousePlacementRules.SealUnreachableGroundPockets(
+                    layout,
+                    reservedGround,
+                    recipe.MaxGroundPocketSealCellCount);
+                changes += iterationChanges;
+
+                if (iterationChanges == 0)
+                    break;
+            }
+
+            if (changes > 0)
+                context.Diagnostics.Info($"Sealed {changes} unreachable warehouse ground pocket cells.", Id);
         }
     }
 
@@ -1691,6 +1745,7 @@ namespace Game.ProcGen.Warehouse
             ScoreClearZones(layout, report);
             ScoreBridgeQuality(layout, report);
             ScoreCoverClusters(recipe, layout, report);
+            ScoreCaptureCoverCount(recipe, layout, report);
             ScoreTopAccessibility(recipe, layout, report);
             ScoreStructureDensity(recipe, layout, report);
             ScoreGroundPath("Spawn A", navigation.FindGroundPathCost(layout.SpawnA, layout.CapturePoint), report);
@@ -1699,6 +1754,8 @@ namespace Game.ProcGen.Warehouse
             ScorePath("Spawn B", navigation.FindPathCost(layout.SpawnB, layout.CapturePoint), report, out int pathB);
             report.PathCostA = pathA;
             report.PathCostB = pathB;
+            ScoreWeightedPathCost("Spawn A", recipe, pathA, report);
+            ScoreWeightedPathCost("Spawn B", recipe, pathB, report);
 
             if (pathA >= 0 && pathB >= 0)
             {
@@ -1797,6 +1854,46 @@ namespace Game.ProcGen.Warehouse
 
             if (excessNeighbors > 0)
                 AddPenalty(report, excessNeighbors * recipe.CoverClusterPenaltyWeight, $"Too dense cover clusters: {excessNeighbors} excess neighbors.");
+        }
+
+        private static void ScoreCaptureCoverCount(
+            WarehouseRecipe recipe,
+            WarehouseLayoutData layout,
+            WarehouseFitnessReport report)
+        {
+            float radius = recipe.CaptureCoverRadiusValue;
+            if (radius <= 0f)
+                return;
+
+            int covers = CountCoversNearPoint(layout, layout.CapturePoint, radius);
+            if (covers < recipe.MinCaptureCovers)
+            {
+                AddPenalty(
+                    report,
+                    (recipe.MinCaptureCovers - covers) * recipe.CaptureCoverPenaltyWeight,
+                    $"Too few covers near capture: {covers}/{recipe.MinCaptureCovers}.");
+            }
+            else if (covers > recipe.MaxCaptureCovers)
+            {
+                AddPenalty(
+                    report,
+                    (covers - recipe.MaxCaptureCovers) * recipe.CaptureCoverPenaltyWeight,
+                    $"Too many covers near capture: {covers}/{recipe.MaxCaptureCovers}.");
+            }
+        }
+
+        private static int CountCoversNearPoint(WarehouseLayoutData layout, Vector2 point, float radius)
+        {
+            float radiusSqr = radius * radius;
+            int count = 0;
+            for (int i = 0; i < layout.Objects.Count; i++)
+            {
+                WarehouseObjectPlacement obj = layout.Objects[i];
+                if (obj.IsCover && (obj.Center - point).sqrMagnitude <= radiusSqr)
+                    count++;
+            }
+
+            return count;
         }
 
         private static void ScoreTopAccessibility(
@@ -1978,6 +2075,21 @@ namespace Game.ProcGen.Warehouse
                 return;
 
             AddPenalty(report, 2000f, $"No path from {label} to capture.");
+        }
+
+        private static void ScoreWeightedPathCost(
+            string label,
+            WarehouseRecipe recipe,
+            int cost,
+            WarehouseFitnessReport report)
+        {
+            if (cost < 0 || cost <= recipe.MaxAllowedWeightedPathCost)
+                return;
+
+            AddPenalty(
+                report,
+                (cost - recipe.MaxAllowedWeightedPathCost) * recipe.PathCostPenaltyWeight,
+                $"{label} weighted path cost is {cost}.");
         }
 
         private static void ScoreGroundPath(string label, int cost, WarehouseFitnessReport report)

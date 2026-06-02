@@ -60,6 +60,8 @@ namespace Game.ProcGen.Warehouse
         public int Width;
         public int Height;
         public float CellSize;
+        public float CellSizeX;
+        public float CellSizeZ;
         public Vector2 SpawnA;
         public Vector2 SpawnB;
         public Vector2 CapturePoint;

@@ -23,6 +23,8 @@ namespace Game.ProcGen.Warehouse
         public int MapWidth = 15;
         public int MapHeight = 30;
         public float CellSize = 3f;
+        public float CellSizeX = 2.6f;
+        public float CellSizeZ = 3.8f;
 
         [Header("Fixed Points")]
         public Vector2 SpawnAPosition = new Vector2(7.5f, 1f);
@@ -60,6 +62,17 @@ namespace Game.ProcGen.Warehouse
 
         [Header("Gameplay")]
         public float MaxPathCostDifference = 8f;
+        public int PartialCoverPathExtraCost = 2;
+        public int FullCoverPathExtraCost = 4;
+        public int MaxWeightedPathCost = 55;
+        public float PathCostPenalty = 8f;
+        public int MinCaptureCoverCount = 4;
+        public int MaxCaptureCoverCount = 8;
+        public float CaptureCoverRadius = 5f;
+        public float CaptureCoverPenalty = 120f;
+        public bool SealGroundPockets = true;
+        public int GroundPocketSealIterations = 1;
+        public int MaxGroundPocketSealCells = 8;
 
         [Header("Prefab Metrics")]
         public float ContainerLowHeight = 2.7f;
@@ -84,7 +97,10 @@ namespace Game.ProcGen.Warehouse
 
         public int Width => Mathf.Max(3, MapWidth);
         public int Height => Mathf.Max(6, MapHeight);
-        public float GridCellSize => Mathf.Max(0.5f, CellSize);
+        public float GridCellSizeX => Mathf.Max(0.5f, CellSizeX > 0f ? CellSizeX : CellSize);
+        public float GridCellSizeZ => Mathf.Max(0.5f, CellSizeZ > 0f ? CellSizeZ : CellSize);
+        public float GridCellSize => Mathf.Max(GridCellSizeX, GridCellSizeZ);
+        public Vector2 GridCellSizeXZ => new(GridCellSizeX, GridCellSizeZ);
         public int HalfHeight => Height / 2;
         public float InitialStructureRatio => Mathf.Clamp01(InitialStructureCellRatio);
         public int ExtraCoverPairCount => Mathf.Max(0, ExtraCoverPairs);
@@ -104,6 +120,16 @@ namespace Game.ProcGen.Warehouse
         public float HighContainerTopHeight => Mathf.Max(0f, ContainerHighHeight);
         public float BridgeTopHeight => LowContainerTopHeight + Mathf.Max(0f, BridgeHeight);
         public float AllowedPathCostDifference => Mathf.Max(0f, MaxPathCostDifference);
+        public int PartialCoverPathCost => Mathf.Max(0, PartialCoverPathExtraCost);
+        public int FullCoverPathCost => Mathf.Max(0, FullCoverPathExtraCost);
+        public int MaxAllowedWeightedPathCost => Mathf.Max(1, MaxWeightedPathCost);
+        public float PathCostPenaltyWeight => Mathf.Max(0f, PathCostPenalty);
+        public int MinCaptureCovers => Mathf.Max(0, MinCaptureCoverCount);
+        public int MaxCaptureCovers => Mathf.Max(MinCaptureCovers, MaxCaptureCoverCount);
+        public float CaptureCoverRadiusValue => Mathf.Max(0f, CaptureCoverRadius);
+        public float CaptureCoverPenaltyWeight => Mathf.Max(0f, CaptureCoverPenalty);
+        public int GroundPocketSealIterationCount => SealGroundPockets ? Mathf.Max(0, GroundPocketSealIterations) : 0;
+        public int MaxGroundPocketSealCellCount => Mathf.Max(0, MaxGroundPocketSealCells);
         public float TargetStructureRatio => Mathf.Clamp01(TargetStructureCellRatio);
         public float MinStructureRatio => Mathf.Clamp01(Mathf.Min(MinStructureCellRatio, MaxStructureCellRatio));
         public float MaxStructureRatio => Mathf.Clamp01(Mathf.Max(MinStructureCellRatio, MaxStructureCellRatio));
@@ -180,9 +206,9 @@ namespace Game.ProcGen.Warehouse
         public Vector3 GridToWorld(Vector2 gridPosition)
         {
             return new Vector3(
-                (gridPosition.x - Width * 0.5f) * GridCellSize,
+                (gridPosition.x - Width * 0.5f) * GridCellSizeX,
                 0f,
-                (gridPosition.y - Height * 0.5f) * GridCellSize);
+                (gridPosition.y - Height * 0.5f) * GridCellSizeZ);
         }
 
         public override void BuildPasses(List<ProcGenPass> passes)
@@ -192,6 +218,8 @@ namespace Game.ProcGen.Warehouse
             passes.Add(new WarehouseCoverGenerationPass());
             passes.Add(new WarehouseSymmetryPass());
             passes.Add(new WarehouseRepairPass());
+            passes.Add(new WarehouseValidationPass());
+            passes.Add(new WarehouseGroundPocketSealPass());
             passes.Add(new WarehouseNavigationPass());
             passes.Add(new WarehouseFitnessPass());
             passes.Add(new WarehouseBuildPlanPass());

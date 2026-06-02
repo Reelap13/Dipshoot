@@ -58,8 +58,14 @@ namespace Game.ProcGen.Warehouse
             population.Sort(CompareGenomes);
             WarehouseGenome best = population[0];
             WarehouseLayoutData layout = BuildFinalLayout(best);
-            WarehouseFitnessReport report = best.Fitness ?? EvaluateGenome(recipe, best, fitnessCache).Report;
-            WarehouseNavigationGrid navigation = new(layout);
+            WarehousePlacementRules.CleanupLayout(layout, null, recipe.TallContainerProbability);
+            SealGroundPockets(recipe, layout);
+            WarehouseFitnessReport report = EvaluateLayout(recipe, layout);
+            best.Score = report.PenaltyScore;
+            WarehouseNavigationGrid navigation = new(
+                layout,
+                recipe.PartialCoverPathCost,
+                recipe.FullCoverPathCost);
 
             context.Blackboard.Set(WarehouseKeys.Layout, layout);
             context.Blackboard.Set(WarehouseKeys.Navigation, navigation);
@@ -71,6 +77,23 @@ namespace Game.ProcGen.Warehouse
             });
 
             context.Diagnostics.Info($"Evolution best score={best.Score}, cache={fitnessCache.Count}, objects={layout.Objects.Count}.", Id);
+        }
+
+        private static void SealGroundPockets(WarehouseEvolutionRecipe recipe, WarehouseLayoutData layout)
+        {
+            if (recipe.GroundPocketSealIterationCount <= 0 || recipe.MaxGroundPocketSealCellCount <= 0)
+                return;
+
+            bool[,] reservedGround = WarehouseGenerationUtility.BuildReservedGroundMask(layout);
+            for (int i = 0; i < recipe.GroundPocketSealIterationCount; i++)
+            {
+                int changes = WarehousePlacementRules.SealUnreachableGroundPockets(
+                    layout,
+                    reservedGround,
+                    recipe.MaxGroundPocketSealCellCount);
+                if (changes == 0)
+                    break;
+            }
         }
 
         private static List<WarehouseGenome> BuildInitialPopulation(
@@ -405,6 +428,15 @@ namespace Game.ProcGen.Warehouse
                 return new FitnessResult(hash, cached.Score, CloneReport(cached.Report));
 
             WarehouseLayoutData layout = BuildFinalLayout(genome);
+            WarehouseFitnessReport report = EvaluateLayout(recipe, layout);
+            fitnessCache[hash] = new CachedFitness(report.PenaltyScore, CloneReport(report));
+            return new FitnessResult(hash, report.PenaltyScore, report);
+        }
+
+        private static WarehouseFitnessReport EvaluateLayout(
+            WarehouseEvolutionRecipe recipe,
+            WarehouseLayoutData layout)
+        {
             WarehouseFitnessReport report = new();
             WarehouseGridCache grid = new(layout);
             ScoreClearZones(layout, report);
@@ -412,7 +444,10 @@ namespace Game.ProcGen.Warehouse
 
             if (report.PenaltyScore < NoPathPenalty)
             {
-                WarehouseNavigationGrid navigation = new(layout);
+                WarehouseNavigationGrid navigation = new(
+                    layout,
+                    recipe.PartialCoverPathCost,
+                    recipe.FullCoverPathCost);
                 ScorePaths(recipe, layout, navigation, report);
                 ScoreTopAccess(recipe, layout, grid, report);
                 ScoreBridgeQuality(recipe, layout, grid, report);
@@ -420,8 +455,7 @@ namespace Game.ProcGen.Warehouse
                 ScoreCoverQuality(recipe, layout, report);
             }
 
-            fitnessCache[hash] = new CachedFitness(report.PenaltyScore, CloneReport(report));
-            return new FitnessResult(hash, report.PenaltyScore, report);
+            return report;
         }
 
         private static void ScoreClearZones(WarehouseLayoutData layout, WarehouseFitnessReport report)
@@ -490,6 +524,9 @@ namespace Game.ProcGen.Warehouse
             if (groundB < 0)
                 AddPenalty(report, NoGroundPathPenalty, "No ground path from Spawn B.");
 
+            ScoreWeightedPathCost(recipe, pathA, report, "Spawn A weighted path is too expensive.");
+            ScoreWeightedPathCost(recipe, pathB, report, "Spawn B weighted path is too expensive.");
+
             if (pathA >= 0 && pathB >= 0)
             {
                 float diff = Mathf.Abs(pathA - pathB);
@@ -501,6 +538,18 @@ namespace Game.ProcGen.Warehouse
                 AddPenalty(report, 250f, "Spawn A has direct capture line of sight.");
             if (navigation.HasLineOfSight(layout.SpawnB, layout.CapturePoint))
                 AddPenalty(report, 250f, "Spawn B has direct capture line of sight.");
+        }
+
+        private static void ScoreWeightedPathCost(
+            WarehouseEvolutionRecipe recipe,
+            int cost,
+            WarehouseFitnessReport report,
+            string violation)
+        {
+            if (cost < 0 || cost <= recipe.MaxAllowedWeightedPathCost)
+                return;
+
+            AddPenalty(report, (cost - recipe.MaxAllowedWeightedPathCost) * recipe.PathCostPenaltyWeight, violation);
         }
 
         private static void ScoreTopAccess(
@@ -581,12 +630,17 @@ namespace Game.ProcGen.Warehouse
                     continue;
 
                 covers.Add(obj);
-                if ((obj.Center - layout.CapturePoint).sqrMagnitude <= Mathf.Pow(layout.CaptureClearRadius + 1f, 2f))
+                if (recipe.CaptureCoverRadiusValue > 0f &&
+                    (obj.Center - layout.CapturePoint).sqrMagnitude <= recipe.CaptureCoverRadiusValue * recipe.CaptureCoverRadiusValue)
+                {
                     captureCovers++;
+                }
             }
 
-            if (captureCovers > 8)
-                AddPenalty(report, (captureCovers - 8) * 80f, "Too many covers near capture.");
+            if (recipe.CaptureCoverRadiusValue > 0f && captureCovers < recipe.MinCaptureCovers)
+                AddPenalty(report, (recipe.MinCaptureCovers - captureCovers) * recipe.CaptureCoverPenaltyWeight, "Too few covers near capture.");
+            else if (recipe.CaptureCoverRadiusValue > 0f && captureCovers > recipe.MaxCaptureCovers)
+                AddPenalty(report, (captureCovers - recipe.MaxCaptureCovers) * recipe.CaptureCoverPenaltyWeight, "Too many covers near capture.");
 
             float radius = recipe.CoverClusterRadiusValue;
             if (radius <= 0f)
@@ -914,17 +968,10 @@ namespace Game.ProcGen.Warehouse
                 return false;
             }
 
-            for (int i = 0; i < WarehouseGenerationUtility.CardinalDirections.Length; i++)
-            {
-                Vector2Int approach = ladder.Origin + WarehouseGenerationUtility.CardinalDirections[i];
-                if (approach == topCell || !IsSourceCell(genome, approach))
-                    continue;
-
-                if (!grid.GroundBlocked[approach.x, approach.y] && !grid.Ladder[approach.x, approach.y])
-                    return true;
-            }
-
-            return false;
+            Vector2Int approach = ladder.Origin - DirectionToVector(ladder.Direction);
+            return IsSourceCell(genome, approach) &&
+                   !grid.GroundBlocked[approach.x, approach.y] &&
+                   !grid.Ladder[approach.x, approach.y];
         }
 
         private static bool IsCoverValid(SourceGridCache grid, WarehouseObjectPlacement cover)

@@ -44,6 +44,17 @@ MonoBehaviour:
   MaxCoverNeighbors: 3
   CoverClusterPenalty: 50
   MaxPathCostDifference: 8
+  PartialCoverPathExtraCost: 2
+  FullCoverPathExtraCost: 4
+  MaxWeightedPathCost: 55
+  PathCostPenalty: 8
+  MinCaptureCoverCount: 4
+  MaxCaptureCoverCount: 8
+  CaptureCoverRadius: 5
+  CaptureCoverPenalty: 120
+  SealGroundPockets: 1
+  GroundPocketSealIterations: 1
+  MaxGroundPocketSealCells: 8
   ContainerLowHeight: 2.7
   ContainerHighHeight: 5.4
   BridgeHeight: 0.25

@@ -395,15 +395,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b7f05327f7d4f6fa6a89c2d2b9a30e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _generator: 2
+  _generator: 0
   _agentRuleBasedRecipe: {fileID: 11400000, guid: f982c5c3d4702584fa9c79636aac837f, type: 2}
   _evolutionaryRecipe: {fileID: 11400000, guid: 29dc6f3a9bcdeac44be5d71e2a56c6fe, type: 2}
   _waveFunctionCollapseRecipe: {fileID: 11400000, guid: 45032a8ac027483489a9e5ef7ba2e40a, type: 2}
   _agentRuleBasedOutputRoot: {fileID: 100301}
   _evolutionaryOutputRoot: {fileID: 100401}
   _waveFunctionCollapseOutputRoot: {fileID: 100501}
-  _seed: -1784455035
-  _randomizeSeedOnGenerate: 1
+  _seed: 108413946
+  _randomizeSeedOnGenerate: 0
   _generateOnStart: 1
   _logDiagnostics: 1
 --- !u!1 &100300
