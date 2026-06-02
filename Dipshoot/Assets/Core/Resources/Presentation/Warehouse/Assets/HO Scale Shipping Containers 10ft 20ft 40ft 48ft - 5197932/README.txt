@@ -1,0 +1,4 @@
+HO Scale Shipping Containers 10ft 20ft 40ft 48ft by krafttrains on Thingiverse: https://www.thingiverse.com/thing:5197932
+
+Summary:
+www.kraftTrains.com brings to you an HO Scale Shipping Containers in 10ft 20ft 40ft 48ft.  Visit www.krafttrains.com for your mode railroading experience.At KraftTrains.com our goal is to provide free information to all model railroaders about model trains and the hobby. Learn how to build your own model railway and enjoy your model railroad for many years to come.Build your own buildings and structures from scratch with printable PDF templates &amp; stl.  files for your model train set.Make your own model trees for your model train set layout.Make lakes &amp; rivers for a well detailed model railroad.Making hills &amp; Mountains for a great landscape.Laying out grass &amp; bushes for a vibrant look.and more.

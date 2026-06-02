@@ -323,8 +323,40 @@ namespace Game.ProcGen.Warehouse
             Vector2Int cell,
             WarehousePlacementSurface surface,
             System.Random random,
+            float randomRotationChance,
+            out float rotationY)
+        {
+            return TryChooseCoverRotation(
+                layout,
+                cell,
+                surface,
+                random,
+                out rotationY,
+                null,
+                GetDirectionToNearestSpawn(layout, cell),
+                Mathf.Clamp01(randomRotationChance));
+        }
+
+        public static bool TryChooseCoverRotation(
+            WarehouseLayoutData layout,
+            Vector2Int cell,
+            WarehousePlacementSurface surface,
+            System.Random random,
             out float rotationY,
             WarehouseObjectPlacement ignore)
+        {
+            return TryChooseCoverRotation(layout, cell, surface, random, out rotationY, ignore, null, 1f);
+        }
+
+        private static bool TryChooseCoverRotation(
+            WarehouseLayoutData layout,
+            Vector2Int cell,
+            WarehousePlacementSurface surface,
+            System.Random random,
+            out float rotationY,
+            WarehouseObjectPlacement ignore,
+            WarehouseDirection? preferredDirection,
+            float randomRotationChance)
         {
             WarehouseDirection[] directions =
             {
@@ -334,8 +366,15 @@ namespace Game.ProcGen.Warehouse
                 WarehouseDirection.West
             };
 
-            if (random != null)
+            if (preferredDirection.HasValue &&
+                (random == null || random.NextDouble() > randomRotationChance))
+            {
+                MoveDirectionFirst(directions, preferredDirection.Value);
+            }
+            else if (random != null)
+            {
                 WarehouseGenerationUtility.Shuffle(directions, random);
+            }
 
             for (int i = 0; i < directions.Length; i++)
             {
@@ -358,6 +397,31 @@ namespace Game.ProcGen.Warehouse
 
             rotationY = 0f;
             return false;
+        }
+
+        private static WarehouseDirection GetDirectionToNearestSpawn(WarehouseLayoutData layout, Vector2Int cell)
+        {
+            Vector2 center = new(cell.x + 0.5f, cell.y + 0.5f);
+            Vector2 target = (center - layout.SpawnA).sqrMagnitude <= (center - layout.SpawnB).sqrMagnitude
+                ? layout.SpawnA
+                : layout.SpawnB;
+            Vector2 delta = target - center;
+            if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
+                return delta.x >= 0f ? WarehouseDirection.East : WarehouseDirection.West;
+
+            return delta.y >= 0f ? WarehouseDirection.North : WarehouseDirection.South;
+        }
+
+        private static void MoveDirectionFirst(WarehouseDirection[] directions, WarehouseDirection preferred)
+        {
+            for (int i = 0; i < directions.Length; i++)
+            {
+                if (directions[i] != preferred)
+                    continue;
+
+                (directions[0], directions[i]) = (directions[i], directions[0]);
+                return;
+            }
         }
 
         public static bool IsCoverPlacementValid(WarehouseLayoutData layout, WarehouseObjectPlacement cover)

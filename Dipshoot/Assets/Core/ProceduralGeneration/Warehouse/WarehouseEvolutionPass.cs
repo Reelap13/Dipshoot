@@ -62,6 +62,8 @@ namespace Game.ProcGen.Warehouse
             SealGroundPockets(recipe, layout);
             WarehouseFitnessReport report = EvaluateLayout(recipe, layout);
             best.Score = report.PenaltyScore;
+            WarehouseContainerPalettePass.Apply(recipe, layout, context.CreateRandom("warehouse-container-palette"));
+            WarehouseDecorationGenerator.Populate(recipe, layout, context.CreateRandom("warehouse-decoration"));
             WarehouseNavigationGrid navigation = new(
                 layout,
                 recipe.PartialCoverPathCost,
@@ -209,11 +211,11 @@ namespace Game.ProcGen.Warehouse
                     Side = WarehouseSide.A,
                     Origin = candidate.Cell,
                     Size = Vector2Int.one,
-                    Direction = candidate.Horizontal ? WarehouseDirection.East : WarehouseDirection.North,
                     ConnectionMask = GetStraightBridgeMask(candidate.Horizontal),
                     BridgeConnectionType = WarehouseBridgeConnectionType.Straight,
-                    RotationY = 0f
                 };
+                obj.Direction = WarehouseGenerationUtility.BridgeDirectionFromMask(obj.ConnectionMask);
+                obj.RotationY = WarehouseGenerationUtility.BridgeRotationFromMask(obj.ConnectionMask);
 
                 if (!CanPlaceInitialStructure(genome, obj))
                     continue;
@@ -306,6 +308,7 @@ namespace Game.ProcGen.Warehouse
             int target = Mathf.RoundToInt(genome.Width * genome.Height * recipe.TargetCoverRatio * 0.5f);
             bool[,] groundCover = new bool[genome.Width, genome.Height / 2];
             bool[,] topCover = new bool[genome.Width, genome.Height / 2];
+            WarehouseLayoutData sourceLayout = BuildSourceLayout(genome);
             int placed = 0;
             for (int i = 0; i < candidates.Count && placed < target; i++)
             {
@@ -320,7 +323,9 @@ namespace Game.ProcGen.Warehouse
                 WarehouseObjectKind kind = random.NextDouble() < recipe.FullCoverProbability
                     ? WarehouseObjectKind.FullCover
                     : WarehouseObjectKind.PartialCover;
-                float rotationY = random.Next(0, 4) * 90f;
+                if (!WarehousePlacementRules.TryChooseCoverRotation(sourceLayout, candidate.Cell, candidate.Surface, random, recipe.CoverRandomRotationProbability, out float rotationY))
+                    continue;
+
                 WarehouseObjectPlacement obj = new()
                 {
                     Kind = kind,
@@ -337,6 +342,7 @@ namespace Game.ProcGen.Warehouse
                     continue;
 
                 genome.Objects.Add(obj);
+                sourceLayout.Objects.Add(ClonePlacement(obj));
                 if (top)
                     topCover[candidate.Cell.x, candidate.Cell.y] = true;
                 else
@@ -703,20 +709,25 @@ namespace Game.ProcGen.Warehouse
             Vector2Int cell = RandomSourceCell(genome, random);
             WarehouseDirection direction = RandomDirection(random);
             bool bridgeHorizontal = direction == WarehouseDirection.East || direction == WarehouseDirection.West;
+            WarehouseDirectionMask connectionMask = kind == WarehouseObjectKind.Bridge
+                ? GetStraightBridgeMask(bridgeHorizontal)
+                : WarehouseDirectionMask.None;
             genome.Objects.Add(new WarehouseObjectPlacement
             {
                 Kind = kind,
                 Side = WarehouseSide.A,
                 Origin = cell,
                 Size = Vector2Int.one,
-                Direction = direction,
-                ConnectionMask = kind == WarehouseObjectKind.Bridge
-                    ? GetStraightBridgeMask(bridgeHorizontal)
-                    : WarehouseDirectionMask.None,
+                Direction = kind == WarehouseObjectKind.Bridge
+                    ? WarehouseGenerationUtility.BridgeDirectionFromMask(connectionMask)
+                    : direction,
+                ConnectionMask = connectionMask,
                 BridgeConnectionType = WarehouseBridgeConnectionType.Straight,
                 RotationY = kind == WarehouseObjectKind.Ladder
                     ? DirectionToRotation(direction)
-                    : 0f
+                    : kind == WarehouseObjectKind.Bridge
+                        ? WarehouseGenerationUtility.BridgeRotationFromMask(connectionMask)
+                        : 0f
             });
         }
 
@@ -759,9 +770,18 @@ namespace Game.ProcGen.Warehouse
                 obj.ConnectionMask = WarehouseDirectionMask.None;
 
             obj.BridgeConnectionType = WarehouseBridgeConnectionType.Straight;
-            obj.RotationY = obj.Kind == WarehouseObjectKind.Ladder
-                ? DirectionToRotation(obj.Direction)
-                : 0f;
+            if (obj.Kind == WarehouseObjectKind.Bridge)
+            {
+                obj.Direction = WarehouseGenerationUtility.BridgeDirectionFromMask(obj.ConnectionMask);
+                obj.RotationY = WarehouseGenerationUtility.BridgeRotationFromMask(obj.ConnectionMask);
+            }
+            else
+            {
+                obj.RotationY = obj.Kind == WarehouseObjectKind.Ladder
+                    ? DirectionToRotation(obj.Direction)
+                    : 0f;
+            }
+
             obj.Surface = WarehousePlacementSurface.Ground;
         }
 
@@ -773,20 +793,35 @@ namespace Game.ProcGen.Warehouse
             WarehouseObjectKind kind = random.NextDouble() < recipe.FullCoverProbability
                 ? WarehouseObjectKind.FullCover
                 : WarehouseObjectKind.PartialCover;
-            float rotationY = random.Next(0, 4) * 90f;
+            Vector2Int cell = RandomSourceCell(genome, random);
+            WarehousePlacementSurface surface = random.NextDouble() < recipe.TopCoverProbability
+                ? WarehousePlacementSurface.StructureTop
+                : WarehousePlacementSurface.Ground;
+            float rotationY = ChooseCoverRotation(genome, recipe, random, cell, surface);
             genome.Objects.Add(new WarehouseObjectPlacement
             {
                 Kind = kind,
                 Side = WarehouseSide.A,
-                Origin = RandomSourceCell(genome, random),
+                Origin = cell,
                 Size = Vector2Int.one,
-                Surface = random.NextDouble() < recipe.TopCoverProbability
-                    ? WarehousePlacementSurface.StructureTop
-                    : WarehousePlacementSurface.Ground,
+                Surface = surface,
                 Direction = RotationToDirection(rotationY),
                 RotationY = rotationY,
                 VariantIndex = HasNewCoverVariants(recipe) ? -1 : ChooseCoverVariantIndex(recipe, random, kind)
             });
+        }
+
+        private static float ChooseCoverRotation(
+            WarehouseGenome genome,
+            WarehouseEvolutionRecipe recipe,
+            System.Random random,
+            Vector2Int cell,
+            WarehousePlacementSurface surface)
+        {
+            WarehouseLayoutData layout = BuildSourceLayout(genome);
+            return WarehousePlacementRules.TryChooseCoverRotation(layout, cell, surface, random, recipe.CoverRandomRotationProbability, out float rotationY)
+                ? rotationY
+                : random.Next(0, 4) * 90f;
         }
 
         private static void RemoveCoverMutation(WarehouseGenome genome, System.Random random)
@@ -1001,6 +1036,15 @@ namespace Game.ProcGen.Warehouse
                 : !grid.Structure[cover.Origin.x, cover.Origin.y] && !grid.Ladder[cover.Origin.x, cover.Origin.y];
         }
 
+        private static WarehouseLayoutData BuildSourceLayout(WarehouseGenome genome)
+        {
+            WarehouseLayoutData layout = CreateLayoutMeta(genome);
+            for (int i = 0; i < genome.Objects.Count; i++)
+                layout.Objects.Add(ClonePlacement(genome.Objects[i]));
+
+            return layout;
+        }
+
         private static WarehouseLayoutData BuildFinalLayout(WarehouseGenome genome)
         {
             WarehouseLayoutData layout = CreateLayoutMeta(genome);
@@ -1024,7 +1068,8 @@ namespace Game.ProcGen.Warehouse
                     ConnectionMask = MirrorConnectionMask(source.ConnectionMask),
                     BridgeConnectionType = source.BridgeConnectionType,
                     RotationY = Mathf.Repeat(source.RotationY + 180f, 360f),
-                    VariantIndex = source.VariantIndex
+                    VariantIndex = source.VariantIndex,
+                    PaletteIndex = source.PaletteIndex
                 });
             }
 
@@ -1091,7 +1136,8 @@ namespace Game.ProcGen.Warehouse
                 ConnectionMask = source.ConnectionMask,
                 BridgeConnectionType = source.BridgeConnectionType,
                 RotationY = source.RotationY,
-                VariantIndex = source.VariantIndex
+                VariantIndex = source.VariantIndex,
+                PaletteIndex = source.PaletteIndex
             };
         }
 

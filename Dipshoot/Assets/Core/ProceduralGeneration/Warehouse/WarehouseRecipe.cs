@@ -22,9 +22,9 @@ namespace Game.ProcGen.Warehouse
         [Header("Map")]
         public int MapWidth = 15;
         public int MapHeight = 24;
-        public float CellSize = 3f;
-        public float CellSizeX = 2.6f;
-        public float CellSizeZ = 3.8f;
+        public float CellSize = 6.5f;
+        public float CellSizeX = 4f;
+        public float CellSizeZ = 6.5f;
 
         [Header("Fixed Points")]
         public Vector2 SpawnAPosition = new Vector2(7.5f, 1f);
@@ -52,6 +52,7 @@ namespace Game.ProcGen.Warehouse
         public int MaxBridgeBlockedContainerSides = 3;
         public float TopCoverChance = 0.45f;
         public float FullCoverChance = 0.45f;
+        public float CoverRandomRotationChance = 0.2f;
         public int StructureCellsPerLadder = 8;
         public int ExtraCoverPairs = 0;
         public float StructureDensityPenalty = 10f;
@@ -75,8 +76,8 @@ namespace Game.ProcGen.Warehouse
         public int MaxGroundPocketSealCells = 8;
 
         [Header("Prefab Metrics")]
-        public float ContainerLowHeight = 2.7f;
-        public float ContainerHighHeight = 5.4f;
+        public float ContainerLowHeight = 2.5f;
+        public float ContainerHighHeight = 5f;
         public float BridgeHeight = 0.25f;
 
         [Header("Prefabs")]
@@ -99,6 +100,16 @@ namespace Game.ProcGen.Warehouse
         [Header("Cover Variants")]
         public WarehousePrefabVariant[] PartialCoverVariants;
         public WarehousePrefabVariant[] FullCoverVariants;
+
+        [Header("Container Palette")]
+        public WarehouseContainerPalette ContainerPalette;
+
+        [Header("Decorations")]
+        public WarehouseDecorationVariant[] DecorationVariants;
+        public int DecorationPlacementAttempts = 120;
+        public int MaxDecorations = 40;
+        public int MaxDecorationsPerCell = 4;
+        public float DecorationChance = 0.65f;
 
         public int Width => Mathf.Max(3, MapWidth);
         public int Height => Mathf.Max(6, MapHeight);
@@ -123,6 +134,7 @@ namespace Game.ProcGen.Warehouse
         public int MaxBridgeBlockedSides => Mathf.Clamp(MaxBridgeBlockedContainerSides, 0, 4);
         public float TopCoverProbability => Mathf.Clamp01(TopCoverChance);
         public float FullCoverProbability => Mathf.Clamp01(FullCoverChance);
+        public float CoverRandomRotationProbability => Mathf.Clamp01(CoverRandomRotationChance);
         public int LadderSpacing => Mathf.Max(3, StructureCellsPerLadder);
         public float LowContainerTopHeight => Mathf.Max(0f, ContainerLowHeight);
         public float HighContainerTopHeight => Mathf.Max(0f, ContainerHighHeight);
@@ -146,6 +158,10 @@ namespace Game.ProcGen.Warehouse
         public float CoverClusterRadiusValue => Mathf.Max(0f, CoverClusterRadius);
         public int MaxCoverNeighborCount => Mathf.Max(0, MaxCoverNeighbors);
         public float CoverClusterPenaltyWeight => Mathf.Max(0f, CoverClusterPenalty);
+        public int DecorationPlacementAttemptCount => Mathf.Max(0, DecorationPlacementAttempts);
+        public int MaxDecorationCount => Mathf.Max(0, MaxDecorations);
+        public int MaxDecorationCountPerCell => Mathf.Max(1, MaxDecorationsPerCell);
+        public float DecorationProbability => Mathf.Clamp01(DecorationChance);
 
         public GameObject GetPrefab(WarehouseObjectKind kind)
         {
@@ -238,6 +254,8 @@ namespace Game.ProcGen.Warehouse
             passes.Add(new WarehouseGroundPocketSealPass());
             passes.Add(new WarehouseNavigationPass());
             passes.Add(new WarehouseFitnessPass());
+            passes.Add(new WarehouseContainerPalettePass());
+            passes.Add(new WarehouseDecorationPass());
             passes.Add(new WarehouseBuildPlanPass());
         }
     }

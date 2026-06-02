@@ -149,6 +149,38 @@ namespace Game.ProcGen.Warehouse
             return WarehouseDirection.West;
         }
 
+        public static WarehouseDirection BridgeDirectionFromMask(WarehouseDirectionMask mask)
+        {
+            bool horizontal = (mask & (WarehouseDirectionMask.East | WarehouseDirectionMask.West)) ==
+                              (WarehouseDirectionMask.East | WarehouseDirectionMask.West);
+            bool vertical = (mask & (WarehouseDirectionMask.North | WarehouseDirectionMask.South)) ==
+                            (WarehouseDirectionMask.North | WarehouseDirectionMask.South);
+
+            if (horizontal)
+                return WarehouseDirection.East;
+            if (vertical)
+                return WarehouseDirection.North;
+
+            return PrimaryDirection(mask);
+        }
+
+        public static float DirectionToRotation(WarehouseDirection direction)
+        {
+            return direction switch
+            {
+                WarehouseDirection.North => 0f,
+                WarehouseDirection.South => 180f,
+                WarehouseDirection.East => 90f,
+                WarehouseDirection.West => 270f,
+                _ => 0f
+            };
+        }
+
+        public static float BridgeRotationFromMask(WarehouseDirectionMask mask)
+        {
+            return DirectionToRotation(BridgeDirectionFromMask(mask));
+        }
+
         public static int CountOccupied(bool[,] occupied)
         {
             int count = 0;
@@ -512,10 +544,10 @@ namespace Game.ProcGen.Warehouse
                 Side = WarehouseSide.A,
                 Origin = cell,
                 Size = Vector2Int.one,
-                Direction = WarehouseGenerationUtility.PrimaryDirection(connectionMask),
+                Direction = WarehouseGenerationUtility.BridgeDirectionFromMask(connectionMask),
                 ConnectionMask = connectionMask,
                 BridgeConnectionType = connectionType,
-                RotationY = 0f
+                RotationY = WarehouseGenerationUtility.BridgeRotationFromMask(connectionMask)
             });
         }
 
@@ -1217,7 +1249,7 @@ namespace Game.ProcGen.Warehouse
             if (!CanPlaceCover(layout, structureOccupied, playableTopOccupied, ladderOccupied, groundCoverOccupied, topCoverOccupied, cell, surface))
                 return false;
 
-            if (!WarehousePlacementRules.TryChooseCoverRotation(layout, cell, surface, random, out rotationY))
+            if (!WarehousePlacementRules.TryChooseCoverRotation(layout, cell, surface, random, recipe.CoverRandomRotationProbability, out rotationY))
                 return false;
 
             WarehouseObjectPlacement placement = new()
@@ -1391,7 +1423,8 @@ namespace Game.ProcGen.Warehouse
                     ConnectionMask = MirrorConnectionMask(source.ConnectionMask),
                     BridgeConnectionType = source.BridgeConnectionType,
                     RotationY = Mathf.Repeat(source.RotationY + 180f, 360f),
-                    VariantIndex = source.VariantIndex
+                    VariantIndex = source.VariantIndex,
+                    PaletteIndex = source.PaletteIndex
                 });
             }
         }
@@ -1542,6 +1575,9 @@ namespace Game.ProcGen.Warehouse
             {
                 return true;
             }
+
+            obj.Direction = WarehouseGenerationUtility.BridgeDirectionFromMask(mask);
+            obj.RotationY = WarehouseGenerationUtility.BridgeRotationFromMask(mask);
 
             return !HasConnectedSide(layout, obj, mask, WarehouseDirection.North, Vector2Int.up) ||
                    !HasConnectedSide(layout, obj, mask, WarehouseDirection.South, Vector2Int.down) ||
@@ -2289,6 +2325,26 @@ namespace Game.ProcGen.Warehouse
         {
             report.PenaltyScore += penalty;
             report.Violations.Add(violation);
+        }
+    }
+
+    public sealed class WarehouseDecorationPass : ProcGenPass
+    {
+        public override string Id => "warehouse-decoration";
+
+        public override void Declare(GenerationPassContract contract)
+        {
+            contract.Read(WarehouseKeys.Layout);
+            contract.Write(WarehouseKeys.Layout);
+        }
+
+        public override void Execute(GenerationContext context)
+        {
+            WarehouseRecipe recipe = context.GetRecipe<WarehouseRecipe>();
+            WarehouseLayoutData layout = context.Blackboard.GetRequired(WarehouseKeys.Layout);
+            int count = WarehouseDecorationGenerator.Populate(recipe, layout, context.CreateRandom(Id));
+            if (count > 0)
+                context.Diagnostics.Info($"Placed {count} warehouse decorations.", Id);
         }
     }
 

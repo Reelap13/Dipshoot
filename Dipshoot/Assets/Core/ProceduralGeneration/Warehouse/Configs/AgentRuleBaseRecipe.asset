@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: AgentRuleBaseRecipe
   m_EditorClassIdentifier: 
   MapWidth: 15
-  MapHeight: 24
-  CellSize: 3
-  CellSizeX: 2.6
-  CellSizeZ: 3.8
+  MapHeight: 28
+  CellSize: 2.9
+  CellSizeX: 2.4
+  CellSizeZ: 2.9
   SpawnAPosition: {x: 7.5, y: 1}
   SpawnBPosition: {x: 7.5, y: 23}
   CapturePointPosition: {x: 7.5, y: 12}
@@ -38,6 +38,7 @@ MonoBehaviour:
   MaxBridgeBlockedContainerSides: 3
   TopCoverChance: 0.45
   FullCoverChance: 0.45
+  CoverRandomRotationChance: 0.22
   StructureCellsPerLadder: 8
   ExtraCoverPairs: 0
   StructureDensityPenalty: 10
@@ -57,8 +58,8 @@ MonoBehaviour:
   SealGroundPockets: 1
   GroundPocketSealIterations: 1
   MaxGroundPocketSealCells: 8
-  ContainerLowHeight: 2.7
-  ContainerHighHeight: 5.4
+  ContainerLowHeight: 2.5
+  ContainerHighHeight: 5
   BridgeHeight: 0.25
   ContainerLowPrefab: {fileID: 4583103351965881283, guid: f9b9014102a2347499d533a4e61df5ee, type: 3}
   ContainerHighPrefab: {fileID: 510176864729870452, guid: 8352cc53ec1b10044962d04c26529b33, type: 3}
@@ -70,8 +71,25 @@ MonoBehaviour:
   WallPrefab: {fileID: 6442687450418211264, guid: 80eb524ff5c8e5349baad9784c98753e, type: 3}
   SpawnMarkerPrefab: {fileID: 2817191206490059506, guid: a84f0ee1b13782f428d286e7c082e9cc, type: 3}
   CapturePointMarkerPrefab: {fileID: 1604473248831348406, guid: 97217c1081a8ce9449755eaf0920de1f, type: 3}
-  ClimbAccessVariants: []
-  CoverVariants: []
-  BridgeVariants: []
+  ClimbAccessVariants:
+  - {fileID: 11400000, guid: 2b71de84d60bdf443b3f5197ad9c3120, type: 2}
+  - {fileID: 11400000, guid: f865120adc5aad14a8577cc9aa2ec737, type: 2}
+  CoverVariants:
+  - {fileID: 11400000, guid: e5d70b0c4f8fcd445be9a65fce7342ed, type: 2}
+  - {fileID: 11400000, guid: 9bd0f3e08da648b469981c1c93a248fb, type: 2}
+  BridgeVariants:
+  - {fileID: 11400000, guid: b744fd5d51418bd48818acbea26fc9ac, type: 2}
   PartialCoverVariants: []
   FullCoverVariants: []
+  ContainerPalette: {fileID: 11400000, guid: ab37f8ac07214eefbc7d0f4e112d06dd, type: 2}
+  DecorationVariants:
+  - {fileID: 11400000, guid: e8e68ae61927d164cad1c1d70f03893d, type: 2}
+  - {fileID: 11400000, guid: 8c8731762c1f8ce44bf6eaef120be09b, type: 2}
+  - {fileID: 11400000, guid: 48319e581460dea49ac327bad0d58732, type: 2}
+  - {fileID: 11400000, guid: 82f6a62955c14a74583f647130b47b61, type: 2}
+  - {fileID: 11400000, guid: b8feac6c6651f46439b4b4b08141e95d, type: 2}
+  - {fileID: 11400000, guid: 8f8060fb50f85ba40aeab8f887b654ca, type: 2}
+  DecorationPlacementAttempts: 1000
+  MaxDecorations: 1000
+  MaxDecorationsPerCell: 15
+  DecorationChance: 0.9

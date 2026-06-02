@@ -64,6 +64,13 @@ namespace Game.ProcGen.Warehouse
         OutsideOrWall
     }
 
+    public enum WarehouseDecorationKind
+    {
+        SmallClutter,
+        CornerClutter,
+        LargeProp
+    }
+
     public sealed class WarehouseObjectPlacement
     {
         public WarehouseObjectKind Kind;
@@ -76,6 +83,7 @@ namespace Game.ProcGen.Warehouse
         public WarehouseBridgeConnectionType BridgeConnectionType = WarehouseBridgeConnectionType.Straight;
         public float RotationY;
         public int VariantIndex = -1;
+        public int PaletteIndex = -1;
 
         public bool IsContainer => Kind == WarehouseObjectKind.ContainerLow || Kind == WarehouseObjectKind.ContainerHigh;
         public bool IsBridge => Kind == WarehouseObjectKind.Bridge;
@@ -87,6 +95,16 @@ namespace Game.ProcGen.Warehouse
         public bool IsLadder => Kind == WarehouseObjectKind.Ladder;
 
         public Vector2 Center => new Vector2(Origin.x + Size.x * 0.5f, Origin.y + Size.y * 0.5f);
+    }
+
+    public sealed class WarehouseDecorationPlacement
+    {
+        public WarehouseDecorationKind Kind;
+        public GameObject Prefab;
+        public Vector2Int Cell;
+        public Vector2 Offset;
+        public float RotationY;
+        public float Scale = 1f;
     }
 
     public sealed class WarehouseLayoutData
@@ -106,6 +124,7 @@ namespace Game.ProcGen.Warehouse
         public int LowerConnectorY;
         public int UpperConnectorY;
         public readonly List<WarehouseObjectPlacement> Objects = new();
+        public readonly List<WarehouseDecorationPlacement> Decorations = new();
 
         public bool IsInside(Vector2Int cell)
         {

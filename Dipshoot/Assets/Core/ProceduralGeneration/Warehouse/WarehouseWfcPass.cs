@@ -57,6 +57,8 @@ namespace Game.ProcGen.Warehouse
             }
 
             best.Score = best.Report.PenaltyScore;
+            WarehouseContainerPalettePass.Apply(recipe, best.Layout, context.CreateRandom("warehouse-container-palette"));
+            WarehouseDecorationGenerator.Populate(recipe, best.Layout, context.CreateRandom("warehouse-decoration"));
             WarehouseNavigationGrid navigation = new(
                 best.Layout,
                 recipe.PartialCoverPathCost,
@@ -546,15 +548,17 @@ namespace Game.ProcGen.Warehouse
 
         private static WarehouseObjectPlacement CreateBridge(bool horizontal)
         {
+            WarehouseDirectionMask mask = horizontal
+                ? WarehouseDirectionMask.East | WarehouseDirectionMask.West
+                : WarehouseDirectionMask.North | WarehouseDirectionMask.South;
+
             return new WarehouseObjectPlacement
             {
                 Kind = WarehouseObjectKind.Bridge,
-                Direction = horizontal ? WarehouseDirection.East : WarehouseDirection.North,
-                ConnectionMask = horizontal
-                    ? WarehouseDirectionMask.East | WarehouseDirectionMask.West
-                    : WarehouseDirectionMask.North | WarehouseDirectionMask.South,
+                Direction = WarehouseGenerationUtility.BridgeDirectionFromMask(mask),
+                ConnectionMask = mask,
                 BridgeConnectionType = WarehouseBridgeConnectionType.Straight,
-                RotationY = 0f
+                RotationY = WarehouseGenerationUtility.BridgeRotationFromMask(mask)
             };
         }
 
@@ -620,7 +624,7 @@ namespace Game.ProcGen.Warehouse
                     ? WarehouseObjectKind.FullCover
                     : WarehouseObjectKind.PartialCover;
 
-                if (!WarehousePlacementRules.TryChooseCoverRotation(layout, candidate.Cell, candidate.Surface, random, out float rotationY))
+                if (!WarehousePlacementRules.TryChooseCoverRotation(layout, candidate.Cell, candidate.Surface, random, recipe.CoverRandomRotationProbability, out float rotationY))
                     continue;
 
                 WarehouseObjectPlacement placement = new()
@@ -860,7 +864,8 @@ namespace Game.ProcGen.Warehouse
                     ConnectionMask = MirrorConnectionMask(source.ConnectionMask),
                     BridgeConnectionType = source.BridgeConnectionType,
                     RotationY = Mathf.Repeat(source.RotationY + 180f, 360f),
-                    VariantIndex = source.VariantIndex
+                    VariantIndex = source.VariantIndex,
+                    PaletteIndex = source.PaletteIndex
                 });
             }
         }

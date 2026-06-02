@@ -7,10 +7,10 @@ namespace Game.ProcGen.Warehouse.Editor
     {
         private const string PrefabFolder = "Assets/Core/Resources/Presentation/Warehouse";
         private const string MaterialFolder = "Assets/Core/Resources/Presentation/Warehouse/Materials";
-        private const float CellSizeX = 2.6f;
-        private const float CellSizeZ = 3.8f;
-        private const float ContainerLowHeight = 2.7f;
-        private const float ContainerHighHeight = 5.4f;
+        private const float CellSizeX = 4f;
+        private const float CellSizeZ = 6.5f;
+        private const float ContainerLowHeight = 2.5f;
+        private const float ContainerHighHeight = 5f;
         private const float BridgeHeight = 0.25f;
         private const float FullCoverHeight = 1.55f;
         private const float PartialCoverHeight = 1f;

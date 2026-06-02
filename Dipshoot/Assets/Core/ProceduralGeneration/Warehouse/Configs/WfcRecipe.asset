@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   MapWidth: 15
   MapHeight: 24
-  CellSize: 3
-  CellSizeX: 2.6
-  CellSizeZ: 3.8
+  CellSize: 6.5
+  CellSizeX: 4
+  CellSizeZ: 6.5
   SpawnAPosition: {x: 7.5, y: 1}
   SpawnBPosition: {x: 7.5, y: 23}
   CapturePointPosition: {x: 7.5, y: 12}
@@ -38,6 +38,7 @@ MonoBehaviour:
   MaxBridgeBlockedContainerSides: 3
   TopCoverChance: 0.45
   FullCoverChance: 0.45
+  CoverRandomRotationChance: 0.2
   StructureCellsPerLadder: 8
   ExtraCoverPairs: 0
   StructureDensityPenalty: 10
@@ -57,8 +58,8 @@ MonoBehaviour:
   SealGroundPockets: 1
   GroundPocketSealIterations: 1
   MaxGroundPocketSealCells: 8
-  ContainerLowHeight: 2.7
-  ContainerHighHeight: 5.4
+  ContainerLowHeight: 2.5
+  ContainerHighHeight: 5
   BridgeHeight: 0.25
   ContainerLowPrefab: {fileID: 4583103351965881283, guid: f9b9014102a2347499d533a4e61df5ee, type: 3}
   ContainerHighPrefab: {fileID: 510176864729870452, guid: 8352cc53ec1b10044962d04c26529b33, type: 3}
@@ -75,6 +76,12 @@ MonoBehaviour:
   BridgeVariants: []
   PartialCoverVariants: []
   FullCoverVariants: []
+  ContainerPalette: {fileID: 11400000, guid: ab37f8ac07214eefbc7d0f4e112d06dd, type: 2}
+  DecorationVariants: []
+  DecorationPlacementAttempts: 120
+  MaxDecorations: 40
+  MaxDecorationsPerCell: 4
+  DecorationChance: 0.65
   CollapseAttempts: 48
   MaxPropagationSteps: 4096
   EmptyWeight: 2

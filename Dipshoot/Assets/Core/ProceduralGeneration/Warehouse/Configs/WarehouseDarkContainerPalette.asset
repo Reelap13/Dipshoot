@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c51d8e3087d2419b9fca2e06f48a0f73, type: 3}
+  m_Name: WarehouseDarkContainerPalette
+  m_EditorClassIdentifier: 
+  Materials:
+  - {fileID: 2100000, guid: 55bbff13de4b4f9cbbd8e51ea9ef5b10, type: 2}
+  - {fileID: 2100000, guid: 66ccae24ef5c489dbce9f62fbafe6c21, type: 2}
+  - {fileID: 2100000, guid: 77ddbf35a06d49aebdfa0730cb0f7d32, type: 2}
+  - {fileID: 2100000, guid: 88eec046b17e4abfce0b1841dc108e43, type: 2}
+  - {fileID: 2100000, guid: 99ffc157c28f4bc0df1c2952ed219f54, type: 2}
+  AlternateColorChance: 0.15
+  ColorByGroups: 1

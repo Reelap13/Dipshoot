@@ -31,6 +31,7 @@ namespace Game.ProcGen.Warehouse
             BuildFloor(plan.Layout, mapRoot, recipe);
             BuildOuterWalls(plan.Layout, mapRoot, recipe);
             BuildObjects(plan.Layout, mapRoot, recipe);
+            BuildDecorations(plan.Layout, mapRoot);
             BuildGameplay(plan.Layout, gameplayRoot, recipe, parent.GetComponent<LevelController>());
         }
 
@@ -81,16 +82,66 @@ namespace Game.ProcGen.Warehouse
 
                 Vector3 position = recipe.GridToWorld(obj.Center);
                 position.y = GetSurfaceHeight(layout, recipe, obj);
-                InstantiatePrefab(prefab, $"{obj.Kind}_{obj.Side}", parent, position, GetVisualRotation(obj), GetObjectScale(obj));
+                GameObject instance = InstantiatePrefab(prefab, $"{obj.Kind}_{obj.Side}", parent, position, GetVisualRotation(obj), GetObjectScale(obj));
+                ApplyContainerPalette(instance, obj, recipe);
+            }
+        }
+
+        private static void ApplyContainerPalette(GameObject instance, WarehouseObjectPlacement obj, WarehouseRecipe recipe)
+        {
+            if (instance == null || !obj.IsContainer || recipe.ContainerPalette == null || obj.PaletteIndex < 0)
+                return;
+
+            Material material = recipe.ContainerPalette.GetMaterial(obj.PaletteIndex);
+            if (material == null)
+                return;
+
+            Renderer[] renderers = instance.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Material[] materials = renderers[i].sharedMaterials;
+                for (int j = 0; j < materials.Length; j++)
+                    materials[j] = material;
+
+                renderers[i].sharedMaterials = materials;
             }
         }
 
         private static Quaternion GetVisualRotation(WarehouseObjectPlacement obj)
         {
-            if (obj.IsContainer || obj.Kind == WarehouseObjectKind.Bridge)
+            if (obj.IsContainer)
                 return Quaternion.identity;
 
             return Quaternion.Euler(0f, obj.RotationY, 0f);
+        }
+
+        private static void BuildDecorations(WarehouseLayoutData layout, Transform parent)
+        {
+            for (int i = 0; i < layout.Decorations.Count; i++)
+            {
+                WarehouseDecorationPlacement decoration = layout.Decorations[i];
+                if (decoration.Prefab == null)
+                    continue;
+
+                Vector3 position = GridToWorld(layout, new Vector2(decoration.Cell.x + 0.5f, decoration.Cell.y + 0.5f));
+                position.x += decoration.Offset.x * GetCellSizeX(layout);
+                position.z += decoration.Offset.y * GetCellSizeZ(layout);
+                InstantiatePrefab(
+                    decoration.Prefab,
+                    $"Decoration_{decoration.Kind}",
+                    parent,
+                    position,
+                    Quaternion.Euler(0f, decoration.RotationY, 0f),
+                    Vector3.one * Mathf.Max(0.01f, decoration.Scale));
+            }
+        }
+
+        private static Vector3 GridToWorld(WarehouseLayoutData layout, Vector2 gridPosition)
+        {
+            return new Vector3(
+                (gridPosition.x - layout.Width * 0.5f) * GetCellSizeX(layout),
+                0f,
+                (gridPosition.y - layout.Height * 0.5f) * GetCellSizeZ(layout));
         }
 
         private static float GetCellSizeX(WarehouseLayoutData layout)
