@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.ProcGen.Warehouse
 {
@@ -11,7 +12,8 @@ namespace Game.ProcGen.Warehouse
         public int Generations = 40;
         public int EliteCount = 4;
         public int TournamentSize = 4;
-        public int BaselineSeedCount = 4;
+        [FormerlySerializedAs("BaselineSeedCount")]
+        public int RandomImmigrantCount = 4;
         public float MutationRate = 0.35f;
         public int MinMutationSteps = 1;
         public int MaxMutationSteps = 5;
@@ -22,7 +24,7 @@ namespace Game.ProcGen.Warehouse
         public int GenerationCount => Mathf.Max(1, Generations);
         public int EliteKeepCount => Mathf.Clamp(EliteCount, 1, PopulationCount - 1);
         public int TournamentPickCount => Mathf.Clamp(TournamentSize, 2, PopulationCount);
-        public int BaselineCount => Mathf.Max(1, BaselineSeedCount);
+        public int RandomImmigrantKeepCount => Mathf.Clamp(RandomImmigrantCount, 0, PopulationCount - EliteKeepCount);
         public float MutationProbability => Mathf.Clamp01(MutationRate);
         public int MinMutationStepCount => Mathf.Max(1, MinMutationSteps);
         public int MaxMutationStepCount => Mathf.Max(MinMutationStepCount, MaxMutationSteps);

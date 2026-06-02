@@ -24,8 +24,7 @@ namespace Game.ProcGen.Warehouse
         {
             WarehouseEvolutionRecipe recipe = context.GetRecipe<WarehouseEvolutionRecipe>();
             System.Random random = context.CreateRandom(Id);
-            List<WarehouseGenome> baselines = BuildBaselineGenomes(recipe, context.Request.Seed);
-            List<WarehouseGenome> population = BuildInitialPopulation(recipe, baselines, random);
+            List<WarehouseGenome> population = BuildInitialPopulation(recipe, random);
             Dictionary<int, CachedFitness> fitnessCache = new();
 
             EvaluatePopulation(recipe, population, fitnessCache);
@@ -36,7 +35,8 @@ namespace Game.ProcGen.Warehouse
                 for (int i = 0; i < recipe.EliteKeepCount; i++)
                     next.Add(CloneGenome(population[i]));
 
-                while (next.Count < recipe.PopulationCount)
+                int childLimit = recipe.PopulationCount - recipe.RandomImmigrantKeepCount;
+                while (next.Count < childLimit)
                 {
                     WarehouseGenome parentA = TournamentSelect(population, recipe, random);
                     WarehouseGenome parentB = TournamentSelect(population, recipe, random);
@@ -47,6 +47,9 @@ namespace Game.ProcGen.Warehouse
 
                     next.Add(child);
                 }
+
+                while (next.Count < recipe.PopulationCount)
+                    next.Add(CreateRandomGenome(recipe, random));
 
                 population = next;
                 EvaluatePopulation(recipe, population, fitnessCache);
@@ -70,104 +73,300 @@ namespace Game.ProcGen.Warehouse
             context.Diagnostics.Info($"Evolution best score={best.Score}, cache={fitnessCache.Count}, objects={layout.Objects.Count}.", Id);
         }
 
-        private static List<WarehouseGenome> BuildBaselineGenomes(WarehouseEvolutionRecipe recipe, int seed)
-        {
-            WarehouseRecipe baseRecipe = CreateBaseRecipe(recipe);
-            GenerationPipeline pipeline = new();
-            List<WarehouseGenome> baselines = new(recipe.BaselineCount);
-            try
-            {
-                for (int i = 0; i < recipe.BaselineCount; i++)
-                {
-                    GenerationRequest request = new(unchecked(seed + i * 92821), true);
-                    GenerationResult result = pipeline.Generate(request, baseRecipe);
-                    baselines.Add(CreateGenomeFromLayout(result.GetRequired(WarehouseKeys.Layout)));
-                }
-            }
-            finally
-            {
-                if (Application.isPlaying)
-                    Object.Destroy(baseRecipe);
-                else
-                    Object.DestroyImmediate(baseRecipe);
-            }
-
-            return baselines;
-        }
-
-        private static WarehouseRecipe CreateBaseRecipe(WarehouseEvolutionRecipe source)
-        {
-            WarehouseRecipe recipe = ScriptableObject.CreateInstance<WarehouseRecipe>();
-            recipe.name = "RuntimeWarehouseBaselineRecipe";
-            recipe.MapWidth = source.MapWidth;
-            recipe.MapHeight = source.MapHeight;
-            recipe.CellSize = source.CellSize;
-            recipe.SpawnAPosition = source.SpawnAPosition;
-            recipe.SpawnBPosition = source.SpawnBPosition;
-            recipe.CapturePointPosition = source.CapturePointPosition;
-            recipe.SpawnClearRadius = source.SpawnClearRadius;
-            recipe.CaptureClearRadius = source.CaptureClearRadius;
-            recipe.SymmetryMode = source.SymmetryMode;
-            recipe.InitialStructureCellRatio = source.InitialStructureCellRatio;
-            recipe.TargetStructureCellRatio = source.TargetStructureCellRatio;
-            recipe.MinStructureCellRatio = source.MinStructureCellRatio;
-            recipe.MaxStructureCellRatio = source.MaxStructureCellRatio;
-            recipe.TargetCoverCellRatio = source.TargetCoverCellRatio;
-            recipe.StructurePlacementAttempts = source.StructurePlacementAttempts;
-            recipe.CoverPlacementAttempts = source.CoverPlacementAttempts;
-            recipe.HighContainerChance = source.HighContainerChance;
-            recipe.BridgeChance = source.BridgeChance;
-            recipe.BridgePlacementAttempts = source.BridgePlacementAttempts;
-            recipe.MaxBridgeCellsPerHalf = source.MaxBridgeCellsPerHalf;
-            recipe.MaxBridgePairCountPerHalf = source.MaxBridgePairCountPerHalf;
-            recipe.MaxBridgeBlockedContainerSides = source.MaxBridgeBlockedContainerSides;
-            recipe.TopCoverChance = source.TopCoverChance;
-            recipe.FullCoverChance = source.FullCoverChance;
-            recipe.StructureCellsPerLadder = source.StructureCellsPerLadder;
-            recipe.ExtraCoverPairs = source.ExtraCoverPairs;
-            recipe.StructureDensityPenalty = source.StructureDensityPenalty;
-            recipe.MinTopComponentSizeForLadder = source.MinTopComponentSizeForLadder;
-            recipe.CoverClusterRadius = source.CoverClusterRadius;
-            recipe.MaxCoverNeighbors = source.MaxCoverNeighbors;
-            recipe.CoverClusterPenalty = source.CoverClusterPenalty;
-            recipe.MaxPathCostDifference = source.MaxPathCostDifference;
-            recipe.ContainerLowHeight = source.ContainerLowHeight;
-            recipe.ContainerHighHeight = source.ContainerHighHeight;
-            recipe.BridgeHeight = source.BridgeHeight;
-            recipe.ContainerLowPrefab = source.ContainerLowPrefab;
-            recipe.ContainerHighPrefab = source.ContainerHighPrefab;
-            recipe.BridgePrefab = source.BridgePrefab;
-            recipe.LadderPrefab = source.LadderPrefab;
-            recipe.PartialCoverPrefab = source.PartialCoverPrefab;
-            recipe.FullCoverPrefab = source.FullCoverPrefab;
-            recipe.FloorPrefab = source.FloorPrefab;
-            recipe.WallPrefab = source.WallPrefab;
-            recipe.SpawnMarkerPrefab = source.SpawnMarkerPrefab;
-            recipe.CapturePointMarkerPrefab = source.CapturePointMarkerPrefab;
-            recipe.PartialCoverVariants = source.PartialCoverVariants;
-            recipe.FullCoverVariants = source.FullCoverVariants;
-            return recipe;
-        }
-
         private static List<WarehouseGenome> BuildInitialPopulation(
             WarehouseEvolutionRecipe recipe,
-            List<WarehouseGenome> baselines,
             System.Random random)
         {
             List<WarehouseGenome> population = new(recipe.PopulationCount);
             for (int i = 0; i < recipe.PopulationCount; i++)
-            {
-                WarehouseGenome genome = CloneGenome(baselines[i % baselines.Count]);
-                if (i > 0)
-                {
-                    bool aggressive = i > recipe.PopulationCount / 2;
-                    Mutate(genome, recipe, random, aggressive);
-                }
-
-                population.Add(genome);
-            }
+                population.Add(CreateRandomGenome(recipe, random));
 
             return population;
+        }
+
+        private static WarehouseGenome CreateRandomGenome(WarehouseEvolutionRecipe recipe, System.Random random)
+        {
+            int width = recipe.Width;
+            int height = recipe.Height;
+            int centerX = Mathf.Clamp(Mathf.FloorToInt(recipe.SpawnAPosition.x), 1, width - 2);
+            int lowerY = Mathf.Clamp(random.Next(4, 7), 1, Mathf.Max(1, height / 2 - 2));
+            int upperY = Mathf.Clamp(random.Next(10, 13), lowerY + 1, Mathf.Max(lowerY + 1, height / 2 - 1));
+
+            WarehouseGenome genome = new()
+            {
+                Width = width,
+                Height = height,
+                CellSize = recipe.GridCellSize,
+                SpawnA = recipe.SpawnAPosition,
+                SpawnB = recipe.SpawnBPosition,
+                CapturePoint = new Vector2(4f + (float)random.NextDouble() * 7f, recipe.CapturePointPosition.y),
+                SpawnClearRadius = recipe.SpawnClearRadius,
+                CaptureClearRadius = recipe.CaptureClearRadius,
+                LeftLaneX = Mathf.Clamp(centerX - random.Next(3, 6), 1, width - 2),
+                RightLaneX = Mathf.Clamp(centerX + random.Next(3, 6), 1, width - 2),
+                LowerConnectorY = lowerY,
+                UpperConnectorY = upperY
+            };
+
+            AddRandomContainers(genome, recipe, random);
+            AddRandomBridges(genome, recipe, random);
+            AddRandomLadders(genome, recipe, random);
+            AddRandomCovers(genome, recipe, random);
+            RepairGenome(recipe, genome);
+            return genome;
+        }
+
+        private static void AddRandomContainers(
+            WarehouseGenome genome,
+            WarehouseEvolutionRecipe recipe,
+            System.Random random)
+        {
+            List<Vector2Int> cells = BuildSourceCells(genome);
+            WarehouseGenerationUtility.Shuffle(cells, random);
+            int target = Mathf.RoundToInt(genome.Width * genome.Height * recipe.InitialStructureRatio * 0.5f);
+            bool[,] occupied = new bool[genome.Width, genome.Height / 2];
+            int placed = 0;
+
+            for (int i = 0; i < cells.Count && placed < target; i++)
+            {
+                Vector2Int cell = cells[i];
+                WarehouseObjectKind kind = random.NextDouble() < recipe.TallContainerProbability
+                    ? WarehouseObjectKind.ContainerHigh
+                    : WarehouseObjectKind.ContainerLow;
+                WarehouseObjectPlacement obj = new()
+                {
+                    Kind = kind,
+                    Side = WarehouseSide.A,
+                    Origin = cell,
+                    Size = Vector2Int.one,
+                    RotationY = random.Next(0, 4) * 90f
+                };
+
+                if (occupied[cell.x, cell.y] || !CanPlaceInitialStructure(genome, obj))
+                    continue;
+
+                genome.Objects.Add(obj);
+                occupied[cell.x, cell.y] = true;
+                placed++;
+            }
+        }
+
+        private static void AddRandomBridges(
+            WarehouseGenome genome,
+            WarehouseEvolutionRecipe recipe,
+            System.Random random)
+        {
+            List<BridgeCandidate> candidates = new();
+            SourceGridCache grid = new(genome);
+            for (int y = 0; y < genome.Height / 2; y++)
+            {
+                for (int x = 0; x < genome.Width; x++)
+                {
+                    Vector2Int cell = new(x, y);
+                    AddBridgeCandidate(genome, grid, candidates, cell, horizontal: true);
+                    AddBridgeCandidate(genome, grid, candidates, cell, horizontal: false);
+                }
+            }
+
+            WarehouseGenerationUtility.Shuffle(candidates, random);
+            int target = random.Next(0, recipe.MaxBridgeCellCount + 1);
+            bool[,] occupied = BuildStructureOccupied(genome);
+            int placed = 0;
+            for (int i = 0; i < candidates.Count && placed < target; i++)
+            {
+                BridgeCandidate candidate = candidates[i];
+                if (occupied[candidate.Cell.x, candidate.Cell.y])
+                    continue;
+
+                WarehouseObjectPlacement obj = new()
+                {
+                    Kind = WarehouseObjectKind.Bridge,
+                    Side = WarehouseSide.A,
+                    Origin = candidate.Cell,
+                    Size = Vector2Int.one,
+                    RotationY = candidate.Horizontal ? 0f : 90f
+                };
+
+                if (!CanPlaceInitialStructure(genome, obj))
+                    continue;
+
+                genome.Objects.Add(obj);
+                occupied[candidate.Cell.x, candidate.Cell.y] = true;
+                placed++;
+            }
+        }
+
+        private static void AddRandomLadders(
+            WarehouseGenome genome,
+            WarehouseEvolutionRecipe recipe,
+            System.Random random)
+        {
+            List<WarehouseObjectPlacement> candidates = new();
+            SourceGridCache grid = new(genome);
+            for (int y = 0; y < genome.Height / 2; y++)
+            {
+                for (int x = 0; x < genome.Width; x++)
+                {
+                    if (!grid.ContainerLow[x, y])
+                        continue;
+
+                    Vector2Int topCell = new(x, y);
+                    for (int i = 0; i < WarehouseGenerationUtility.CardinalDirections.Length; i++)
+                    {
+                        Vector2Int direction = WarehouseGenerationUtility.CardinalDirections[i];
+                        Vector2Int groundCell = topCell - direction;
+                        if (!IsSourceCell(genome, groundCell) ||
+                            grid.Structure[groundCell.x, groundCell.y] ||
+                            grid.Ladder[groundCell.x, groundCell.y])
+                        {
+                            continue;
+                        }
+
+                        candidates.Add(new WarehouseObjectPlacement
+                        {
+                            Kind = WarehouseObjectKind.Ladder,
+                            Side = WarehouseSide.A,
+                            Origin = groundCell,
+                            Size = Vector2Int.one,
+                            Direction = VectorToDirection(direction),
+                            RotationY = DirectionToRotation(VectorToDirection(direction))
+                        });
+                    }
+                }
+            }
+
+            WarehouseGenerationUtility.Shuffle(candidates, random);
+            int lowContainers = CountOccupied(grid.ContainerLow);
+            int target = Mathf.Max(1, lowContainers / recipe.LadderSpacing);
+            bool[,] ladder = new bool[genome.Width, genome.Height / 2];
+            int placed = 0;
+            for (int i = 0; i < candidates.Count && placed < target; i++)
+            {
+                WarehouseObjectPlacement obj = candidates[i];
+                if (ladder[obj.Origin.x, obj.Origin.y] ||
+                    WarehouseRepairPass.ObjectTouchesRadius(obj, genome.SpawnA, genome.SpawnClearRadius))
+                {
+                    continue;
+                }
+
+                genome.Objects.Add(obj);
+                ladder[obj.Origin.x, obj.Origin.y] = true;
+                placed++;
+            }
+        }
+
+        private static void AddRandomCovers(
+            WarehouseGenome genome,
+            WarehouseEvolutionRecipe recipe,
+            System.Random random)
+        {
+            SourceGridCache grid = new(genome);
+            List<CoverCandidate> candidates = new();
+            for (int y = 0; y < genome.Height / 2; y++)
+            {
+                for (int x = 0; x < genome.Width; x++)
+                {
+                    Vector2Int cell = new(x, y);
+                    if (!grid.Structure[x, y] && !grid.Ladder[x, y])
+                        candidates.Add(new CoverCandidate(cell, WarehousePlacementSurface.Ground));
+                    if (grid.TopWalkable[x, y] && !grid.Ladder[x, y])
+                        candidates.Add(new CoverCandidate(cell, WarehousePlacementSurface.StructureTop));
+                }
+            }
+
+            WarehouseGenerationUtility.Shuffle(candidates, random);
+            int target = Mathf.RoundToInt(genome.Width * genome.Height * recipe.TargetCoverRatio * 0.5f);
+            bool[,] groundCover = new bool[genome.Width, genome.Height / 2];
+            bool[,] topCover = new bool[genome.Width, genome.Height / 2];
+            int placed = 0;
+            for (int i = 0; i < candidates.Count && placed < target; i++)
+            {
+                CoverCandidate candidate = candidates[i];
+                bool top = candidate.Surface == WarehousePlacementSurface.StructureTop;
+                if (top && topCover[candidate.Cell.x, candidate.Cell.y] ||
+                    !top && groundCover[candidate.Cell.x, candidate.Cell.y])
+                {
+                    continue;
+                }
+
+                WarehouseObjectKind kind = random.NextDouble() < recipe.FullCoverProbability
+                    ? WarehouseObjectKind.FullCover
+                    : WarehouseObjectKind.PartialCover;
+                WarehouseObjectPlacement obj = new()
+                {
+                    Kind = kind,
+                    Side = WarehouseSide.A,
+                    Origin = candidate.Cell,
+                    Size = Vector2Int.one,
+                    Surface = candidate.Surface,
+                    RotationY = random.Next(0, 4) * 90f,
+                    VariantIndex = ChooseCoverVariantIndex(recipe, random, kind)
+                };
+
+                if (WarehouseRepairPass.ObjectTouchesRadius(obj, genome.SpawnA, genome.SpawnClearRadius))
+                    continue;
+
+                genome.Objects.Add(obj);
+                if (top)
+                    topCover[candidate.Cell.x, candidate.Cell.y] = true;
+                else
+                    groundCover[candidate.Cell.x, candidate.Cell.y] = true;
+                placed++;
+            }
+        }
+
+        private static List<Vector2Int> BuildSourceCells(WarehouseGenome genome)
+        {
+            List<Vector2Int> cells = new(genome.Width * genome.Height / 2);
+            for (int y = 0; y < genome.Height / 2; y++)
+            {
+                for (int x = 0; x < genome.Width; x++)
+                    cells.Add(new Vector2Int(x, y));
+            }
+
+            return cells;
+        }
+
+        private static bool CanPlaceInitialStructure(WarehouseGenome genome, WarehouseObjectPlacement obj)
+        {
+            return IsInsideSource(genome, obj) &&
+                   !WarehouseRepairPass.ObjectTouchesRadius(obj, genome.SpawnA, genome.SpawnClearRadius) &&
+                   !(obj.IsStructure && WarehouseRepairPass.ObjectTouchesRadius(obj, genome.CapturePoint, genome.CaptureClearRadius));
+        }
+
+        private static bool[,] BuildStructureOccupied(WarehouseGenome genome)
+        {
+            bool[,] occupied = new bool[genome.Width, genome.Height / 2];
+            for (int i = 0; i < genome.Objects.Count; i++)
+            {
+                WarehouseObjectPlacement obj = genome.Objects[i];
+                if (obj.IsStructure && IsSourceCell(genome, obj.Origin))
+                    occupied[obj.Origin.x, obj.Origin.y] = true;
+            }
+
+            return occupied;
+        }
+
+        private static void AddBridgeCandidate(
+            WarehouseGenome genome,
+            SourceGridCache grid,
+            List<BridgeCandidate> candidates,
+            Vector2Int cell,
+            bool horizontal)
+        {
+            if (!IsSourceCell(genome, cell) || grid.Structure[cell.x, cell.y])
+                return;
+
+            Vector2Int axis = horizontal ? Vector2Int.right : Vector2Int.up;
+            Vector2Int before = cell - axis;
+            Vector2Int after = cell + axis;
+            if (IsSourceCell(genome, before) &&
+                IsSourceCell(genome, after) &&
+                grid.ContainerLow[before.x, before.y] &&
+                grid.ContainerLow[after.x, after.y])
+            {
+                candidates.Add(new BridgeCandidate(cell, horizontal));
+            }
         }
 
         private static void EvaluatePopulation(
@@ -606,8 +805,6 @@ namespace Game.ProcGen.Warehouse
 
         private static void ApplyBasicRepair(WarehouseGenome genome)
         {
-            WarehouseLayoutData meta = CreateLayoutMeta(genome);
-            bool[,] reserved = WarehouseGenerationUtility.BuildReservedGroundMask(meta);
             bool[,] structure = new bool[genome.Width, genome.Height / 2];
             bool[,] ladder = new bool[genome.Width, genome.Height / 2];
             bool[,] groundCover = new bool[genome.Width, genome.Height / 2];
@@ -632,10 +829,7 @@ namespace Game.ProcGen.Warehouse
                     continue;
                 }
 
-                if (obj.IsGroundBlocker && reserved[obj.Origin.x, obj.Origin.y])
-                    continue;
-
-                if (obj.IsLadder && (reserved[obj.Origin.x, obj.Origin.y] || ladder[obj.Origin.x, obj.Origin.y]))
+                if (obj.IsLadder && ladder[obj.Origin.x, obj.Origin.y])
                     continue;
 
                 if (obj.IsStructure)
@@ -738,34 +932,6 @@ namespace Game.ProcGen.Warehouse
             return cover.Surface == WarehousePlacementSurface.StructureTop
                 ? grid.TopWalkable[cover.Origin.x, cover.Origin.y] && !grid.Ladder[cover.Origin.x, cover.Origin.y]
                 : !grid.Structure[cover.Origin.x, cover.Origin.y] && !grid.Ladder[cover.Origin.x, cover.Origin.y];
-        }
-
-        private static WarehouseGenome CreateGenomeFromLayout(WarehouseLayoutData layout)
-        {
-            WarehouseGenome genome = new()
-            {
-                Width = layout.Width,
-                Height = layout.Height,
-                CellSize = layout.CellSize,
-                SpawnA = layout.SpawnA,
-                SpawnB = layout.SpawnB,
-                CapturePoint = layout.CapturePoint,
-                SpawnClearRadius = layout.SpawnClearRadius,
-                CaptureClearRadius = layout.CaptureClearRadius,
-                LeftLaneX = layout.LeftLaneX,
-                RightLaneX = layout.RightLaneX,
-                LowerConnectorY = layout.LowerConnectorY,
-                UpperConnectorY = layout.UpperConnectorY
-            };
-
-            for (int i = 0; i < layout.Objects.Count; i++)
-            {
-                WarehouseObjectPlacement obj = layout.Objects[i];
-                if (obj.Side == WarehouseSide.A && obj.Origin.y < layout.Height / 2)
-                    genome.Objects.Add(ClonePlacement(obj));
-            }
-
-            return genome;
         }
 
         private static WarehouseLayoutData BuildFinalLayout(WarehouseGenome genome)
@@ -1170,6 +1336,20 @@ namespace Game.ProcGen.Warehouse
             };
         }
 
+        private static WarehouseDirection VectorToDirection(Vector2Int direction)
+        {
+            if (direction == Vector2Int.up)
+                return WarehouseDirection.North;
+            if (direction == Vector2Int.down)
+                return WarehouseDirection.South;
+            if (direction == Vector2Int.right)
+                return WarehouseDirection.East;
+            if (direction == Vector2Int.left)
+                return WarehouseDirection.West;
+
+            return WarehouseDirection.North;
+        }
+
         private static float DirectionToRotation(WarehouseDirection direction)
         {
             return direction switch
@@ -1180,6 +1360,30 @@ namespace Game.ProcGen.Warehouse
                 WarehouseDirection.West => 270f,
                 _ => 0f
             };
+        }
+
+        private readonly struct BridgeCandidate
+        {
+            public readonly Vector2Int Cell;
+            public readonly bool Horizontal;
+
+            public BridgeCandidate(Vector2Int cell, bool horizontal)
+            {
+                Cell = cell;
+                Horizontal = horizontal;
+            }
+        }
+
+        private readonly struct CoverCandidate
+        {
+            public readonly Vector2Int Cell;
+            public readonly WarehousePlacementSurface Surface;
+
+            public CoverCandidate(Vector2Int cell, WarehousePlacementSurface surface)
+            {
+                Cell = cell;
+                Surface = surface;
+            }
         }
 
         private static bool IsBridgeHorizontal(WarehouseObjectPlacement obj)

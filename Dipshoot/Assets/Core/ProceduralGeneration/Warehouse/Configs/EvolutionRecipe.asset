@@ -63,7 +63,7 @@ MonoBehaviour:
   Generations: 40
   EliteCount: 4
   TournamentSize: 4
-  BaselineSeedCount: 4
+  RandomImmigrantCount: 4
   MutationRate: 0.35
   MinMutationSteps: 1
   MaxMutationSteps: 5
