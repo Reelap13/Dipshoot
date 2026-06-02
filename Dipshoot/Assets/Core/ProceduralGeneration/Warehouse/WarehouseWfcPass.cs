@@ -94,7 +94,7 @@ namespace Game.ProcGen.Warehouse
         {
             int width = recipe.Width;
             int height = recipe.Height;
-            int centerX = Mathf.Clamp(Mathf.FloorToInt(recipe.SpawnAPosition.x), 1, width - 2);
+            int centerX = Mathf.Clamp(Mathf.FloorToInt(recipe.SpawnA.x), 1, width - 2);
             int lowerY = Mathf.Clamp(random.Next(4, 7), 1, Mathf.Max(1, height / 2 - 2));
             int upperY = Mathf.Clamp(random.Next(10, 13), lowerY + 1, Mathf.Max(lowerY + 1, height / 2 - 1));
 
@@ -103,9 +103,11 @@ namespace Game.ProcGen.Warehouse
                 Width = width,
                 Height = height,
                 CellSize = recipe.GridCellSize,
-                SpawnA = recipe.SpawnAPosition,
-                SpawnB = recipe.SpawnBPosition,
-                CapturePoint = new Vector2(4f + (float)random.NextDouble() * 7f, recipe.CapturePointPosition.y),
+                CellSizeX = recipe.GridCellSizeX,
+                CellSizeZ = recipe.GridCellSizeZ,
+                SpawnA = recipe.SpawnA,
+                SpawnB = recipe.SpawnB,
+                CapturePoint = new Vector2(4f + (float)random.NextDouble() * 7f, recipe.CapturePoint.y),
                 SpawnClearRadius = recipe.SpawnClearRadius,
                 CaptureClearRadius = recipe.CaptureClearRadius,
                 LeftLaneX = Mathf.Clamp(centerX - random.Next(3, 6), 1, width - 2),
@@ -490,7 +492,7 @@ namespace Game.ProcGen.Warehouse
             for (int y = 0; y < tiles.GetLength(1); y++)
             {
                 for (int x = 0; x < tiles.GetLength(0); x++)
-                    AddTileObject(layout, tiles[x, y], new Vector2Int(x, y));
+                    AddTileObject(recipe, layout, random, tiles[x, y], new Vector2Int(x, y));
             }
 
             AddCovers(recipe, layout, random);
@@ -498,14 +500,19 @@ namespace Game.ProcGen.Warehouse
             return layout;
         }
 
-        private static void AddTileObject(WarehouseLayoutData layout, WfcTile tile, Vector2Int cell)
+        private static void AddTileObject(
+            WarehouseWfcRecipe recipe,
+            WarehouseLayoutData layout,
+            System.Random random,
+            WfcTile tile,
+            Vector2Int cell)
         {
             WarehouseObjectPlacement obj = tile switch
             {
                 WfcTile.ContainerLow => new WarehouseObjectPlacement { Kind = WarehouseObjectKind.ContainerLow },
                 WfcTile.ContainerHigh => new WarehouseObjectPlacement { Kind = WarehouseObjectKind.ContainerHigh },
-                WfcTile.BridgeHorizontal => new WarehouseObjectPlacement { Kind = WarehouseObjectKind.Bridge, RotationY = 0f },
-                WfcTile.BridgeVertical => new WarehouseObjectPlacement { Kind = WarehouseObjectKind.Bridge, RotationY = 90f },
+                WfcTile.BridgeHorizontal => CreateBridge(horizontal: true),
+                WfcTile.BridgeVertical => CreateBridge(horizontal: false),
                 WfcTile.LadderNorth => CreateLadder(WarehouseDirection.North),
                 WfcTile.LadderSouth => CreateLadder(WarehouseDirection.South),
                 WfcTile.LadderEast => CreateLadder(WarehouseDirection.East),
@@ -519,6 +526,11 @@ namespace Game.ProcGen.Warehouse
             obj.Side = WarehouseSide.A;
             obj.Origin = cell;
             obj.Size = Vector2Int.one;
+            if (obj.IsLadder)
+                obj.VariantIndex = WarehouseVariantSelector.ChooseClimbAccessVariantIndex(recipe, layout, obj, random);
+            else if (obj.Kind == WarehouseObjectKind.Bridge)
+                obj.VariantIndex = WarehouseVariantSelector.ChooseBridgeVariantIndex(recipe, layout, obj, random);
+
             layout.Objects.Add(obj);
         }
 
@@ -529,6 +541,20 @@ namespace Game.ProcGen.Warehouse
                 Kind = WarehouseObjectKind.Ladder,
                 Direction = direction,
                 RotationY = DirectionToRotation(direction)
+            };
+        }
+
+        private static WarehouseObjectPlacement CreateBridge(bool horizontal)
+        {
+            return new WarehouseObjectPlacement
+            {
+                Kind = WarehouseObjectKind.Bridge,
+                Direction = horizontal ? WarehouseDirection.East : WarehouseDirection.North,
+                ConnectionMask = horizontal
+                    ? WarehouseDirectionMask.East | WarehouseDirectionMask.West
+                    : WarehouseDirectionMask.North | WarehouseDirectionMask.South,
+                BridgeConnectionType = WarehouseBridgeConnectionType.Straight,
+                RotationY = 0f
             };
         }
 
@@ -597,16 +623,22 @@ namespace Game.ProcGen.Warehouse
                 if (!WarehousePlacementRules.TryChooseCoverRotation(layout, candidate.Cell, candidate.Surface, random, out float rotationY))
                     continue;
 
-                layout.Objects.Add(new WarehouseObjectPlacement
+                WarehouseObjectPlacement placement = new()
                 {
                     Kind = kind,
                     Side = WarehouseSide.A,
                     Origin = candidate.Cell,
                     Size = Vector2Int.one,
                     Surface = candidate.Surface,
-                    RotationY = rotationY,
-                    VariantIndex = ChooseCoverVariantIndex(recipe, random, kind)
-                });
+                    Direction = RotationToDirection(rotationY),
+                    RotationY = rotationY
+                };
+
+                placement.VariantIndex = WarehouseVariantSelector.ChooseCoverVariantIndex(recipe, layout, placement, random);
+                if (placement.VariantIndex < 0)
+                    placement.VariantIndex = ChooseCoverVariantIndex(recipe, random, kind);
+
+                layout.Objects.Add(placement);
 
                 if (isTop)
                     topCover[candidate.Cell.x, candidate.Cell.y] = true;
@@ -795,6 +827,8 @@ namespace Game.ProcGen.Warehouse
                 Width = source.Width,
                 Height = source.Height,
                 CellSize = source.CellSize,
+                CellSizeX = source.CellSizeX,
+                CellSizeZ = source.CellSizeZ,
                 SpawnA = source.SpawnA,
                 SpawnB = source.SpawnB,
                 CapturePoint = source.CapturePoint,
@@ -823,6 +857,8 @@ namespace Game.ProcGen.Warehouse
                     Size = source.Size,
                     Surface = source.Surface,
                     Direction = MirrorDirection(source.Direction),
+                    ConnectionMask = MirrorConnectionMask(source.ConnectionMask),
+                    BridgeConnectionType = source.BridgeConnectionType,
                     RotationY = Mathf.Repeat(source.RotationY + 180f, 360f),
                     VariantIndex = source.VariantIndex
                 });
@@ -909,6 +945,21 @@ namespace Game.ProcGen.Warehouse
             };
         }
 
+        private static WarehouseDirectionMask MirrorConnectionMask(WarehouseDirectionMask mask)
+        {
+            WarehouseDirectionMask mirrored = WarehouseDirectionMask.None;
+            if ((mask & WarehouseDirectionMask.North) != 0)
+                mirrored |= WarehouseDirectionMask.South;
+            if ((mask & WarehouseDirectionMask.South) != 0)
+                mirrored |= WarehouseDirectionMask.North;
+            if ((mask & WarehouseDirectionMask.East) != 0)
+                mirrored |= WarehouseDirectionMask.West;
+            if ((mask & WarehouseDirectionMask.West) != 0)
+                mirrored |= WarehouseDirectionMask.East;
+
+            return mirrored;
+        }
+
         private static float DirectionToRotation(WarehouseDirection direction)
         {
             return direction switch
@@ -919,6 +970,19 @@ namespace Game.ProcGen.Warehouse
                 WarehouseDirection.West => 270f,
                 _ => 0f
             };
+        }
+
+        private static WarehouseDirection RotationToDirection(float rotationY)
+        {
+            float angle = Mathf.Repeat(rotationY, 360f);
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 90f)) <= 45f)
+                return WarehouseDirection.East;
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 180f)) <= 45f)
+                return WarehouseDirection.South;
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 270f)) <= 45f)
+                return WarehouseDirection.West;
+
+            return WarehouseDirection.North;
         }
 
         private static void AddPenalty(WarehouseFitnessReport report, float penalty, string violation)

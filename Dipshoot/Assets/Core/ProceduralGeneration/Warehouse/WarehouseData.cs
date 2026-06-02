@@ -33,6 +33,37 @@ namespace Game.ProcGen.Warehouse
         StructureTop
     }
 
+    public enum WarehouseBridgeConnectionType
+    {
+        Straight,
+        ThreeWay
+    }
+
+    [System.Flags]
+    public enum WarehouseDirectionMask
+    {
+        None = 0,
+        North = 1 << 0,
+        South = 1 << 1,
+        East = 1 << 2,
+        West = 1 << 3,
+        All = North | South | East | West
+    }
+
+    public enum WarehouseNeighbourRule
+    {
+        Any,
+        Inside,
+        EmptyGround,
+        LowContainer,
+        AnyContainer,
+        Structure,
+        TopWalkable,
+        NotStructure,
+        NotLadder,
+        OutsideOrWall
+    }
+
     public sealed class WarehouseObjectPlacement
     {
         public WarehouseObjectKind Kind;
@@ -41,10 +72,13 @@ namespace Game.ProcGen.Warehouse
         public Vector2Int Size = Vector2Int.one;
         public WarehousePlacementSurface Surface = WarehousePlacementSurface.Ground;
         public WarehouseDirection Direction;
+        public WarehouseDirectionMask ConnectionMask = WarehouseDirectionMask.None;
+        public WarehouseBridgeConnectionType BridgeConnectionType = WarehouseBridgeConnectionType.Straight;
         public float RotationY;
         public int VariantIndex = -1;
 
         public bool IsContainer => Kind == WarehouseObjectKind.ContainerLow || Kind == WarehouseObjectKind.ContainerHigh;
+        public bool IsBridge => Kind == WarehouseObjectKind.Bridge;
         public bool IsStructure => IsContainer || Kind == WarehouseObjectKind.Bridge;
         public bool IsGroundBlocker => IsContainer;
         public bool IsTopWalkableSource => Kind == WarehouseObjectKind.ContainerLow || Kind == WarehouseObjectKind.Bridge;

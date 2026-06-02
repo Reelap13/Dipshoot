@@ -21,15 +21,15 @@ namespace Game.ProcGen.Warehouse
     {
         [Header("Map")]
         public int MapWidth = 15;
-        public int MapHeight = 30;
+        public int MapHeight = 24;
         public float CellSize = 3f;
         public float CellSizeX = 2.6f;
         public float CellSizeZ = 3.8f;
 
         [Header("Fixed Points")]
         public Vector2 SpawnAPosition = new Vector2(7.5f, 1f);
-        public Vector2 SpawnBPosition = new Vector2(7.5f, 29f);
-        public Vector2 CapturePointPosition = new Vector2(7.5f, 15f);
+        public Vector2 SpawnBPosition = new Vector2(7.5f, 23f);
+        public Vector2 CapturePointPosition = new Vector2(7.5f, 12f);
 
         [Header("Clear Zones")]
         public float SpawnClearRadius = 2f;
@@ -91,12 +91,20 @@ namespace Game.ProcGen.Warehouse
         public GameObject SpawnMarkerPrefab;
         public GameObject CapturePointMarkerPrefab;
 
+        [Header("Placement Variants")]
+        public WarehouseClimbAccessVariant[] ClimbAccessVariants;
+        public WarehouseCoverVariant[] CoverVariants;
+        public WarehouseBridgeVariant[] BridgeVariants;
+
         [Header("Cover Variants")]
         public WarehousePrefabVariant[] PartialCoverVariants;
         public WarehousePrefabVariant[] FullCoverVariants;
 
         public int Width => Mathf.Max(3, MapWidth);
         public int Height => Mathf.Max(6, MapHeight);
+        public Vector2 SpawnA => new(Width * 0.5f, 1f);
+        public Vector2 SpawnB => new(Width * 0.5f, Height - 1f);
+        public Vector2 CapturePoint => new(Width * 0.5f, Height * 0.5f);
         public float GridCellSizeX => Mathf.Max(0.5f, CellSizeX > 0f ? CellSizeX : CellSize);
         public float GridCellSizeZ => Mathf.Max(0.5f, CellSizeZ > 0f ? CellSizeZ : CellSize);
         public float GridCellSize => Mathf.Max(GridCellSizeX, GridCellSizeZ);
@@ -166,6 +174,14 @@ namespace Game.ProcGen.Warehouse
             }
 
             return GetPrefab(kind);
+        }
+
+        public GameObject GetPrefab(WarehouseObjectPlacement placement, WarehouseLayoutData layout)
+        {
+            if (WarehouseVariantSelector.TryGetPrefab(this, layout, placement, out GameObject prefab))
+                return prefab;
+
+            return GetPrefab(placement.Kind, placement.VariantIndex);
         }
 
         public WarehousePrefabVariant[] GetCoverVariants(WarehouseObjectKind kind)

@@ -7,7 +7,8 @@ namespace Game.ProcGen.Warehouse.Editor
     {
         private const string PrefabFolder = "Assets/Core/Resources/Presentation/Warehouse";
         private const string MaterialFolder = "Assets/Core/Resources/Presentation/Warehouse/Materials";
-        private const float CellSize = 3f;
+        private const float CellSizeX = 2.6f;
+        private const float CellSizeZ = 3.8f;
         private const float ContainerLowHeight = 2.7f;
         private const float ContainerHighHeight = 5.4f;
         private const float BridgeHeight = 0.25f;
@@ -30,12 +31,12 @@ namespace Game.ProcGen.Warehouse.Editor
             Material spawn = GetOrCreateMaterial("WarehouseSpawnMarker.mat", new Color(0.1f, 0.35f, 0.85f));
             Material capture = GetOrCreateMaterial("WarehouseCaptureMarker.mat", new Color(0.78f, 0.78f, 0.78f, 0.45f));
 
-            SaveSizedCubePrefab("ContainerLow", new Vector3(CellSize, ContainerLowHeight, CellSize), containerLow, true);
-            SaveSizedCubePrefab("ContainerHigh", new Vector3(CellSize, ContainerHighHeight, CellSize), containerHigh, true);
-            SaveSizedCubePrefab("Bridge", new Vector3(CellSize, BridgeHeight, CellSize), bridge, true);
-            SaveSizedCubePrefab("Ladder", new Vector3(CellSize * 0.28f, ContainerLowHeight, 0.12f), ladder, false);
-            SaveSizedCubePrefab("PartialCover", new Vector3(CellSize * 0.86f, PartialCoverHeight, CellSize * 0.28f), partialCover, true);
-            SaveSizedCubePrefab("FullCover", new Vector3(CellSize * 0.86f, FullCoverHeight, CellSize * 0.28f), fullCover, true);
+            SaveSizedCubePrefab("ContainerLow", new Vector3(CellSizeX, ContainerLowHeight, CellSizeZ), containerLow, true);
+            SaveSizedCubePrefab("ContainerHigh", new Vector3(CellSizeX, ContainerHighHeight, CellSizeZ), containerHigh, true);
+            SaveSizedCubePrefab("Bridge", new Vector3(CellSizeX, BridgeHeight, CellSizeZ), bridge, true);
+            SaveSizedCubePrefab("Ladder", new Vector3(CellSizeX * 0.28f, ContainerLowHeight, 0.12f), ladder, false);
+            SaveSizedCubePrefab("PartialCover", new Vector3(CellSizeX * 0.86f, PartialCoverHeight, CellSizeZ * 0.28f), partialCover, true);
+            SaveSizedCubePrefab("FullCover", new Vector3(CellSizeX * 0.86f, FullCoverHeight, CellSizeZ * 0.28f), fullCover, true);
             SaveCubePrefab("WarehouseFloor", floor, true);
             SaveCubePrefab("WarehouseWall", wall, true);
             SaveSpawnMarker(spawn);

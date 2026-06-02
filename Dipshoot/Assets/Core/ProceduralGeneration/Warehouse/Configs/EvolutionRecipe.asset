@@ -13,11 +13,13 @@ MonoBehaviour:
   m_Name: EvolutionRecipe
   m_EditorClassIdentifier: 
   MapWidth: 15
-  MapHeight: 30
+  MapHeight: 24
   CellSize: 3
+  CellSizeX: 2.6
+  CellSizeZ: 3.8
   SpawnAPosition: {x: 7.5, y: 1}
-  SpawnBPosition: {x: 7.5, y: 29}
-  CapturePointPosition: {x: 7.5, y: 15}
+  SpawnBPosition: {x: 7.5, y: 23}
+  CapturePointPosition: {x: 7.5, y: 12}
   SpawnClearRadius: 2
   CaptureClearRadius: 3
   SymmetryMode: 0
@@ -68,6 +70,9 @@ MonoBehaviour:
   WallPrefab: {fileID: 6442687450418211264, guid: 80eb524ff5c8e5349baad9784c98753e, type: 3}
   SpawnMarkerPrefab: {fileID: 2817191206490059506, guid: a84f0ee1b13782f428d286e7c082e9cc, type: 3}
   CapturePointMarkerPrefab: {fileID: 1604473248831348406, guid: 97217c1081a8ce9449755eaf0920de1f, type: 3}
+  ClimbAccessVariants: []
+  CoverVariants: []
+  BridgeVariants: []
   PartialCoverVariants: []
   FullCoverVariants: []
   PopulationSize: 32

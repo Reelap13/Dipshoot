@@ -123,6 +123,8 @@ namespace Game.ProcGen.Warehouse
                 obj.Kind = ChooseFillContainerKind(obj.Origin, highContainerChance);
                 obj.Surface = WarehousePlacementSurface.Ground;
                 obj.Direction = default;
+                obj.ConnectionMask = WarehouseDirectionMask.None;
+                obj.BridgeConnectionType = WarehouseBridgeConnectionType.Straight;
                 obj.RotationY = 0f;
                 obj.VariantIndex = -1;
                 changed++;
@@ -149,6 +151,8 @@ namespace Game.ProcGen.Warehouse
                 candidates[i].Kind = WarehouseObjectKind.ContainerHigh;
                 candidates[i].Surface = WarehousePlacementSurface.Ground;
                 candidates[i].Direction = default;
+                candidates[i].ConnectionMask = WarehouseDirectionMask.None;
+                candidates[i].BridgeConnectionType = WarehouseBridgeConnectionType.Straight;
                 candidates[i].RotationY = 0f;
                 candidates[i].VariantIndex = -1;
             }
@@ -181,6 +185,7 @@ namespace Game.ProcGen.Warehouse
                 if (TryChooseCoverRotation(layout, obj.Origin, obj.Surface, null, out float rotationY, obj))
                 {
                     obj.RotationY = rotationY;
+                    obj.Direction = RotationToDirection(rotationY);
                     changed++;
                 }
             }
@@ -850,6 +855,19 @@ namespace Game.ProcGen.Warehouse
                 WarehouseDirection.West => 270f,
                 _ => 0f
             };
+        }
+
+        private static WarehouseDirection RotationToDirection(float rotationY)
+        {
+            float angle = Mathf.Repeat(rotationY, 360f);
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 90f)) <= 45f)
+                return WarehouseDirection.East;
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 180f)) <= 45f)
+                return WarehouseDirection.South;
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 270f)) <= 45f)
+                return WarehouseDirection.West;
+
+            return WarehouseDirection.North;
         }
 
         private static RectInt GetRect(WarehouseObjectPlacement obj)

@@ -19,7 +19,7 @@ namespace Game.ProcGen.Warehouse
             int width = recipe.Width;
             int height = recipe.Height;
             int halfHeight = height / 2;
-            int centerX = Mathf.Clamp(Mathf.FloorToInt(recipe.SpawnAPosition.x), 1, width - 2);
+            int centerX = Mathf.Clamp(Mathf.FloorToInt(recipe.SpawnA.x), 1, width - 2);
             int leftLaneX = Mathf.Clamp(centerX - random.Next(3, 6), 1, width - 2);
             int rightLaneX = Mathf.Clamp(centerX + random.Next(3, 6), 1, width - 2);
             if (rightLaneX - leftLaneX < 4)
@@ -35,9 +35,11 @@ namespace Game.ProcGen.Warehouse
                 Width = width,
                 Height = height,
                 CellSize = recipe.GridCellSize,
-                SpawnA = recipe.SpawnAPosition,
-                SpawnB = recipe.SpawnBPosition,
-                CapturePoint = new Vector2(4f + (float)random.NextDouble() * 7f, recipe.CapturePointPosition.y),
+                CellSizeX = recipe.GridCellSizeX,
+                CellSizeZ = recipe.GridCellSizeZ,
+                SpawnA = recipe.SpawnA,
+                SpawnB = recipe.SpawnB,
+                CapturePoint = new Vector2(4f + (float)random.NextDouble() * 7f, recipe.CapturePoint.y),
                 SpawnClearRadius = recipe.SpawnClearRadius,
                 CaptureClearRadius = recipe.CaptureClearRadius,
                 LeftLaneX = leftLaneX,
@@ -101,6 +103,50 @@ namespace Game.ProcGen.Warehouse
             ReserveCaptureApproach(layout, reserved, leftLaneX, rightLaneX, captureX, upperY);
             ReserveCaptureApproach(layout, reserved, leftLaneX, rightLaneX, mirroredCaptureX, upperY);
             return reserved;
+        }
+
+        public static WarehouseDirectionMask DirectionToMask(WarehouseDirection direction)
+        {
+            return direction switch
+            {
+                WarehouseDirection.North => WarehouseDirectionMask.North,
+                WarehouseDirection.South => WarehouseDirectionMask.South,
+                WarehouseDirection.East => WarehouseDirectionMask.East,
+                WarehouseDirection.West => WarehouseDirectionMask.West,
+                _ => WarehouseDirectionMask.None
+            };
+        }
+
+        public static bool HasDirection(WarehouseDirectionMask mask, WarehouseDirection direction)
+        {
+            return (mask & DirectionToMask(direction)) != 0;
+        }
+
+        public static int CountDirections(WarehouseDirectionMask mask)
+        {
+            int count = 0;
+            if ((mask & WarehouseDirectionMask.North) != 0)
+                count++;
+            if ((mask & WarehouseDirectionMask.South) != 0)
+                count++;
+            if ((mask & WarehouseDirectionMask.East) != 0)
+                count++;
+            if ((mask & WarehouseDirectionMask.West) != 0)
+                count++;
+
+            return count;
+        }
+
+        public static WarehouseDirection PrimaryDirection(WarehouseDirectionMask mask)
+        {
+            if ((mask & WarehouseDirectionMask.North) != 0)
+                return WarehouseDirection.North;
+            if ((mask & WarehouseDirectionMask.East) != 0)
+                return WarehouseDirection.East;
+            if ((mask & WarehouseDirectionMask.South) != 0)
+                return WarehouseDirection.South;
+
+            return WarehouseDirection.West;
         }
 
         public static int CountOccupied(bool[,] occupied)
@@ -256,7 +302,7 @@ namespace Game.ProcGen.Warehouse
                         ? WarehouseObjectKind.ContainerHigh
                         : WarehouseObjectKind.ContainerLow;
 
-                    if (TryAddContainer(layout, reservedGround, occupied, kind, cell, random.Next(0, 4) * 90f))
+                    if (TryAddContainer(layout, reservedGround, occupied, kind, cell))
                         placed++;
                 }
             }
@@ -282,7 +328,7 @@ namespace Game.ProcGen.Warehouse
                     ? WarehouseObjectKind.ContainerHigh
                     : WarehouseObjectKind.ContainerLow;
 
-                if (TryAddContainer(layout, reservedGround, occupied, kind, candidates[i], random.Next(0, 4) * 90f))
+                if (TryAddContainer(layout, reservedGround, occupied, kind, candidates[i]))
                     placed++;
             }
         }
@@ -428,8 +474,8 @@ namespace Game.ProcGen.Warehouse
                 return false;
 
             Vector2Int second = first + (horizontal ? Vector2Int.right : Vector2Int.up);
-            AddBridge(layout, first, horizontal);
-            AddBridge(layout, second, horizontal);
+            AddBridge(layout, first, GetStraightBridgeMask(horizontal), WarehouseBridgeConnectionType.Straight);
+            AddBridge(layout, second, GetStraightBridgeMask(horizontal), WarehouseBridgeConnectionType.Straight);
             occupied[first.x, first.y] = true;
             occupied[second.x, second.y] = true;
             return true;
@@ -445,14 +491,20 @@ namespace Game.ProcGen.Warehouse
             if (!CanPlaceBridge(layout, recipe, reservedGround, occupied, cell))
                 return false;
 
-            bool horizontal = HasBridgeConnectorAt(layout, cell + Vector2Int.left) &&
-                              HasBridgeConnectorAt(layout, cell + Vector2Int.right);
-            AddBridge(layout, cell, horizontal);
+            WarehouseDirectionMask mask = GetBridgeConnectionMask(layout, cell);
+            WarehouseBridgeConnectionType type = WarehouseGenerationUtility.CountDirections(mask) == 3
+                ? WarehouseBridgeConnectionType.ThreeWay
+                : WarehouseBridgeConnectionType.Straight;
+            AddBridge(layout, cell, mask, type);
             occupied[cell.x, cell.y] = true;
             return true;
         }
 
-        private static void AddBridge(WarehouseLayoutData layout, Vector2Int cell, bool horizontal)
+        private static void AddBridge(
+            WarehouseLayoutData layout,
+            Vector2Int cell,
+            WarehouseDirectionMask connectionMask,
+            WarehouseBridgeConnectionType connectionType)
         {
             layout.Objects.Add(new WarehouseObjectPlacement
             {
@@ -460,7 +512,10 @@ namespace Game.ProcGen.Warehouse
                 Side = WarehouseSide.A,
                 Origin = cell,
                 Size = Vector2Int.one,
-                RotationY = horizontal ? 0f : 90f
+                Direction = WarehouseGenerationUtility.PrimaryDirection(connectionMask),
+                ConnectionMask = connectionMask,
+                BridgeConnectionType = connectionType,
+                RotationY = 0f
             });
         }
 
@@ -474,11 +529,7 @@ namespace Game.ProcGen.Warehouse
             if (!CanPlaceBridgeCell(layout, recipe, reservedGround, occupied, cell))
                 return false;
 
-            bool horizontal = HasBridgeConnectorAt(layout, cell + Vector2Int.left) &&
-                              HasBridgeConnectorAt(layout, cell + Vector2Int.right);
-            bool vertical = HasBridgeConnectorAt(layout, cell + Vector2Int.down) &&
-                            HasBridgeConnectorAt(layout, cell + Vector2Int.up);
-            return horizontal || vertical;
+            return IsValidBridgeConnectionMask(GetBridgeConnectionMask(layout, cell));
         }
 
         private static bool CanPlaceBridgePair(
@@ -525,6 +576,40 @@ namespace Game.ProcGen.Warehouse
 
             return !WarehouseRepairPass.ObjectTouchesRadius(probe, layout.SpawnA, layout.SpawnClearRadius) &&
                    !WarehouseRepairPass.ObjectTouchesRadius(probe, layout.CapturePoint, layout.CaptureClearRadius);
+        }
+
+        private static WarehouseDirectionMask GetStraightBridgeMask(bool horizontal)
+        {
+            return horizontal
+                ? WarehouseDirectionMask.East | WarehouseDirectionMask.West
+                : WarehouseDirectionMask.North | WarehouseDirectionMask.South;
+        }
+
+        private static WarehouseDirectionMask GetBridgeConnectionMask(WarehouseLayoutData layout, Vector2Int cell)
+        {
+            WarehouseDirectionMask mask = WarehouseDirectionMask.None;
+            if (HasBridgeConnectorAt(layout, cell + Vector2Int.up))
+                mask |= WarehouseDirectionMask.North;
+            if (HasBridgeConnectorAt(layout, cell + Vector2Int.down))
+                mask |= WarehouseDirectionMask.South;
+            if (HasBridgeConnectorAt(layout, cell + Vector2Int.right))
+                mask |= WarehouseDirectionMask.East;
+            if (HasBridgeConnectorAt(layout, cell + Vector2Int.left))
+                mask |= WarehouseDirectionMask.West;
+
+            return mask;
+        }
+
+        private static bool IsValidBridgeConnectionMask(WarehouseDirectionMask mask)
+        {
+            if (WarehouseGenerationUtility.CountDirections(mask) == 3)
+                return true;
+
+            bool horizontal = (mask & (WarehouseDirectionMask.East | WarehouseDirectionMask.West)) ==
+                              (WarehouseDirectionMask.East | WarehouseDirectionMask.West);
+            bool vertical = (mask & (WarehouseDirectionMask.North | WarehouseDirectionMask.South)) ==
+                            (WarehouseDirectionMask.North | WarehouseDirectionMask.South);
+            return horizontal || vertical;
         }
 
         private static int CountContainerSides(WarehouseLayoutData layout, Vector2Int cell)
@@ -678,7 +763,7 @@ namespace Game.ProcGen.Warehouse
             int placed = 0;
             for (int i = 0; i < structureCells.Count && placed < targetLadders; i++)
             {
-                if (TryAddLadderForStructure(layout, random, reservedGround, structureOccupied, ladderOccupied, structureCells[i]))
+                if (TryAddLadderForStructure(layout, recipe, random, reservedGround, structureOccupied, ladderOccupied, structureCells[i]))
                     placed++;
             }
         }
@@ -699,7 +784,7 @@ namespace Game.ProcGen.Warehouse
                 if (component.Count < recipe.MinTopComponentSize || HasLadderAccess(layout, component))
                     continue;
 
-                if (!TryAddLadderForComponent(layout, random, reservedGround, structureOccupied, ladderOccupied, component))
+                if (!TryAddLadderForComponent(layout, recipe, random, reservedGround, structureOccupied, ladderOccupied, component))
                     inaccessible++;
             }
 
@@ -708,6 +793,7 @@ namespace Game.ProcGen.Warehouse
 
         private static bool TryAddLadderForComponent(
             WarehouseLayoutData layout,
+            WarehouseRecipe recipe,
             System.Random random,
             bool[,] reservedGround,
             bool[,] structureOccupied,
@@ -725,7 +811,7 @@ namespace Game.ProcGen.Warehouse
             WarehouseGenerationUtility.Shuffle(lowContainerCells, random);
             for (int i = 0; i < lowContainerCells.Count; i++)
             {
-                if (TryAddLadderForStructure(layout, random, reservedGround, structureOccupied, ladderOccupied, lowContainerCells[i]))
+                if (TryAddLadderForStructure(layout, recipe, random, reservedGround, structureOccupied, ladderOccupied, lowContainerCells[i]))
                     return true;
             }
 
@@ -819,6 +905,7 @@ namespace Game.ProcGen.Warehouse
 
         private static bool TryAddLadderForStructure(
             WarehouseLayoutData layout,
+            WarehouseRecipe recipe,
             System.Random random,
             bool[,] reservedGround,
             bool[,] structureOccupied,
@@ -847,7 +934,7 @@ namespace Game.ProcGen.Warehouse
                     continue;
                 }
 
-                AddLadder(layout, groundCell, direction);
+                AddLadder(layout, recipe, random, groundCell, direction);
                 ladderOccupied[groundCell.x, groundCell.y] = true;
                 return true;
             }
@@ -884,9 +971,14 @@ namespace Game.ProcGen.Warehouse
             return false;
         }
 
-        private static void AddLadder(WarehouseLayoutData layout, Vector2Int cell, WarehouseDirection direction)
+        private static void AddLadder(
+            WarehouseLayoutData layout,
+            WarehouseRecipe recipe,
+            System.Random random,
+            Vector2Int cell,
+            WarehouseDirection direction)
         {
-            layout.Objects.Add(new WarehouseObjectPlacement
+            WarehouseObjectPlacement placement = new()
             {
                 Kind = WarehouseObjectKind.Ladder,
                 Side = WarehouseSide.A,
@@ -894,7 +986,10 @@ namespace Game.ProcGen.Warehouse
                 Size = Vector2Int.one,
                 Direction = direction,
                 RotationY = DirectionToRotation(direction)
-            });
+            };
+
+            placement.VariantIndex = WarehouseVariantSelector.ChooseClimbAccessVariantIndex(recipe, layout, placement, random);
+            layout.Objects.Add(placement);
         }
 
         private static Vector2Int DirectionToVector(WarehouseDirection direction)
@@ -1125,7 +1220,7 @@ namespace Game.ProcGen.Warehouse
             if (!WarehousePlacementRules.TryChooseCoverRotation(layout, cell, surface, random, out rotationY))
                 return false;
 
-            layout.Objects.Add(new WarehouseObjectPlacement
+            WarehouseObjectPlacement placement = new()
             {
                 Kind = kind,
                 Side = WarehouseSide.A,
@@ -1133,8 +1228,14 @@ namespace Game.ProcGen.Warehouse
                 Size = Vector2Int.one,
                 Surface = surface,
                 RotationY = rotationY,
-                VariantIndex = ChooseCoverVariantIndex(recipe, random, kind)
-            });
+                Direction = RotationToDirection(rotationY)
+            };
+
+            placement.VariantIndex = WarehouseVariantSelector.ChooseCoverVariantIndex(recipe, layout, placement, random);
+            if (placement.VariantIndex < 0)
+                placement.VariantIndex = ChooseLegacyCoverVariantIndex(recipe, random, kind);
+
+            layout.Objects.Add(placement);
             if (surface == WarehousePlacementSurface.StructureTop)
                 topCoverOccupied[cell.x, cell.y] = true;
             else
@@ -1143,7 +1244,7 @@ namespace Game.ProcGen.Warehouse
             return true;
         }
 
-        private static int ChooseCoverVariantIndex(WarehouseRecipe recipe, System.Random random, WarehouseObjectKind kind)
+        private static int ChooseLegacyCoverVariantIndex(WarehouseRecipe recipe, System.Random random, WarehouseObjectKind kind)
         {
             WarehousePrefabVariant[] variants = recipe.GetCoverVariants(kind);
             if (variants == null || variants.Length == 0)
@@ -1172,6 +1273,19 @@ namespace Game.ProcGen.Warehouse
             }
 
             return -1;
+        }
+
+        private static WarehouseDirection RotationToDirection(float rotationY)
+        {
+            float angle = Mathf.Repeat(rotationY, 360f);
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 90f)) <= 45f)
+                return WarehouseDirection.East;
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 180f)) <= 45f)
+                return WarehouseDirection.South;
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 270f)) <= 45f)
+                return WarehouseDirection.West;
+
+            return WarehouseDirection.North;
         }
 
         private static bool CanPlaceCover(
@@ -1274,10 +1388,27 @@ namespace Game.ProcGen.Warehouse
                     Size = source.Size,
                     Surface = source.Surface,
                     Direction = MirrorDirection(source.Direction),
+                    ConnectionMask = MirrorConnectionMask(source.ConnectionMask),
+                    BridgeConnectionType = source.BridgeConnectionType,
                     RotationY = Mathf.Repeat(source.RotationY + 180f, 360f),
                     VariantIndex = source.VariantIndex
                 });
             }
+        }
+
+        private static WarehouseDirectionMask MirrorConnectionMask(WarehouseDirectionMask mask)
+        {
+            WarehouseDirectionMask mirrored = WarehouseDirectionMask.None;
+            if ((mask & WarehouseDirectionMask.North) != 0)
+                mirrored |= WarehouseDirectionMask.South;
+            if ((mask & WarehouseDirectionMask.South) != 0)
+                mirrored |= WarehouseDirectionMask.North;
+            if ((mask & WarehouseDirectionMask.East) != 0)
+                mirrored |= WarehouseDirectionMask.West;
+            if ((mask & WarehouseDirectionMask.West) != 0)
+                mirrored |= WarehouseDirectionMask.East;
+
+            return mirrored;
         }
 
         private static WarehouseDirection MirrorDirection(WarehouseDirection direction)
@@ -1394,11 +1525,28 @@ namespace Game.ProcGen.Warehouse
             if (CountContainerSides(layout, obj.Origin) >= recipe.MaxBridgeBlockedSides)
                 return true;
 
-            return IsBridgeHorizontal(obj)
-                ? !HasBridgeConnectorAt(layout, obj, obj.Origin + Vector2Int.left) ||
-                  !HasBridgeConnectorAt(layout, obj, obj.Origin + Vector2Int.right)
-                : !HasBridgeConnectorAt(layout, obj, obj.Origin + Vector2Int.down) ||
-                  !HasBridgeConnectorAt(layout, obj, obj.Origin + Vector2Int.up);
+            WarehouseDirectionMask mask = GetBridgeConnectionMask(obj);
+            obj.ConnectionMask = mask;
+            int connectionCount = WarehouseGenerationUtility.CountDirections(mask);
+            if (connectionCount == 2)
+            {
+                obj.BridgeConnectionType = WarehouseBridgeConnectionType.Straight;
+                if (!IsStraightBridgeMask(mask))
+                    return true;
+            }
+            else if (connectionCount == 3)
+            {
+                obj.BridgeConnectionType = WarehouseBridgeConnectionType.ThreeWay;
+            }
+            else
+            {
+                return true;
+            }
+
+            return !HasConnectedSide(layout, obj, mask, WarehouseDirection.North, Vector2Int.up) ||
+                   !HasConnectedSide(layout, obj, mask, WarehouseDirection.South, Vector2Int.down) ||
+                   !HasConnectedSide(layout, obj, mask, WarehouseDirection.East, Vector2Int.right) ||
+                   !HasConnectedSide(layout, obj, mask, WarehouseDirection.West, Vector2Int.left);
         }
 
         private static bool ViolatesLadderTarget(WarehouseLayoutData layout, WarehouseObjectPlacement obj)
@@ -1417,6 +1565,7 @@ namespace Game.ProcGen.Warehouse
             if (WarehousePlacementRules.TryChooseCoverRotation(layout, obj.Origin, obj.Surface, null, out float rotationY, obj))
             {
                 obj.RotationY = rotationY;
+                obj.Direction = RotationToDirection(rotationY);
                 return false;
             }
 
@@ -1602,10 +1751,46 @@ namespace Game.ProcGen.Warehouse
             return false;
         }
 
-        private static bool IsBridgeHorizontal(WarehouseObjectPlacement obj)
+        private static bool HasConnectedSide(
+            WarehouseLayoutData layout,
+            WarehouseObjectPlacement bridge,
+            WarehouseDirectionMask mask,
+            WarehouseDirection direction,
+            Vector2Int offset)
         {
-            return Mathf.Abs(Mathf.DeltaAngle(obj.RotationY, 0f)) <= 45f ||
-                   Mathf.Abs(Mathf.DeltaAngle(obj.RotationY, 180f)) <= 45f;
+            return !WarehouseGenerationUtility.HasDirection(mask, direction) ||
+                   HasBridgeConnectorAt(layout, bridge, bridge.Origin + offset);
+        }
+
+        private static WarehouseDirectionMask GetBridgeConnectionMask(WarehouseObjectPlacement obj)
+        {
+            if (obj.ConnectionMask != WarehouseDirectionMask.None)
+                return obj.ConnectionMask;
+
+            bool horizontal = Mathf.Abs(Mathf.DeltaAngle(obj.RotationY, 0f)) <= 45f ||
+                              Mathf.Abs(Mathf.DeltaAngle(obj.RotationY, 180f)) <= 45f;
+            return horizontal
+                ? WarehouseDirectionMask.East | WarehouseDirectionMask.West
+                : WarehouseDirectionMask.North | WarehouseDirectionMask.South;
+        }
+
+        private static bool IsStraightBridgeMask(WarehouseDirectionMask mask)
+        {
+            return mask == (WarehouseDirectionMask.East | WarehouseDirectionMask.West) ||
+                   mask == (WarehouseDirectionMask.North | WarehouseDirectionMask.South);
+        }
+
+        private static WarehouseDirection RotationToDirection(float rotationY)
+        {
+            float angle = Mathf.Repeat(rotationY, 360f);
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 90f)) <= 45f)
+                return WarehouseDirection.East;
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 180f)) <= 45f)
+                return WarehouseDirection.South;
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 270f)) <= 45f)
+                return WarehouseDirection.West;
+
+            return WarehouseDirection.North;
         }
 
         private static Vector2Int ToSourceHalfCell(WarehouseLayoutData layout, Vector2Int cell)

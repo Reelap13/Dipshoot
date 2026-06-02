@@ -48,14 +48,14 @@ namespace Game.ProcGen.Warehouse
 
         private static void BuildFloor(WarehouseLayoutData layout, Transform parent, WarehouseRecipe recipe)
         {
-            Vector3 size = new(layout.Width * layout.CellSize, FloorThickness, layout.Height * layout.CellSize);
+            Vector3 size = new(layout.Width * GetCellSizeX(layout), FloorThickness, layout.Height * GetCellSizeZ(layout));
             InstantiatePrefab(recipe.GetFloorPrefab(), "Floor", parent, new Vector3(0f, -FloorThickness * 0.5f, 0f), Quaternion.identity, size);
         }
 
         private static void BuildOuterWalls(WarehouseLayoutData layout, Transform parent, WarehouseRecipe recipe)
         {
-            float mapWidth = layout.Width * layout.CellSize;
-            float mapHeight = layout.Height * layout.CellSize;
+            float mapWidth = layout.Width * GetCellSizeX(layout);
+            float mapHeight = layout.Height * GetCellSizeZ(layout);
             float halfWidth = mapWidth * 0.5f;
             float halfHeight = mapHeight * 0.5f;
             float wallY = WallHeight * 0.5f;
@@ -72,7 +72,7 @@ namespace Game.ProcGen.Warehouse
             for (int i = 0; i < layout.Objects.Count; i++)
             {
                 WarehouseObjectPlacement obj = layout.Objects[i];
-                GameObject prefab = recipe.GetPrefab(obj.Kind, obj.VariantIndex);
+                GameObject prefab = recipe.GetPrefab(obj, layout);
                 if (prefab == null)
                 {
                     Debug.LogError($"Warehouse prefab for {obj.Kind} is missing.");
@@ -81,8 +81,31 @@ namespace Game.ProcGen.Warehouse
 
                 Vector3 position = recipe.GridToWorld(obj.Center);
                 position.y = GetSurfaceHeight(layout, recipe, obj);
-                InstantiatePrefab(prefab, $"{obj.Kind}_{obj.Side}", parent, position, Quaternion.Euler(0f, obj.RotationY, 0f), Vector3.one);
+                InstantiatePrefab(prefab, $"{obj.Kind}_{obj.Side}", parent, position, GetVisualRotation(obj), GetObjectScale(obj));
             }
+        }
+
+        private static Quaternion GetVisualRotation(WarehouseObjectPlacement obj)
+        {
+            if (obj.IsContainer || obj.Kind == WarehouseObjectKind.Bridge)
+                return Quaternion.identity;
+
+            return Quaternion.Euler(0f, obj.RotationY, 0f);
+        }
+
+        private static float GetCellSizeX(WarehouseLayoutData layout)
+        {
+            return layout.CellSizeX > 0f ? layout.CellSizeX : layout.CellSize;
+        }
+
+        private static float GetCellSizeZ(WarehouseLayoutData layout)
+        {
+            return layout.CellSizeZ > 0f ? layout.CellSizeZ : layout.CellSize;
+        }
+
+        private static Vector3 GetObjectScale(WarehouseObjectPlacement obj)
+        {
+            return new Vector3(Mathf.Max(1, obj.Size.x), 1f, Mathf.Max(1, obj.Size.y));
         }
 
         private static float GetSurfaceHeight(WarehouseLayoutData layout, WarehouseRecipe recipe, WarehouseObjectPlacement obj)

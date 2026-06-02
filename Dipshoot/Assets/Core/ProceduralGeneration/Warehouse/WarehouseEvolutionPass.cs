@@ -111,7 +111,7 @@ namespace Game.ProcGen.Warehouse
         {
             int width = recipe.Width;
             int height = recipe.Height;
-            int centerX = Mathf.Clamp(Mathf.FloorToInt(recipe.SpawnAPosition.x), 1, width - 2);
+            int centerX = Mathf.Clamp(Mathf.FloorToInt(recipe.SpawnA.x), 1, width - 2);
             int lowerY = Mathf.Clamp(random.Next(4, 7), 1, Mathf.Max(1, height / 2 - 2));
             int upperY = Mathf.Clamp(random.Next(10, 13), lowerY + 1, Mathf.Max(lowerY + 1, height / 2 - 1));
 
@@ -120,9 +120,11 @@ namespace Game.ProcGen.Warehouse
                 Width = width,
                 Height = height,
                 CellSize = recipe.GridCellSize,
-                SpawnA = recipe.SpawnAPosition,
-                SpawnB = recipe.SpawnBPosition,
-                CapturePoint = new Vector2(4f + (float)random.NextDouble() * 7f, recipe.CapturePointPosition.y),
+                CellSizeX = recipe.GridCellSizeX,
+                CellSizeZ = recipe.GridCellSizeZ,
+                SpawnA = recipe.SpawnA,
+                SpawnB = recipe.SpawnB,
+                CapturePoint = new Vector2(4f + (float)random.NextDouble() * 7f, recipe.CapturePoint.y),
                 SpawnClearRadius = recipe.SpawnClearRadius,
                 CaptureClearRadius = recipe.CaptureClearRadius,
                 LeftLaneX = Mathf.Clamp(centerX - random.Next(3, 6), 1, width - 2),
@@ -162,7 +164,7 @@ namespace Game.ProcGen.Warehouse
                     Side = WarehouseSide.A,
                     Origin = cell,
                     Size = Vector2Int.one,
-                    RotationY = random.Next(0, 4) * 90f
+                    RotationY = 0f
                 };
 
                 if (occupied[cell.x, cell.y] || !CanPlaceInitialStructure(genome, obj))
@@ -207,7 +209,10 @@ namespace Game.ProcGen.Warehouse
                     Side = WarehouseSide.A,
                     Origin = candidate.Cell,
                     Size = Vector2Int.one,
-                    RotationY = candidate.Horizontal ? 0f : 90f
+                    Direction = candidate.Horizontal ? WarehouseDirection.East : WarehouseDirection.North,
+                    ConnectionMask = GetStraightBridgeMask(candidate.Horizontal),
+                    BridgeConnectionType = WarehouseBridgeConnectionType.Straight,
+                    RotationY = 0f
                 };
 
                 if (!CanPlaceInitialStructure(genome, obj))
@@ -315,6 +320,7 @@ namespace Game.ProcGen.Warehouse
                 WarehouseObjectKind kind = random.NextDouble() < recipe.FullCoverProbability
                     ? WarehouseObjectKind.FullCover
                     : WarehouseObjectKind.PartialCover;
+                float rotationY = random.Next(0, 4) * 90f;
                 WarehouseObjectPlacement obj = new()
                 {
                     Kind = kind,
@@ -322,8 +328,9 @@ namespace Game.ProcGen.Warehouse
                     Origin = candidate.Cell,
                     Size = Vector2Int.one,
                     Surface = candidate.Surface,
-                    RotationY = random.Next(0, 4) * 90f,
-                    VariantIndex = ChooseCoverVariantIndex(recipe, random, kind)
+                    Direction = RotationToDirection(rotationY),
+                    RotationY = rotationY,
+                    VariantIndex = HasNewCoverVariants(recipe) ? -1 : ChooseCoverVariantIndex(recipe, random, kind)
                 };
 
                 if (WarehouseRepairPass.ObjectTouchesRadius(obj, genome.SpawnA, genome.SpawnClearRadius))
@@ -695,6 +702,7 @@ namespace Game.ProcGen.Warehouse
             WarehouseObjectKind kind = ChooseStructureKind(random);
             Vector2Int cell = RandomSourceCell(genome, random);
             WarehouseDirection direction = RandomDirection(random);
+            bool bridgeHorizontal = direction == WarehouseDirection.East || direction == WarehouseDirection.West;
             genome.Objects.Add(new WarehouseObjectPlacement
             {
                 Kind = kind,
@@ -702,9 +710,13 @@ namespace Game.ProcGen.Warehouse
                 Origin = cell,
                 Size = Vector2Int.one,
                 Direction = direction,
+                ConnectionMask = kind == WarehouseObjectKind.Bridge
+                    ? GetStraightBridgeMask(bridgeHorizontal)
+                    : WarehouseDirectionMask.None,
+                BridgeConnectionType = WarehouseBridgeConnectionType.Straight,
                 RotationY = kind == WarehouseObjectKind.Ladder
                     ? DirectionToRotation(direction)
-                    : random.Next(0, 4) * 90f
+                    : 0f
             });
         }
 
@@ -741,9 +753,15 @@ namespace Game.ProcGen.Warehouse
                 obj.Origin += new Vector2Int(random.Next(-2, 3), random.Next(-2, 3));
 
             obj.Direction = RandomDirection(random);
+            if (obj.Kind == WarehouseObjectKind.Bridge)
+                obj.ConnectionMask = GetStraightBridgeMask(obj.Direction == WarehouseDirection.East || obj.Direction == WarehouseDirection.West);
+            else
+                obj.ConnectionMask = WarehouseDirectionMask.None;
+
+            obj.BridgeConnectionType = WarehouseBridgeConnectionType.Straight;
             obj.RotationY = obj.Kind == WarehouseObjectKind.Ladder
                 ? DirectionToRotation(obj.Direction)
-                : random.Next(0, 4) * 90f;
+                : 0f;
             obj.Surface = WarehousePlacementSurface.Ground;
         }
 
@@ -755,6 +773,7 @@ namespace Game.ProcGen.Warehouse
             WarehouseObjectKind kind = random.NextDouble() < recipe.FullCoverProbability
                 ? WarehouseObjectKind.FullCover
                 : WarehouseObjectKind.PartialCover;
+            float rotationY = random.Next(0, 4) * 90f;
             genome.Objects.Add(new WarehouseObjectPlacement
             {
                 Kind = kind,
@@ -764,8 +783,9 @@ namespace Game.ProcGen.Warehouse
                 Surface = random.NextDouble() < recipe.TopCoverProbability
                     ? WarehousePlacementSurface.StructureTop
                     : WarehousePlacementSurface.Ground,
-                RotationY = random.Next(0, 4) * 90f,
-                VariantIndex = ChooseCoverVariantIndex(recipe, random, kind)
+                Direction = RotationToDirection(rotationY),
+                RotationY = rotationY,
+                VariantIndex = HasNewCoverVariants(recipe) ? -1 : ChooseCoverVariantIndex(recipe, random, kind)
             });
         }
 
@@ -1001,6 +1021,8 @@ namespace Game.ProcGen.Warehouse
                     Size = source.Size,
                     Surface = source.Surface,
                     Direction = MirrorDirection(source.Direction),
+                    ConnectionMask = MirrorConnectionMask(source.ConnectionMask),
+                    BridgeConnectionType = source.BridgeConnectionType,
                     RotationY = Mathf.Repeat(source.RotationY + 180f, 360f),
                     VariantIndex = source.VariantIndex
                 });
@@ -1016,6 +1038,8 @@ namespace Game.ProcGen.Warehouse
                 Width = genome.Width,
                 Height = genome.Height,
                 CellSize = genome.CellSize,
+                CellSizeX = genome.CellSizeX,
+                CellSizeZ = genome.CellSizeZ,
                 SpawnA = genome.SpawnA,
                 SpawnB = genome.SpawnB,
                 CapturePoint = genome.CapturePoint,
@@ -1035,6 +1059,8 @@ namespace Game.ProcGen.Warehouse
                 Width = source.Width,
                 Height = source.Height,
                 CellSize = source.CellSize,
+                CellSizeX = source.CellSizeX,
+                CellSizeZ = source.CellSizeZ,
                 SpawnA = source.SpawnA,
                 SpawnB = source.SpawnB,
                 CapturePoint = source.CapturePoint,
@@ -1062,6 +1088,8 @@ namespace Game.ProcGen.Warehouse
                 Size = source.Size,
                 Surface = source.Surface,
                 Direction = source.Direction,
+                ConnectionMask = source.ConnectionMask,
+                BridgeConnectionType = source.BridgeConnectionType,
                 RotationY = source.RotationY,
                 VariantIndex = source.VariantIndex
             };
@@ -1359,6 +1387,11 @@ namespace Game.ProcGen.Warehouse
             return -1;
         }
 
+        private static bool HasNewCoverVariants(WarehouseRecipe recipe)
+        {
+            return recipe.CoverVariants != null && recipe.CoverVariants.Length > 0;
+        }
+
         private static WarehouseDirection MirrorDirection(WarehouseDirection direction)
         {
             return direction switch
@@ -1381,6 +1414,21 @@ namespace Game.ProcGen.Warehouse
                 WarehouseDirection.West => new Vector2Int(-1, 0),
                 _ => Vector2Int.zero
             };
+        }
+
+        private static WarehouseDirectionMask MirrorConnectionMask(WarehouseDirectionMask mask)
+        {
+            WarehouseDirectionMask mirrored = WarehouseDirectionMask.None;
+            if ((mask & WarehouseDirectionMask.North) != 0)
+                mirrored |= WarehouseDirectionMask.South;
+            if ((mask & WarehouseDirectionMask.South) != 0)
+                mirrored |= WarehouseDirectionMask.North;
+            if ((mask & WarehouseDirectionMask.East) != 0)
+                mirrored |= WarehouseDirectionMask.West;
+            if ((mask & WarehouseDirectionMask.West) != 0)
+                mirrored |= WarehouseDirectionMask.East;
+
+            return mirrored;
         }
 
         private static WarehouseDirection VectorToDirection(Vector2Int direction)
@@ -1409,6 +1457,26 @@ namespace Game.ProcGen.Warehouse
             };
         }
 
+        private static WarehouseDirection RotationToDirection(float rotationY)
+        {
+            float angle = Mathf.Repeat(rotationY, 360f);
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 90f)) <= 45f)
+                return WarehouseDirection.East;
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 180f)) <= 45f)
+                return WarehouseDirection.South;
+            if (Mathf.Abs(Mathf.DeltaAngle(angle, 270f)) <= 45f)
+                return WarehouseDirection.West;
+
+            return WarehouseDirection.North;
+        }
+
+        private static WarehouseDirectionMask GetStraightBridgeMask(bool horizontal)
+        {
+            return horizontal
+                ? WarehouseDirectionMask.East | WarehouseDirectionMask.West
+                : WarehouseDirectionMask.North | WarehouseDirectionMask.South;
+        }
+
         private readonly struct BridgeCandidate
         {
             public readonly Vector2Int Cell;
@@ -1435,6 +1503,10 @@ namespace Game.ProcGen.Warehouse
 
         private static bool IsBridgeHorizontal(WarehouseObjectPlacement obj)
         {
+            if (obj.ConnectionMask != WarehouseDirectionMask.None)
+                return (obj.ConnectionMask & (WarehouseDirectionMask.East | WarehouseDirectionMask.West)) ==
+                       (WarehouseDirectionMask.East | WarehouseDirectionMask.West);
+
             return Mathf.Abs(Mathf.DeltaAngle(obj.RotationY, 0f)) <= 45f ||
                    Mathf.Abs(Mathf.DeltaAngle(obj.RotationY, 180f)) <= 45f;
         }
@@ -1450,6 +1522,8 @@ namespace Game.ProcGen.Warehouse
             public int Width;
             public int Height;
             public float CellSize;
+            public float CellSizeX;
+            public float CellSizeZ;
             public Vector2 SpawnA;
             public Vector2 SpawnB;
             public Vector2 CapturePoint;
