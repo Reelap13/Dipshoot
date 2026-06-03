@@ -84,6 +84,15 @@ namespace Game.ProcGen.Warehouse
 
         public bool TryFindGroundPath(Vector2 startPosition, Vector2 endPosition, List<Vector2Int> path)
         {
+            return TryFindGroundPath(startPosition, endPosition, path, null);
+        }
+
+        public bool TryFindGroundPath(
+            Vector2 startPosition,
+            Vector2 endPosition,
+            List<Vector2Int> path,
+            int[,] extraCellCost)
+        {
             path.Clear();
             Vector2Int start = GridPointToCell(startPosition);
             Vector2Int end = GridPointToCell(endPosition);
@@ -92,14 +101,26 @@ namespace Game.ProcGen.Warehouse
 
             bool[,] visited = new bool[Width, Height];
             Vector2Int[,] previous = new Vector2Int[Width, Height];
-            Queue<Vector2Int> queue = new();
-            visited[start.x, start.y] = true;
+            int[,] cost = new int[Width, Height];
+            for (int y = 0; y < Height; y++)
+            {
+                for (int x = 0; x < Width; x++)
+                    cost[x, y] = int.MaxValue;
+            }
+
+            WarehousePathQueue queue = new();
+            cost[start.x, start.y] = 0;
             previous[start.x, start.y] = new Vector2Int(-1, -1);
-            queue.Enqueue(start);
+            queue.Push(new WarehouseNavNode(start.x, start.y, 0), 0);
 
             while (queue.Count > 0)
             {
-                Vector2Int current = queue.Dequeue();
+                WarehousePathQueueItem item = queue.Pop();
+                Vector2Int current = new(item.Node.X, item.Node.Y);
+                if (visited[current.x, current.y] || item.Cost != cost[current.x, current.y])
+                    continue;
+
+                visited[current.x, current.y] = true;
                 if (current == end)
                 {
                     BuildPath(previous, end, path);
@@ -117,13 +138,31 @@ namespace Game.ProcGen.Warehouse
                         continue;
                     }
 
-                    visited[next.x, next.y] = true;
+                    int nextCost = item.Cost + 1 + GetExtraCellCost(extraCellCost, next);
+                    if (nextCost >= cost[next.x, next.y])
+                        continue;
+
+                    cost[next.x, next.y] = nextCost;
                     previous[next.x, next.y] = current;
-                    queue.Enqueue(next);
+                    queue.Push(new WarehouseNavNode(next.x, next.y, 0), nextCost);
                 }
             }
 
             return false;
+        }
+
+        public bool IsGroundWalkableCell(Vector2Int cell)
+        {
+            return IsWalkable(cell, 0);
+        }
+
+        public bool CanMoveGround(Vector2Int from, Vector2Int to)
+        {
+            return IsInside(from) &&
+                   IsInside(to) &&
+                   IsWalkable(from, 0) &&
+                   IsWalkable(to, 0) &&
+                   !IsMovementBlockedByCover(from, to, 0);
         }
 
         private int FindPathCost(Vector2 startPosition, Vector2 endPosition, bool allowVerticalMovement)
@@ -406,6 +445,20 @@ namespace Game.ProcGen.Warehouse
                 return 1;
 
             return 1 + (level == 0 ? _groundExtraCost[cell.x, cell.y] : _topExtraCost[cell.x, cell.y]);
+        }
+
+        private static int GetExtraCellCost(int[,] extraCellCost, Vector2Int cell)
+        {
+            if (extraCellCost == null ||
+                cell.x < 0 ||
+                cell.y < 0 ||
+                cell.x >= extraCellCost.GetLength(0) ||
+                cell.y >= extraCellCost.GetLength(1))
+            {
+                return 0;
+            }
+
+            return Mathf.Max(0, extraCellCost[cell.x, cell.y]);
         }
 
         private bool IsMovementBlockedByCover(Vector2Int from, Vector2Int to, int level)

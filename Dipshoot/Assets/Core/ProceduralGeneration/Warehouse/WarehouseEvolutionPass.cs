@@ -536,6 +536,10 @@ namespace Game.ProcGen.Warehouse
                 AddPenalty(report, NoGroundPathPenalty, "No ground path from Spawn A.");
             if (groundB < 0)
                 AddPenalty(report, NoGroundPathPenalty, "No ground path from Spawn B.");
+            if (groundA >= 0)
+                ScoreGroundPathVariety(recipe, navigation, layout.SpawnA, layout.CapturePoint, report);
+            if (groundB >= 0)
+                ScoreGroundPathVariety(recipe, navigation, layout.SpawnB, layout.CapturePoint, report);
 
             ScoreWeightedPathCost(recipe, pathA, report, "Spawn A weighted path is too expensive.");
             ScoreWeightedPathCost(recipe, pathB, report, "Spawn B weighted path is too expensive.");
@@ -551,6 +555,121 @@ namespace Game.ProcGen.Warehouse
                 AddPenalty(report, 250f, "Spawn A has direct capture line of sight.");
             if (navigation.HasLineOfSight(layout.SpawnB, layout.CapturePoint))
                 AddPenalty(report, 250f, "Spawn B has direct capture line of sight.");
+        }
+
+        private static void ScoreGroundPathVariety(
+            WarehouseEvolutionRecipe recipe,
+            WarehouseNavigationGrid navigation,
+            Vector2 start,
+            Vector2 end,
+            WarehouseFitnessReport report)
+        {
+            int maxPaths = recipe.MaxGroundPathBonusPathCount;
+            if (maxPaths <= 0)
+                return;
+
+            List<List<Vector2Int>> paths = FindDistinctGroundPaths(navigation, start, end, maxPaths);
+            if (paths.Count == 0)
+                return;
+
+            AddBonus(report, paths.Count * recipe.GroundPathBonusWeight);
+            if (recipe.WideGroundPathBonusWeight <= 0f)
+                return;
+
+            int wideSamples = 0;
+            int totalSamples = 0;
+            for (int i = 0; i < paths.Count; i++)
+                CountWideGroundPathSamples(navigation, paths[i], ref wideSamples, ref totalSamples);
+
+            if (totalSamples <= 0 || wideSamples <= 0)
+                return;
+
+            float sampleRatio = Mathf.Clamp01(wideSamples / (float)Mathf.Min(totalSamples, recipe.WideGroundPathBonusSampleLimit));
+            AddBonus(report, recipe.WideGroundPathBonusWeight * sampleRatio);
+        }
+
+        private static List<List<Vector2Int>> FindDistinctGroundPaths(
+            WarehouseNavigationGrid navigation,
+            Vector2 start,
+            Vector2 end,
+            int maxPaths)
+        {
+            List<List<Vector2Int>> paths = new(maxPaths);
+            int[,] extraCost = new int[navigation.Width, navigation.Height];
+            for (int attempt = 0; attempt < maxPaths * 3 && paths.Count < maxPaths; attempt++)
+            {
+                List<Vector2Int> path = new();
+                if (!navigation.TryFindGroundPath(start, end, path, extraCost))
+                    break;
+
+                if (IsDistinctGroundPath(paths, path))
+                    paths.Add(path);
+
+                for (int i = 0; i < path.Count; i++)
+                    extraCost[path[i].x, path[i].y] += 8;
+            }
+
+            return paths;
+        }
+
+        private static bool IsDistinctGroundPath(List<List<Vector2Int>> paths, List<Vector2Int> candidate)
+        {
+            if (candidate.Count == 0)
+                return false;
+
+            for (int i = 0; i < paths.Count; i++)
+            {
+                int overlap = CountPathOverlap(paths[i], candidate);
+                float ratio = overlap / (float)Mathf.Max(paths[i].Count, candidate.Count);
+                if (ratio > 0.75f)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static int CountPathOverlap(List<Vector2Int> a, List<Vector2Int> b)
+        {
+            int count = 0;
+            for (int i = 0; i < a.Count; i++)
+            {
+                for (int j = 0; j < b.Count; j++)
+                {
+                    if (a[i] == b[j])
+                    {
+                        count++;
+                        break;
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        private static void CountWideGroundPathSamples(
+            WarehouseNavigationGrid navigation,
+            List<Vector2Int> path,
+            ref int wideSamples,
+            ref int totalSamples)
+        {
+            for (int i = 1; i < path.Count - 1; i++)
+            {
+                Vector2Int movement = path[i + 1] - path[i - 1];
+                Vector2Int side = Mathf.Abs(movement.x) >= Mathf.Abs(movement.y)
+                    ? Vector2Int.up
+                    : Vector2Int.right;
+
+                totalSamples++;
+                if (HasWideGroundSide(navigation, path[i], side))
+                    wideSamples++;
+            }
+        }
+
+        private static bool HasWideGroundSide(WarehouseNavigationGrid navigation, Vector2Int cell, Vector2Int side)
+        {
+            Vector2Int left = cell + side;
+            Vector2Int right = cell - side;
+            return navigation.IsGroundWalkableCell(left) || navigation.IsGroundWalkableCell(right);
         }
 
         private static void ScoreWeightedPathCost(
@@ -1561,6 +1680,12 @@ namespace Game.ProcGen.Warehouse
         {
             report.PenaltyScore += penalty;
             report.Violations.Add(violation);
+        }
+
+        private static void AddBonus(WarehouseFitnessReport report, float bonus)
+        {
+            if (bonus > 0f)
+                report.PenaltyScore -= bonus;
         }
 
         private sealed class WarehouseGenome

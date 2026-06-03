@@ -19,6 +19,10 @@ namespace Game.ProcGen.Warehouse
         public int MaxMutationSteps = 5;
         public int AggressiveMutationSteps = 9;
         public float DuplicateGenomePenalty = 200f;
+        public float GroundPathBonusPerPath = 150f;
+        public int MaxGroundPathBonusCount = 3;
+        public float WideGroundPathBonus = 180f;
+        public int WideGroundPathBonusMaxSamples = 40;
 
         public int PopulationCount => Mathf.Max(4, PopulationSize);
         public int GenerationCount => Mathf.Max(1, Generations);
@@ -30,6 +34,10 @@ namespace Game.ProcGen.Warehouse
         public int MaxMutationStepCount => Mathf.Max(MinMutationStepCount, MaxMutationSteps);
         public int AggressiveMutationStepCount => Mathf.Max(MaxMutationStepCount, AggressiveMutationSteps);
         public float DuplicatePenalty => Mathf.Max(0f, DuplicateGenomePenalty);
+        public float GroundPathBonusWeight => Mathf.Max(0f, GroundPathBonusPerPath);
+        public int MaxGroundPathBonusPathCount => Mathf.Clamp(MaxGroundPathBonusCount, 0, 3);
+        public float WideGroundPathBonusWeight => Mathf.Max(0f, WideGroundPathBonus);
+        public int WideGroundPathBonusSampleLimit => Mathf.Max(1, WideGroundPathBonusMaxSamples);
 
         public override void BuildPasses(List<ProcGenPass> passes)
         {

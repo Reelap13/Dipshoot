@@ -98,7 +98,7 @@ MonoBehaviour:
   MaxDecorationsPerCell: 15
   DecorationChance: 0.9
   PopulationSize: 32
-  Generations: 40
+  Generations: 50
   EliteCount: 4
   TournamentSize: 4
   RandomImmigrantCount: 4
@@ -107,3 +107,7 @@ MonoBehaviour:
   MaxMutationSteps: 5
   AggressiveMutationSteps: 9
   DuplicateGenomePenalty: 200
+  GroundPathBonusPerPath: 150
+  MaxGroundPathBonusCount: 3
+  WideGroundPathBonus: 180
+  WideGroundPathBonusMaxSamples: 40

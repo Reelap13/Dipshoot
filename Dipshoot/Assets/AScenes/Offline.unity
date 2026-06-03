@@ -537,11 +537,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1197286620716017531, guid: 7d10915b9795c594095c849a90bc8eca, type: 3}
       propertyPath: _address
-      value: 89.22.225.147
+      value: localhost
       objectReference: {fileID: 0}
     - target: {fileID: 2225815766540496120, guid: 7d10915b9795c594095c849a90bc8eca, type: 3}
       propertyPath: networkAddress
-      value: 89.22.225.147
+      value: localhost
       objectReference: {fileID: 0}
     - target: {fileID: 2225815766540496120, guid: 7d10915b9795c594095c849a90bc8eca, type: 3}
       propertyPath: headlessStartMode
