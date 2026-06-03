@@ -111,3 +111,8 @@ MonoBehaviour:
   MaxGroundPathBonusCount: 3
   WideGroundPathBonus: 180
   WideGroundPathBonusMaxSamples: 40
+  MaxBlockedGroundMassSize: 24
+  BlockedGroundMassPenalty: 20
+  DeadEndAllowedLength: 2
+  DeadEndPenalty: 0
+  CaptureOnlySpawnHalfPenalty: 0

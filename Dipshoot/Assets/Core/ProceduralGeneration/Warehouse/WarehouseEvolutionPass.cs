@@ -454,13 +454,16 @@ namespace Game.ProcGen.Warehouse
             WarehouseGridCache grid = new(layout);
             ScoreClearZones(layout, report);
             ScoreDensity(recipe, layout, grid, report);
+            WarehouseNavigationGrid navigation = new(
+                layout,
+                recipe.PartialCoverPathCost,
+                recipe.FullCoverPathCost);
+            ScoreBlockedGroundMasses(recipe, layout, navigation, grid, report);
+            ScoreDeadEndCorridors(recipe, layout, navigation, report);
+            ScoreCaptureOnlySpawnHalf(recipe, layout, navigation, report);
 
             if (report.PenaltyScore < NoPathPenalty)
             {
-                WarehouseNavigationGrid navigation = new(
-                    layout,
-                    recipe.PartialCoverPathCost,
-                    recipe.FullCoverPathCost);
                 ScorePaths(recipe, layout, navigation, report);
                 ScoreTopAccess(recipe, layout, grid, report);
                 ScoreBridgeQuality(recipe, layout, grid, report);
@@ -513,6 +516,321 @@ namespace Game.ProcGen.Warehouse
                 AddPenalty(report, (structureCells - maxStructureCells) * recipe.StructureDensityPenaltyWeight, "Too many structure cells.");
 
             AddPenalty(report, Mathf.Abs(coverCells - targetCoverCells) * 8f, "Cover count differs from target.");
+        }
+
+        private static void ScoreBlockedGroundMasses(
+            WarehouseEvolutionRecipe recipe,
+            WarehouseLayoutData layout,
+            WarehouseNavigationGrid navigation,
+            WarehouseGridCache grid,
+            WarehouseFitnessReport report)
+        {
+            if (recipe.BlockedGroundMassPenaltyWeight <= 0f)
+                return;
+
+            bool[,] reachable = BuildReachableGround(layout, navigation);
+            bool[,] mass = BuildBlockedGroundMass(layout, navigation, grid, reachable);
+            bool[,] visited = new bool[layout.Width, layout.Height];
+            int maxSize = recipe.MaxBlockedGroundMassCellCount;
+            float penalty = 0f;
+
+            for (int y = 0; y < layout.Height; y++)
+            {
+                for (int x = 0; x < layout.Width; x++)
+                {
+                    if (!mass[x, y] || visited[x, y])
+                        continue;
+
+                    int size = FloodFillMass(layout, mass, visited, new Vector2Int(x, y));
+                    int excess = size - maxSize;
+                    if (excess > 0)
+                        penalty += excess * excess * recipe.BlockedGroundMassPenaltyWeight;
+                }
+            }
+
+            if (penalty > 0f)
+                AddPenalty(report, penalty, "Blocked ground masses are too large.");
+        }
+
+        private static bool[,] BuildReachableGround(WarehouseLayoutData layout, WarehouseNavigationGrid navigation)
+        {
+            bool[,] reachable = new bool[layout.Width, layout.Height];
+            Queue<Vector2Int> queue = new();
+            EnqueueReachableStart(layout, navigation, layout.SpawnA, reachable, queue);
+            EnqueueReachableStart(layout, navigation, layout.SpawnB, reachable, queue);
+            EnqueueReachableStart(layout, navigation, layout.CapturePoint, reachable, queue);
+
+            while (queue.Count > 0)
+            {
+                Vector2Int current = queue.Dequeue();
+                for (int i = 0; i < WarehouseGenerationUtility.CardinalDirections.Length; i++)
+                {
+                    Vector2Int next = current + WarehouseGenerationUtility.CardinalDirections[i];
+                    if (!layout.IsInside(next) ||
+                        reachable[next.x, next.y] ||
+                        !navigation.CanMoveGround(current, next))
+                    {
+                        continue;
+                    }
+
+                    reachable[next.x, next.y] = true;
+                    queue.Enqueue(next);
+                }
+            }
+
+            return reachable;
+        }
+
+        private static void EnqueueReachableStart(
+            WarehouseLayoutData layout,
+            WarehouseNavigationGrid navigation,
+            Vector2 point,
+            bool[,] reachable,
+            Queue<Vector2Int> queue)
+        {
+            Vector2Int cell = new(
+                Mathf.Clamp(Mathf.FloorToInt(point.x), 0, layout.Width - 1),
+                Mathf.Clamp(Mathf.FloorToInt(point.y), 0, layout.Height - 1));
+            if (!navigation.IsGroundWalkableCell(cell) || reachable[cell.x, cell.y])
+                return;
+
+            reachable[cell.x, cell.y] = true;
+            queue.Enqueue(cell);
+        }
+
+        private static bool[,] BuildBlockedGroundMass(
+            WarehouseLayoutData layout,
+            WarehouseNavigationGrid navigation,
+            WarehouseGridCache grid,
+            bool[,] reachable)
+        {
+            bool[,] mass = new bool[layout.Width, layout.Height];
+            for (int y = 0; y < layout.Height; y++)
+            {
+                for (int x = 0; x < layout.Width; x++)
+                {
+                    Vector2Int cell = new(x, y);
+                    if (reachable[x, y])
+                        continue;
+
+                    if (navigation.IsGroundWalkableCell(cell) || grid.Container[x, y] || grid.Ladder[x, y])
+                        mass[x, y] = true;
+                }
+            }
+
+            return mass;
+        }
+
+        private static int FloodFillMass(
+            WarehouseLayoutData layout,
+            bool[,] mass,
+            bool[,] visited,
+            Vector2Int start)
+        {
+            int count = 0;
+            Queue<Vector2Int> queue = new();
+            visited[start.x, start.y] = true;
+            queue.Enqueue(start);
+
+            while (queue.Count > 0)
+            {
+                Vector2Int current = queue.Dequeue();
+                count++;
+                for (int i = 0; i < WarehouseGenerationUtility.CardinalDirections.Length; i++)
+                {
+                    Vector2Int next = current + WarehouseGenerationUtility.CardinalDirections[i];
+                    if (!layout.IsInside(next) || visited[next.x, next.y] || !mass[next.x, next.y])
+                        continue;
+
+                    visited[next.x, next.y] = true;
+                    queue.Enqueue(next);
+                }
+            }
+
+            return count;
+        }
+
+        private static void ScoreDeadEndCorridors(
+            WarehouseEvolutionRecipe recipe,
+            WarehouseLayoutData layout,
+            WarehouseNavigationGrid navigation,
+            WarehouseFitnessReport report)
+        {
+            if (recipe.DeadEndPenaltyWeight <= 0f)
+                return;
+
+            bool[,] reachable = BuildReachableGround(layout, navigation);
+            bool[,] visited = new bool[layout.Width, layout.Height];
+            int allowedLength = recipe.DeadEndAllowedCellCount;
+            float penalty = 0f;
+
+            for (int y = 0; y < layout.Height; y++)
+            {
+                for (int x = 0; x < layout.Width; x++)
+                {
+                    Vector2Int cell = new(x, y);
+                    if (!reachable[x, y] ||
+                        visited[x, y] ||
+                        IsImportantGroundZone(layout, cell) ||
+                        CountGroundDegree(layout, navigation, reachable, cell) > 1)
+                    {
+                        continue;
+                    }
+
+                    int length = MeasureDeadEndCorridor(layout, navigation, reachable, visited, cell);
+                    int excess = length - allowedLength;
+                    if (excess > 0)
+                        penalty += excess * recipe.DeadEndPenaltyWeight;
+                }
+            }
+
+            if (penalty > 0f)
+                AddPenalty(report, penalty, "Dead-end ground corridors are too long.");
+        }
+
+        private static int MeasureDeadEndCorridor(
+            WarehouseLayoutData layout,
+            WarehouseNavigationGrid navigation,
+            bool[,] reachable,
+            bool[,] visited,
+            Vector2Int start)
+        {
+            int length = 0;
+            Vector2Int previous = new(-1, -1);
+            Vector2Int current = start;
+
+            while (layout.IsInside(current) &&
+                   reachable[current.x, current.y] &&
+                   !visited[current.x, current.y] &&
+                   !IsImportantGroundZone(layout, current))
+            {
+                int degree = CountGroundDegree(layout, navigation, reachable, current);
+                if (degree > 2)
+                    break;
+
+                visited[current.x, current.y] = true;
+                length++;
+
+                Vector2Int next = new(-1, -1);
+                for (int i = 0; i < WarehouseGenerationUtility.CardinalDirections.Length; i++)
+                {
+                    Vector2Int candidate = current + WarehouseGenerationUtility.CardinalDirections[i];
+                    if (candidate == previous ||
+                        !layout.IsInside(candidate) ||
+                        !reachable[candidate.x, candidate.y] ||
+                        !navigation.CanMoveGround(current, candidate))
+                    {
+                        continue;
+                    }
+
+                    next = candidate;
+                    break;
+                }
+
+                if (next.x < 0)
+                    break;
+
+                previous = current;
+                current = next;
+            }
+
+            return length;
+        }
+
+        private static void ScoreCaptureOnlySpawnHalf(
+            WarehouseEvolutionRecipe recipe,
+            WarehouseLayoutData layout,
+            WarehouseNavigationGrid navigation,
+            WarehouseFitnessReport report)
+        {
+            if (recipe.CaptureOnlySpawnHalfPenaltyWeight <= 0f)
+                return;
+
+            bool[,] fromCapture = BuildReachableGroundFrom(layout, navigation, layout.CapturePoint);
+            bool[,] fromSpawnA = BuildReachableGroundFrom(layout, navigation, layout.SpawnA);
+            bool[,] fromSpawnB = BuildReachableGroundFrom(layout, navigation, layout.SpawnB);
+            float penalty = 0f;
+
+            for (int y = 0; y < layout.Height; y++)
+            {
+                for (int x = 0; x < layout.Width; x++)
+                {
+                    if (!fromCapture[x, y])
+                        continue;
+
+                    if (y < layout.CapturePoint.y && !fromSpawnA[x, y])
+                        penalty += recipe.CaptureOnlySpawnHalfPenaltyWeight;
+                    else if (y > layout.CapturePoint.y && !fromSpawnB[x, y])
+                        penalty += recipe.CaptureOnlySpawnHalfPenaltyWeight;
+                }
+            }
+
+            if (penalty > 0f)
+                AddPenalty(report, penalty, "Capture reaches ground cells hidden from nearest spawn.");
+        }
+
+        private static bool[,] BuildReachableGroundFrom(
+            WarehouseLayoutData layout,
+            WarehouseNavigationGrid navigation,
+            Vector2 point)
+        {
+            bool[,] reachable = new bool[layout.Width, layout.Height];
+            Queue<Vector2Int> queue = new();
+            EnqueueReachableStart(layout, navigation, point, reachable, queue);
+
+            while (queue.Count > 0)
+            {
+                Vector2Int current = queue.Dequeue();
+                for (int i = 0; i < WarehouseGenerationUtility.CardinalDirections.Length; i++)
+                {
+                    Vector2Int next = current + WarehouseGenerationUtility.CardinalDirections[i];
+                    if (!layout.IsInside(next) ||
+                        reachable[next.x, next.y] ||
+                        !navigation.CanMoveGround(current, next))
+                    {
+                        continue;
+                    }
+
+                    reachable[next.x, next.y] = true;
+                    queue.Enqueue(next);
+                }
+            }
+
+            return reachable;
+        }
+
+        private static int CountGroundDegree(
+            WarehouseLayoutData layout,
+            WarehouseNavigationGrid navigation,
+            bool[,] reachable,
+            Vector2Int cell)
+        {
+            int degree = 0;
+            for (int i = 0; i < WarehouseGenerationUtility.CardinalDirections.Length; i++)
+            {
+                Vector2Int next = cell + WarehouseGenerationUtility.CardinalDirections[i];
+                if (layout.IsInside(next) &&
+                    reachable[next.x, next.y] &&
+                    navigation.CanMoveGround(cell, next))
+                {
+                    degree++;
+                }
+            }
+
+            return degree;
+        }
+
+        private static bool IsImportantGroundZone(WarehouseLayoutData layout, Vector2Int cell)
+        {
+            Vector2 center = new(cell.x + 0.5f, cell.y + 0.5f);
+            return IsInsideRadius(center, layout.SpawnA, layout.SpawnClearRadius) ||
+                   IsInsideRadius(center, layout.SpawnB, layout.SpawnClearRadius) ||
+                   IsInsideRadius(center, layout.CapturePoint, layout.CaptureClearRadius);
+        }
+
+        private static bool IsInsideRadius(Vector2 point, Vector2 center, float radius)
+        {
+            return (point - center).sqrMagnitude <= radius * radius;
         }
 
         private static void ScorePaths(
@@ -1818,22 +2136,29 @@ namespace Game.ProcGen.Warehouse
                 for (int i = 0; i < layout.Objects.Count; i++)
                 {
                     WarehouseObjectPlacement obj = layout.Objects[i];
-                    if (!layout.IsInside(obj.Origin))
-                        continue;
+                    for (int y = 0; y < obj.Size.y; y++)
+                    {
+                        for (int x = 0; x < obj.Size.x; x++)
+                        {
+                            Vector2Int cell = new(obj.Origin.x + x, obj.Origin.y + y);
+                            if (!layout.IsInside(cell))
+                                continue;
 
-                    if (obj.IsStructure)
-                    {
-                        Structure[obj.Origin.x, obj.Origin.y] = true;
-                        if (obj.IsContainer)
-                            Container[obj.Origin.x, obj.Origin.y] = true;
-                        if (obj.IsGroundBlocker)
-                            GroundBlocked[obj.Origin.x, obj.Origin.y] = true;
-                        if (obj.IsTopWalkableSource)
-                            TopWalkable[obj.Origin.x, obj.Origin.y] = true;
-                    }
-                    else if (obj.IsLadder)
-                    {
-                        Ladder[obj.Origin.x, obj.Origin.y] = true;
+                            if (obj.IsStructure)
+                            {
+                                Structure[cell.x, cell.y] = true;
+                                if (obj.IsContainer)
+                                    Container[cell.x, cell.y] = true;
+                                if (obj.IsGroundBlocker)
+                                    GroundBlocked[cell.x, cell.y] = true;
+                                if (obj.IsTopWalkableSource)
+                                    TopWalkable[cell.x, cell.y] = true;
+                            }
+                            else if (obj.IsLadder)
+                            {
+                                Ladder[cell.x, cell.y] = true;
+                            }
+                        }
                     }
                 }
             }
