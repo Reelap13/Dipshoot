@@ -121,6 +121,9 @@ namespace Game.Players
                 return;
             }
 
+            if (weapon != null && !weapon.ShowDebugTracer)
+                return;
+
             WeaponVfxUtility.LogWarningOnce(
                 owner,
                 $"MissingTracer:{weapon?.name}",
@@ -138,19 +141,29 @@ namespace Game.Players
             float distance = Vector3.Distance(origin, result.Point);
             line_renderer.SetPosition(0, origin);
             line_renderer.SetPosition(1, origin + direction * Mathf.Min(3f, distance));
-            line_renderer.startWidth = weapon == null ? 0.03f : weapon.TracerWidth;
-            line_renderer.endWidth = weapon == null ? 0.03f : weapon.TracerWidth;
+            line_renderer.startWidth = visual == null ? weapon == null ? 0.03f : weapon.TracerWidth : visual.TracerStartWidth;
+            line_renderer.endWidth = visual == null ? weapon == null ? 0.03f : weapon.TracerWidth : visual.TracerEndWidth;
             line_renderer.numCapVertices = 2;
 
             Material tracer_material = GetTracerMaterial();
             if (tracer_material != null)
                 line_renderer.material = tracer_material;
 
-            Color tracer_color = weapon == null ? Color.cyan : weapon.TracerColor;
+            Color tracer_color = visual == null ? weapon == null ? Color.cyan : weapon.TracerColor : visual.TracerColor;
             line_renderer.startColor = tracer_color;
             line_renderer.endColor = tracer_color;
 
-            tracer.AddComponent<SelfDestroyer>().Initialize(weapon == null ? 0.12f : weapon.TracerLifetime);
+            float speed = visual == null ? 420f : visual.TracerVisualSpeed;
+            float min_visible_time = visual == null ? weapon == null ? 0.045f : weapon.TracerLifetime : visual.TracerMinVisibleTime;
+            float fade_time = visual == null ? 0.08f : visual.TracerFadeTime;
+            float length = visual == null ? 2.2f : visual.TracerLength;
+            tracer.AddComponent<ProjectileTracerVfx>().Initialize(
+                origin,
+                result.Point,
+                speed,
+                min_visible_time,
+                fade_time,
+                length);
         }
 
         private static void SpawnProjectileTracer(
@@ -167,8 +180,10 @@ namespace Game.Players
             tracer.AddComponent<ProjectileTracerVfx>().Initialize(
                 origin,
                 result.Point,
-                visual.TracerSpeed,
-                visual.TracerLifetime);
+                visual.TracerVisualSpeed,
+                visual.TracerMinVisibleTime,
+                visual.TracerFadeTime,
+                visual.TracerLength);
         }
 
         private static Vector3 GetTracerOrigin(MonoBehaviour owner, ShotResult result)
@@ -208,6 +223,9 @@ namespace Game.Players
                 impact.AddComponent<SelfDestroyer>().Initialize(visual.ImpactLifetime);
                 return;
             }
+
+            if (weapon != null && !weapon.ShowDebugHitMarker)
+                return;
 
             WeaponVfxUtility.LogWarningOnce(
                 owner,

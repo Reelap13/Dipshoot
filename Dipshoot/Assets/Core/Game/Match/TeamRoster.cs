@@ -7,12 +7,12 @@ namespace Game.MatchMode
     {
         private readonly Dictionary<int, TeamId> _player_teams = new();
 
-        public void AssignBalancedTeams(IReadOnlyList<LobbyPlayerData> players)
+        public void AssignLobbyTeams(IReadOnlyList<LobbyPlayerData> players)
         {
             _player_teams.Clear();
 
             for (int i = 0; i < players.Count; i++)
-                _player_teams[players[i].PlayerId] = i % 2 == 0 ? TeamId.Red : TeamId.Blue;
+                _player_teams[players[i].PlayerId] = players[i].Team == TeamId.None ? TeamId.Blue : players[i].Team;
         }
 
         public TeamId GetTeam(int player_id)

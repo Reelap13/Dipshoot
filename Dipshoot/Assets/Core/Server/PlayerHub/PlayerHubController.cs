@@ -67,6 +67,28 @@ namespace Server.PlayerHub
             LobbiesController.Instance.StartGame(this, Lobby.Id);
         }
 
+        public void SwitchTeam()
+        {
+            if (Lobby == null)
+            {
+                RegisterError("Error 05: Attempt to switch team without being a member of the lobby");
+                return;
+            }
+
+            LobbiesController.Instance.SwitchTeam(this, Lobby.Id);
+        }
+
+        public void SelectPreset(string preset_id)
+        {
+            if (Lobby == null)
+            {
+                RegisterError("Error 06: Attempt to select preset without being a member of the lobby");
+                return;
+            }
+
+            LobbiesController.Instance.SelectPreset(this, Lobby.Id, preset_id);
+        }
+
         private const string _chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         private string ParceLobbyCode(string lobby_code)
         {

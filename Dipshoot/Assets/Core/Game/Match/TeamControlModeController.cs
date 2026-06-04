@@ -63,8 +63,9 @@ namespace Game.MatchMode
             if (!isServer)
                 return;
 
+            _rounds_count = Mathf.Max(1, _game_controller.MatchController.MatchData.LobbyData.SelectedRoundsCount);
             _stats_controller.ResetMatch();
-            _team_roster.AssignBalancedTeams(_game_controller.MatchController.MatchData.LobbyData.Players);
+            _team_roster.AssignLobbyTeams(_game_controller.MatchController.MatchData.LobbyData.Players);
             _spawn_controller.Initialize(_game_controller, _team_roster, _stats_controller);
             _capture_point_controller.Initialize(
                 this,

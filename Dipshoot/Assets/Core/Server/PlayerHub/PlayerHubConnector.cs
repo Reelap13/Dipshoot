@@ -68,5 +68,9 @@ namespace Server.PlayerHub
         public void CommandLeaveFromLobby() => _controller.LeaveFromLobby();
         [Command]
         public void CommandStartGame() => _controller.StartGame();
+        [Command]
+        public void CommandSwitchTeam() => _controller.SwitchTeam();
+        [Command]
+        public void CommandSelectPreset(string preset_id) => _controller.SelectPreset(preset_id);
     }
 }

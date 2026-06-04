@@ -27,7 +27,6 @@ namespace Game.Players.Input
         private InputAction _reload_action;
         private InputAction _primary_weapon_action;
         private InputAction _pistol_weapon_action;
-        private WeaponController _weapon_controller;
 
         public override bool ShouldTick(GameTickContext context)
         {
@@ -38,10 +37,6 @@ namespace Game.Players.Input
         {
             PlayerInputData input = GetInput();
             input.Tick = context.Tick;
-            if (_weapon_controller == null)
-                _weapon_controller = GetComponent<WeaponController>();
-
-            _weapon_controller?.PredictOwnerInput(ref input, context.Tick);
             Character.InputBuffet.Add(input);
 
             OnInputCaptured?.Invoke(input);

@@ -22,11 +22,14 @@ namespace Game.Players
         [SerializeField] private Stat _max_spread_stat;
         [SerializeField] private Stat _move_spread_stat;
         [SerializeField] private Stat _air_spread_stat;
+        [SerializeField] private float _move_spread_full_speed = 7f;
+        [SerializeField] private float _fall_spread_full_speed = 12f;
         [SerializeField] private Stat _crouch_spread_multiplier_stat;
         [SerializeField] private Stat _recoil_pitch_stat;
         [SerializeField] private Stat _recoil_yaw_stat;
         [SerializeField] private Stat _recoil_recovery_stat;
         [SerializeField] private Stat _recoil_max_stat;
+        [SerializeField] private WeaponRecoilPatternDefinition _recoil_pattern;
         [SerializeField] private WeaponVisualDefinition _visual;
         [SerializeField] private bool _show_debug_tracer = true;
         [SerializeField] private bool _show_debug_hit_marker;
@@ -60,6 +63,7 @@ namespace Game.Players
         public Stat RecoilYawStat => _recoil_yaw_stat;
         public Stat RecoilRecoveryStat => _recoil_recovery_stat;
         public Stat RecoilMaxStat => _recoil_max_stat;
+        public WeaponRecoilPatternDefinition RecoilPattern => _recoil_pattern;
         public WeaponVisualDefinition Visual => _visual;
         public bool ShowDebugTracer => _show_debug_tracer;
         public bool ShowDebugHitMarker => _show_debug_hit_marker;
@@ -87,11 +91,14 @@ namespace Game.Players
                 Mathf.Max(0f, GetStat(stats_controller, _max_spread_stat, DefaultMaxSpread)),
                 Mathf.Max(0f, GetStat(stats_controller, _move_spread_stat, DefaultMoveSpread)),
                 Mathf.Max(0f, GetStat(stats_controller, _air_spread_stat, DefaultAirSpread)),
+                Mathf.Max(0.001f, _move_spread_full_speed),
+                Mathf.Max(0.001f, _fall_spread_full_speed),
                 Mathf.Max(0f, GetStat(stats_controller, _crouch_spread_multiplier_stat, DefaultCrouchSpreadMultiplier)),
                 Mathf.Max(0f, GetStat(stats_controller, _recoil_pitch_stat, DefaultRecoilPitch)),
                 Mathf.Max(0f, GetStat(stats_controller, _recoil_yaw_stat, DefaultRecoilYaw)),
                 Mathf.Max(0f, GetStat(stats_controller, _recoil_recovery_stat, DefaultRecoilRecovery)),
-                Mathf.Max(0f, GetStat(stats_controller, _recoil_max_stat, DefaultRecoilMax)));
+                Mathf.Max(0f, GetStat(stats_controller, _recoil_max_stat, DefaultRecoilMax)),
+                _recoil_pattern);
         }
 
         private static float GetStat(StatsController stats_controller, Stat stat)
@@ -108,15 +115,15 @@ namespace Game.Players
                 : stats_controller.GetStatValue(stat, fallback_value);
         }
 
-        private float DefaultSpreadPerShot => _slot == WeaponSlot.Pistol ? 0.18f : 0.25f;
-        private float DefaultSpreadRecovery => _slot == WeaponSlot.Pistol ? 7f : 5f;
+        private float DefaultSpreadPerShot => _slot == WeaponSlot.Pistol ? 0.18f : 0.45f;
+        private float DefaultSpreadRecovery => _slot == WeaponSlot.Pistol ? 7f : 2f;
         private float DefaultMaxSpread => _slot == WeaponSlot.Pistol ? 3f : 5f;
-        private float DefaultMoveSpread => _slot == WeaponSlot.Pistol ? 0.35f : 0.65f;
-        private float DefaultAirSpread => _slot == WeaponSlot.Pistol ? 1.2f : 1.8f;
+        private float DefaultMoveSpread => _slot == WeaponSlot.Pistol ? 0.35f : 1f;
+        private float DefaultAirSpread => _slot == WeaponSlot.Pistol ? 1.2f : 2.5f;
         private float DefaultCrouchSpreadMultiplier => 0.65f;
         private float DefaultRecoilPitch => _slot == WeaponSlot.Pistol ? 0.75f : 0.45f;
         private float DefaultRecoilYaw => _slot == WeaponSlot.Pistol ? 0.28f : 0.22f;
-        private float DefaultRecoilRecovery => _slot == WeaponSlot.Pistol ? 12f : 9f;
+        private float DefaultRecoilRecovery => _slot == WeaponSlot.Pistol ? 12f : 3f;
         private float DefaultRecoilMax => _slot == WeaponSlot.Pistol ? 8f : 12f;
     }
 }

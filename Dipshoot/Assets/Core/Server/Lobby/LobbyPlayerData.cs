@@ -1,5 +1,5 @@
 using Server.Data;
-using UnityEngine;
+using Game.MatchMode;
 
 namespace Server.Lobby
 {
@@ -9,13 +9,15 @@ namespace Server.Lobby
         public int PlayerId;
         public string Nickname;
         public LobbyPlayerType Type;
+        public TeamId Team;
 
         public LobbyPlayerData() { }
-        public LobbyPlayerData(Player player, LobbyPlayerType type)
+        public LobbyPlayerData(Player player, LobbyPlayerType type, TeamId team)
         {
             PlayerId = player.PlayerId;
             Nickname = player.Nickname;
             Type = type;
+            Team = team;
         }
     }
 }

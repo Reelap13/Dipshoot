@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using Game.MatchMode;
+using Game.MatchConfig;
 using Game.ProcGen.Chunked;
+using Game.ProcGen.Warehouse;
 using UnityEngine;
 
 namespace Game.Level
@@ -13,6 +15,7 @@ namespace Game.Level
         [SerializeField] private Transform _capture_point;
         [SerializeField] private float _capture_marker_radius = 4f;
         private bool _terrainGenerated;
+        private bool _staticLayoutDisabled;
 
         public Transform CapturePoint => _capture_point == null ? transform : _capture_point;
 
@@ -43,8 +46,24 @@ namespace Game.Level
             _capture_marker_radius = capture_marker_radius;
         }
 
+        public void GenerateWarehouseLevel(WarehouseRecipe recipe, int seed)
+        {
+            if (recipe == null)
+                return;
+
+            SetStaticLayoutActive(false);
+            WarehouseLevelGenerator.GenerateInto(transform, recipe, seed, "GeneratedWarehouse", true);
+            _terrainGenerated = true;
+        }
+
         private void Start()
         {
+            if (ClientMatchPresetState.UsesGeneratedLevel)
+            {
+                SetStaticLayoutActive(false);
+                _terrainGenerated = true;
+            }
+
             if (_terrainGenerated)
                 return;
 
@@ -89,6 +108,22 @@ namespace Game.Level
                 return _blue_spawn_points;
 
             return _spawn_points;
+        }
+
+        private void SetStaticLayoutActive(bool active)
+        {
+            if (_staticLayoutDisabled == !active)
+                return;
+
+            _staticLayoutDisabled = !active;
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                Transform child = transform.GetChild(i);
+                if (child.name == "GeneratedWarehouse")
+                    continue;
+
+                child.gameObject.SetActive(active);
+            }
         }
     }
 }

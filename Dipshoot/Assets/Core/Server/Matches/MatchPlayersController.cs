@@ -15,6 +15,17 @@ namespace Server.Match
         private Dictionary<int, bool> _readiness;
         private Dictionary<int, MatchPlayer> _players;
 
+        private void OnDestroy()
+        {
+            PlayersController players_controller = PlayersController.Instance;
+            if (players_controller == null)
+                return;
+
+            players_controller.OnDisconnected.RemoveListener(ProcessPlayerDisconnection);
+            players_controller.OnReconnected.RemoveListener(ProcessPlayerReconnection);
+            players_controller.OnDeleted.RemoveListener(ProcessPlayerDeletion);
+        }
+
         public void InitializePlayers()
         {
             _readiness = new();
@@ -32,7 +43,11 @@ namespace Server.Match
                 _readiness.Add(player.PlayerId, false);
                 _players.Add(player.PlayerId, match_player);
 
-                match_player.TargetLoadGameScene(MatchController.GameSceneName);
+                match_player.TargetLoadGameScene(
+                    MatchController.GameSceneName,
+                    MatchController.MatchData.LobbyData.SelectedPresetId,
+                    MatchController.MatchData.LobbyData.SelectedSeed,
+                    MatchController.MatchData.LobbyData.SelectedResultUrl);
             }
 
             PlayersController.Instance.OnDisconnected.AddListener(ProcessPlayerDisconnection);
@@ -56,6 +71,18 @@ namespace Server.Match
                 if (!ready)
                     return false;
             return true;
+        }
+
+        public void ReturnPlayersToMenu()
+        {
+            if (_players == null)
+                return;
+
+            foreach (MatchPlayer player in _players.Values)
+            {
+                if (player != null)
+                    player.TargetReturnToMenu();
+            }
         }
 
         private void ProcessPlayerDisconnection(Player player)

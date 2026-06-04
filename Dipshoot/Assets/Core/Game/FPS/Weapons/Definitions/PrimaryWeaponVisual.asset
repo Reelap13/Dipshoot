@@ -24,7 +24,14 @@ MonoBehaviour:
   _third_person_animator_controller: {fileID: 0}
   _muzzle_socket_name: MuzzleSocket
   _tracer_speed: 240
+  _tracer_visual_speed: 420
   _tracer_lifetime: 0.08
+  _tracer_min_visible_time: 0.045
+  _tracer_fade_time: 0.08
+  _tracer_length: 2.2
+  _tracer_start_width: 0.018
+  _tracer_end_width: 0.004
+  _tracer_color: {r: 1, g: 0.86, b: 0.45, a: 1}
   _impact_lifetime: 1.5
   _first_person_local_position: {x: 0, y: -0.04, z: -0.05}
   _first_person_local_euler_angles: {x: 0, y: 0, z: 0}

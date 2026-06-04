@@ -28,6 +28,8 @@ MonoBehaviour:
   _max_spread_stat: 2109
   _move_spread_stat: 2110
   _air_spread_stat: 2111
+  _move_spread_full_speed: 7
+  _fall_spread_full_speed: 12
   _crouch_spread_multiplier_stat: 2112
   _recoil_pitch_stat: 2113
   _recoil_yaw_stat: 2114

@@ -6,10 +6,10 @@ namespace Game.TickSystem
     public enum TickLayer
     {
         InputCollect = 0,
-        InputSend = 10,
         AimSimulation = 50,
         WeaponInput = 100,
         WeaponSimulation = 110,
+        InputSend = 150,
         Movement = 200,
         PhysicsResolve = 300,
         Objective = 500,

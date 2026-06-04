@@ -76,8 +76,13 @@ namespace Game.Players
             if (!Character.StateBuffer.TryGetLastAtOrBefore(tick, out PlayerState state))
                 return;
 
-            state.RecoilPitch += pitch;
-            state.RecoilYaw += yaw;
+            float recoil_max = GetRecoilMax();
+            state.RecoilPitch = recoil_max > 0f
+                ? Mathf.Min(recoil_max, state.RecoilPitch + pitch)
+                : state.RecoilPitch + pitch;
+            state.RecoilYaw = recoil_max > 0f
+                ? Mathf.Clamp(state.RecoilYaw + yaw, -recoil_max, recoil_max)
+                : state.RecoilYaw + yaw;
             Character.StateBuffer.Add(state);
         }
 
@@ -131,6 +136,14 @@ namespace Game.Players
                 return 0f;
 
             return _weapon_controller.ActiveRecoilRecovery / Character.TickManager.TickRate;
+        }
+
+        private float GetRecoilMax()
+        {
+            if (_weapon_controller == null)
+                _weapon_controller = GetComponent<WeaponController>();
+
+            return _weapon_controller == null ? 0f : _weapon_controller.ActiveRecoilMax;
         }
     }
 }

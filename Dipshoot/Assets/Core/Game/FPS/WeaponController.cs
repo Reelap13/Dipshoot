@@ -60,6 +60,8 @@ namespace Game.Players
         public float ActiveReloadProgress => GetReloadProgress(_active_slot);
         public string ActiveWeaponDisplayName => GetWeaponDefinition(_active_slot)?.DisplayName ?? _active_slot.ToString();
         public float ActiveRecoilRecovery => GetWeaponDefinition(_active_slot)?.GetStats(_stats).RecoilRecovery ?? 0f;
+        public float ActiveRecoilMax => GetWeaponDefinition(_active_slot)?.GetStats(_stats).RecoilMax ?? 0f;
+        public float CurrentEffectiveSpreadDegrees { get; private set; }
         public WeaponDefinition PrimaryWeaponDefinition => _primary_weapon;
         public WeaponDefinition PistolWeaponDefinition => _pistol_weapon;
 
@@ -88,16 +90,22 @@ namespace Game.Players
 
         public bool ShouldTick(GameTickContext context)
         {
-            return isServer &&
-                _character != null &&
+            return _character != null &&
                 (_character.Health == null || _character.Health.IsAlive) &&
                 _character.IsGameplayActive &&
-                _character.TickManager == context.TickManager;
+                _character.TickManager == context.TickManager &&
+                (isServer || isClient && isOwned && !isServer);
         }
 
         public void Tick(GameTickContext context)
         {
-            TryProcessWeaponTick(context.Tick);
+            if (isServer)
+            {
+                TryProcessWeaponTick(context.Tick);
+                return;
+            }
+
+            TryPredictOwnerTick(context.Tick);
         }
 
         private void CacheReferences()
@@ -137,6 +145,7 @@ namespace Game.Players
             if (has_input)
                 _last_processed_input_tick = input.Tick;
 
+            bool has_simulation_state = TryGetPlayerState(server_tick, out PlayerState simulation_state);
             WeaponSimulationResult simulation_result = WeaponSimulation.Simulate(
                 _weapon_state,
                 input,
@@ -145,16 +154,18 @@ namespace Game.Players
                 _pistol_weapon,
                 _stats,
                 server_tick,
-                _character.TickManager == null ? 0 : _character.TickManager.TickRate);
+                _character.TickManager == null ? 0 : _character.TickManager.TickRate,
+                simulation_state);
 
             _weapon_state = simulation_result.State;
             SyncWeaponState();
+            if (isOwned)
+                UpdateCurrentSpread(input, simulation_state);
 
             if (!simulation_result.DidFire)
                 return;
 
-            if (!_character.StateBuffer.TryGet(server_tick, out PlayerState shot_state) &&
-                !_character.StateBuffer.TryGetLastAtOrBefore(server_tick, out shot_state))
+            if (!has_simulation_state)
             {
                 return;
             }
@@ -163,7 +174,7 @@ namespace Game.Players
                 _character,
                 simulation_result.FiredWeapon,
                 simulation_result.FiredWeaponStats.WithSpread(simulation_result.FiredSpreadDegrees),
-                shot_state,
+                simulation_state,
                 input,
                 server_tick,
                 _eye_offset,
@@ -182,10 +193,28 @@ namespace Game.Players
                 $"ammo={simulation_result.FiredSlotState.AmmoInMagazine}/{simulation_result.FiredSlotState.ReserveAmmo}");
 
             ApplyRecoil(simulation_result.RecoilPitch, simulation_result.RecoilYaw);
+            if (isOwned)
+                ApplyViewRecoil(
+                    simulation_result.RecoilPitch,
+                    simulation_result.RecoilYaw,
+                    simulation_result.FiredWeaponStats);
+
             RpcRegisterShot(shot_result);
         }
 
-        public void PredictOwnerInput(ref PlayerInputData input, int tick)
+        private void TryPredictOwnerTick(int tick)
+        {
+            if (!isClient || !isOwned || isServer || _character == null || _character.TickManager == null)
+                return;
+
+            if (!_character.InputBuffet.TryGet(tick, out PlayerInputData input))
+                return;
+
+            PredictOwnerInput(ref input, tick);
+            _character.InputBuffet.Add(input);
+        }
+
+        private void PredictOwnerInput(ref PlayerInputData input, int tick)
         {
             if (!isClient || !isOwned || isServer || _character == null || _character.TickManager == null)
                 return;
@@ -196,6 +225,7 @@ namespace Game.Players
 
             input.ShotSequence = _predicted_shot_sequence + 1;
 
+            bool has_simulation_state = TryGetPlayerState(tick, out PlayerState simulation_state);
             WeaponSimulationResult simulation_result = WeaponSimulation.Simulate(
                 _predicted_weapon_state,
                 input,
@@ -204,9 +234,11 @@ namespace Game.Players
                 _pistol_weapon,
                 _stats,
                 tick,
-                _character.TickManager.TickRate);
+                _character.TickManager.TickRate,
+                simulation_state);
 
             _predicted_weapon_state = simulation_result.State;
+            UpdateCurrentSpread(input, simulation_state);
             if (!simulation_result.DidFire)
             {
                 input.ShotSequence = 0;
@@ -214,8 +246,7 @@ namespace Game.Players
             }
 
             _predicted_shot_sequence = input.ShotSequence;
-            if (!_character.StateBuffer.TryGet(tick, out PlayerState shot_state) &&
-                !_character.StateBuffer.TryGetLastAtOrBefore(tick, out shot_state))
+            if (!has_simulation_state)
             {
                 return;
             }
@@ -224,7 +255,7 @@ namespace Game.Players
                 _character,
                 simulation_result.FiredWeapon,
                 simulation_result.FiredWeaponStats.WithSpread(simulation_result.FiredSpreadDegrees),
-                shot_state,
+                simulation_state,
                 input,
                 _eye_offset,
                 _hit_mask,
@@ -234,6 +265,10 @@ namespace Game.Players
             _predicted_shots[new PredictedShotKey(result.WeaponSlot, result.ShotSequence)] =
                 new PredictedShot(result, tick);
             ApplyRecoil(simulation_result.RecoilPitch, simulation_result.RecoilYaw);
+            ApplyViewRecoil(
+                simulation_result.RecoilPitch,
+                simulation_result.RecoilYaw,
+                simulation_result.FiredWeaponStats);
             WeaponPresentation.PlayPredictedShot(this, result, simulation_result.FiredWeapon);
         }
 
@@ -389,6 +424,54 @@ namespace Game.Players
             }
 
             aim_controller.ApplyRecoil(pitch, yaw);
+        }
+
+        private void ApplyViewRecoil(float pitch, float yaw, WeaponStats stats)
+        {
+            if (pitch <= 0f && Mathf.Abs(yaw) <= 0f)
+                return;
+
+            if (!TryGetComponent(out PlayerViewRecoilController view_recoil))
+                view_recoil = gameObject.AddComponent<PlayerViewRecoilController>();
+
+            float scale = stats.RecoilPattern == null ? 1f : stats.RecoilPattern.VisualScale;
+            view_recoil.AddImpulse(pitch * scale, yaw * scale);
+        }
+
+        private bool TryGetPlayerState(int tick, out PlayerState state)
+        {
+            state = default;
+            if (_character == null)
+                return false;
+
+            if (_character.StateBuffer.TryGet(tick, out state) ||
+                _character.StateBuffer.TryGetLastAtOrBefore(tick, out state))
+            {
+                return true;
+            }
+
+            state.IsGrounded = true;
+            return false;
+        }
+
+        private void UpdateCurrentSpread(PlayerInputData input, PlayerState player_state)
+        {
+            WeaponRuntimeState runtime_state = isClient && isOwned && _has_predicted_weapon_state
+                ? _predicted_weapon_state
+                : _weapon_state;
+            WeaponDefinition weapon = GetWeaponDefinition(runtime_state.ActiveSlot);
+            if (weapon == null)
+            {
+                CurrentEffectiveSpreadDegrees = 0f;
+                return;
+            }
+
+            WeaponSlotState slot_state = runtime_state.GetSlotState(runtime_state.ActiveSlot);
+            CurrentEffectiveSpreadDegrees = WeaponSimulation.GetEffectiveSpread(
+                slot_state,
+                weapon.GetStats(_stats),
+                input,
+                player_state);
         }
 
         private bool TryConsumePredictedShot(ShotResult confirmed_result, out ShotResult predicted_result)

@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using Mirror.Examples.MultipleMatch;
-using UnityEngine;
 
 namespace Server.Lobby
 {
@@ -11,6 +9,10 @@ namespace Server.Lobby
         public string Code;
         public int PlayersCapacity;
         public int MapId;
+        public string SelectedPresetId;
+        public int SelectedSeed;
+        public int SelectedRoundsCount;
+        public string SelectedResultUrl;
         public bool IsConnectionBlocked;
         public List<LobbyPlayerData> Players;
 
@@ -21,6 +23,9 @@ namespace Server.Lobby
             Code = lobby_map;
             PlayersCapacity = lobby_capacity;
             MapId = map_id;
+            SelectedPresetId = string.Empty;
+            SelectedRoundsCount = 1;
+            SelectedResultUrl = string.Empty;
             IsConnectionBlocked = false;
             Players = new();
         }

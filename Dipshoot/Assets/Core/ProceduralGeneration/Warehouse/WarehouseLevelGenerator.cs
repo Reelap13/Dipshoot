@@ -11,8 +11,6 @@ namespace Game.ProcGen.Warehouse
         [SerializeField] private bool _generateOnStart = true;
         [SerializeField] private bool _logDiagnostics = true;
 
-        private readonly GenerationPipeline _pipeline = new();
-
         public WarehouseRecipe Recipe => _recipe;
 
         private void Start()
@@ -25,14 +23,34 @@ namespace Game.ProcGen.Warehouse
         {
             WarehouseRecipe recipe = GetOrCreateRecipe();
             int seed = GetSeed();
-            GenerationRequest request = new(seed, true);
-            GenerationResult result = _pipeline.Generate(request, recipe);
+            GenerateInto(transform, recipe, seed, _generatedRootName, _logDiagnostics);
+        }
 
-            if (_logDiagnostics)
+        public void GenerateLevel(WarehouseRecipe recipe, int seed)
+        {
+            _recipe = recipe;
+            _seed = seed;
+            GenerateLevel();
+        }
+
+        public static void GenerateInto(
+            Transform parent,
+            WarehouseRecipe recipe,
+            int seed,
+            string generatedRootName,
+            bool logDiagnostics)
+        {
+            if (parent == null || recipe == null)
+                return;
+
+            GenerationRequest request = new(seed, true);
+            GenerationResult result = new GenerationPipeline().Generate(request, recipe);
+
+            if (logDiagnostics)
                 LogDiagnostics(result);
 
             WarehouseBuildPlan plan = result.GetRequired(WarehouseKeys.BuildPlan);
-            WarehousePlanExecutor.Execute(plan, transform, recipe, _generatedRootName, request.ClearPreviousOutput);
+            WarehousePlanExecutor.Execute(plan, parent, recipe, generatedRootName, request.ClearPreviousOutput);
         }
 
         private int GetSeed()

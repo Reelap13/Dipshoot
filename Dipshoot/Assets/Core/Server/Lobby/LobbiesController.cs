@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Game.MatchConfig;
+using Game.MatchMode;
 using Server.Match;
 using Server.PlayerHub;
 using Server.ServerSide;
@@ -25,7 +27,8 @@ namespace Server.Lobby
             }
 
             LobbyData lobby = new(_id++, lobby_code, _default_lobby_capacity, _default_lobby_map);
-            lobby.AddPlayer(new(player.Player, LobbyPlayerType.HOST));
+            ApplyDefaultPreset(lobby);
+            lobby.AddPlayer(new(player.Player, LobbyPlayerType.HOST, TeamId.Red));
 
             _lobbies_codes.Add(lobby_code, lobby.Id);
             _lobbies_data.Add(lobby.Id, lobby);
@@ -54,7 +57,7 @@ namespace Server.Lobby
                 return;
             }
 
-            lobby.AddPlayer(new(player.Player, LobbyPlayerType.CLIENT));
+            lobby.AddPlayer(new(player.Player, LobbyPlayerType.CLIENT, GetDefaultTeam(lobby)));
             _lobbies_players[lobby.Id].Add(player);
 
             UpdateClientsData(lobby.Id);
@@ -97,6 +100,48 @@ namespace Server.Lobby
             //Start game logic
         }
 
+        public void SwitchTeam(PlayerHubController player, int lobby_id)
+        {
+            if (!_lobbies_data.TryGetValue(lobby_id, out var lobby))
+            {
+                player.RegisterError("Lobby doesn't exist");
+                return;
+            }
+
+            LobbyPlayerData player_data = lobby.GetPlayer(player.Player.PlayerId);
+            if (player_data == null)
+                return;
+
+            player_data.Team = player_data.Team == TeamId.Red ? TeamId.Blue : TeamId.Red;
+            UpdateClientsData(lobby.Id);
+        }
+
+        public void SelectPreset(PlayerHubController player, int lobby_id, string preset_id)
+        {
+            if (!_lobbies_data.TryGetValue(lobby_id, out var lobby))
+            {
+                player.RegisterError("Lobby doesn't exist");
+                return;
+            }
+
+            LobbyPlayerData player_data = lobby.GetPlayer(player.Player.PlayerId);
+            if (player_data == null || player_data.Type != LobbyPlayerType.HOST)
+            {
+                player.RegisterError("Error 12: Attempt to select preset without host role");
+                return;
+            }
+
+            MatchPreset preset = MatchPresetRegistry.GetPreset(preset_id);
+            if (preset == null)
+            {
+                player.RegisterError("Match preset doesn't exist");
+                return;
+            }
+
+            ApplyPreset(lobby, preset);
+            UpdateClientsData(lobby.Id);
+        }
+
         private void DestroyLobby(int lobby_id)
         {
             if (!_lobbies_data.TryGetValue(lobby_id, out var lobby))
@@ -113,6 +158,19 @@ namespace Server.Lobby
             _lobbies_codes.Remove(lobby.Code);
         }
 
+        public void CloseFinishedLobby(int lobby_id)
+        {
+            if (!_lobbies_data.TryGetValue(lobby_id, out var lobby))
+                return;
+
+            foreach (var player in _lobbies_players[lobby_id])
+                player.UpdateLobbyData(null);
+
+            _lobbies_players.Remove(lobby_id);
+            _lobbies_data.Remove(lobby_id);
+            _lobbies_codes.Remove(lobby.Code);
+        }
+
         private void UpdateClientsData(int lobby_id)
         {
             if (!_lobbies_data.TryGetValue(lobby_id, out var lobby))
@@ -120,6 +178,38 @@ namespace Server.Lobby
 
             foreach (var player in _lobbies_players[lobby_id])
                 player.UpdateLobbyData(lobby);
+        }
+
+        private static void ApplyDefaultPreset(LobbyData lobby)
+        {
+            MatchPresetRegistry registry = MatchPresetRegistry.LoadDefault();
+            ApplyPreset(lobby, registry == null ? null : registry.GetDefault());
+        }
+
+        private static void ApplyPreset(LobbyData lobby, MatchPreset preset)
+        {
+            if (preset == null)
+                return;
+
+            lobby.SelectedPresetId = preset.Id;
+            lobby.SelectedSeed = preset.Seed;
+            lobby.SelectedRoundsCount = Mathf.Max(1, preset.RoundsCount);
+            lobby.SelectedResultUrl = preset.ResultUrl;
+        }
+
+        private static TeamId GetDefaultTeam(LobbyData lobby)
+        {
+            int red = 0;
+            int blue = 0;
+            for (int i = 0; i < lobby.Players.Count; i++)
+            {
+                if (lobby.Players[i].Team == TeamId.Red)
+                    red++;
+                else if (lobby.Players[i].Team == TeamId.Blue)
+                    blue++;
+            }
+
+            return red <= blue ? TeamId.Red : TeamId.Blue;
         }
     }
 }

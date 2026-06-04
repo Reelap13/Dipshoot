@@ -46,6 +46,22 @@ namespace Core.ClientPresentation
             _connector.CommandStartGame();
         }
 
+        public void SwitchTeam()
+        {
+            if (_connector == null)
+                return;
+
+            _connector.CommandSwitchTeam();
+        }
+
+        public void SelectPreset(string preset_id)
+        {
+            if (_connector == null)
+                return;
+
+            _connector.CommandSelectPreset(preset_id);
+        }
+
         public void OpenMatchMenu()
         {
             ClientAppRoot app_root = ClientAppRoot.Instance;

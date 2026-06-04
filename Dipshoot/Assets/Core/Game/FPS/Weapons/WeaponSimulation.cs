@@ -60,7 +60,8 @@ namespace Game.Players
             WeaponDefinition pistol_weapon,
             StatsController stats_controller,
             int tick,
-            int tick_rate)
+            int tick_rate,
+            PlayerState player_state)
         {
             WeaponRuntimeState state = previous_state;
             CompleteReloadIfReady(ref state.Primary, primary_weapon, stats_controller, tick);
@@ -115,7 +116,7 @@ namespace Game.Players
                         ? 1
                         : active_slot_state.ConsecutiveShots + 1;
                     active_slot_state.LastShotTick = tick;
-                    fired_spread = GetEffectiveSpread(active_slot_state, active_stats, input);
+                    fired_spread = GetEffectiveSpread(active_slot_state, active_stats, input, player_state);
                     IncreaseSpread(ref active_slot_state, active_stats);
                     GetRecoil(active_slot_state, active_stats, out recoil_pitch, out recoil_yaw);
                     did_fire = true;
@@ -172,14 +173,21 @@ namespace Game.Players
                 : input.IsShootPressed;
         }
 
-        private static float GetEffectiveSpread(
+        public static float GetEffectiveSpread(
             WeaponSlotState state,
             WeaponStats stats,
-            PlayerInputData input)
+            PlayerInputData input,
+            PlayerState player_state)
         {
             float spread = stats.SpreadDegrees + state.SpreadDegrees;
-            if (input.Move.sqrMagnitude > 0.01f)
-                spread += stats.MoveSpread;
+            Vector3 horizontal_velocity = new(player_state.Velocity.x, 0f, player_state.Velocity.z);
+            spread += stats.MoveSpread * Mathf.Clamp01(horizontal_velocity.magnitude / stats.MoveSpreadFullSpeed);
+
+            if (!player_state.IsGrounded)
+                spread += stats.AirSpread * Mathf.Clamp01(Mathf.Abs(player_state.Velocity.y) / stats.FallSpreadFullSpeed);
+
+            if (player_state.Stance == MovementStance.Crouching)
+                spread *= stats.CrouchSpreadMultiplier;
 
             return Mathf.Min(stats.MaxSpread, spread);
         }
@@ -214,7 +222,10 @@ namespace Game.Players
             if (state.LastShotTick < 0 || tick_rate <= 0)
                 return true;
 
-            return tick - state.LastShotTick > SecondsToTicks(stats.FireInterval * 2.5f, tick_rate);
+            float reset_time = stats.RecoilPattern == null
+                ? stats.FireInterval * 2.5f
+                : stats.RecoilPattern.PatternResetTime;
+            return tick - state.LastShotTick > SecondsToTicks(reset_time, tick_rate);
         }
 
         private static void GetRecoil(
@@ -223,10 +234,68 @@ namespace Game.Players
             out float pitch,
             out float yaw)
         {
+            if (TryGetPatternRecoil(state, stats, out pitch, out yaw))
+                return;
+
             float shot_index = Mathf.Max(1, state.ConsecutiveShots);
             pitch = Mathf.Min(stats.RecoilMax, stats.RecoilPitch * Mathf.Sqrt(shot_index));
-            float side = (state.ConsecutiveShots % 2 == 0) ? -1f : 1f;
-            yaw = side * stats.RecoilYaw * Mathf.Min(1f, shot_index / 4f);
+            yaw = stats.RecoilYaw *
+                Mathf.Min(1f, shot_index / 5f) *
+                GetRecoilYawPattern(state.ConsecutiveShots);
+        }
+
+        private static bool TryGetPatternRecoil(
+            WeaponSlotState state,
+            WeaponStats stats,
+            out float pitch,
+            out float yaw)
+        {
+            pitch = 0f;
+            yaw = 0f;
+            WeaponRecoilPatternDefinition recoil_pattern = stats.RecoilPattern;
+            Vector2[] pattern = recoil_pattern == null ? null : recoil_pattern.Pattern;
+            if (pattern == null || pattern.Length == 0)
+                return false;
+
+            int index = Mathf.Clamp(state.ConsecutiveShots - 1, 0, pattern.Length - 1);
+            Vector2 recoil = pattern[index];
+            int seed = state.LastShotTick * 397 ^ state.ConsecutiveShots * 7919;
+            yaw = (recoil.x + LerpHash(seed, -recoil_pattern.RandomYaw, recoil_pattern.RandomYaw)) *
+                recoil_pattern.GameplayScale;
+            pitch = Mathf.Max(0f, recoil.y + LerpHash(seed + 1, -recoil_pattern.RandomPitch, recoil_pattern.RandomPitch)) *
+                recoil_pattern.GameplayScale;
+            return true;
+        }
+
+        private static float GetRecoilYawPattern(int shot_index)
+        {
+            return ((shot_index - 1) % 8) switch
+            {
+                0 => 0.35f,
+                1 => 0.65f,
+                2 => 0.45f,
+                3 => -0.25f,
+                4 => -0.55f,
+                5 => -0.35f,
+                6 => 0.15f,
+                _ => 0.4f
+            };
+        }
+
+        private static float LerpHash(int seed, float min, float max)
+        {
+            return Mathf.Lerp(min, max, Hash01(seed));
+        }
+
+        private static float Hash01(int seed)
+        {
+            uint value = unchecked((uint)seed);
+            value ^= value >> 16;
+            value *= 0x7feb352d;
+            value ^= value >> 15;
+            value *= 0x846ca68b;
+            value ^= value >> 16;
+            return (value & 0x00ffffff) / 16777215f;
         }
 
         private static void CompleteReloadIfReady(

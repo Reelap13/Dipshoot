@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 2560981488615711837}
   - component: {fileID: 5927461570483310201}
   - component: {fileID: 1037792969983032477}
+  - component: {fileID: 955209650023816221}
   - component: {fileID: 563671470526942404}
   - component: {fileID: 1508822084912371000}
   - component: {fileID: 4619937518296402501}
@@ -170,6 +171,25 @@ MonoBehaviour:
   syncInterval: 0
   _camera_point: {fileID: 2030584166189090006}
   _character: {fileID: 7358710916428720345}
+  _view_recoil: {fileID: 955209650023816221}
+--- !u!114 &955209650023816221
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1239777248742655304}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 955b9eeb372f4ba6a8c0310352096bcf, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  _pitch_impulse_scale: 1
+  _yaw_impulse_scale: 0.75
+  _return_speed: 6
+  _smooth_time: 0.035
+  _max_pitch: 9
+  _max_yaw: 4
 --- !u!114 &563671470526942404
 MonoBehaviour:
   m_ObjectHideFlags: 0

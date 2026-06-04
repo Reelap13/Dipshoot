@@ -40,6 +40,10 @@ namespace Core.ClientPresentation
         [SerializeField] private Text _health_text;
         [SerializeField] private GameObject _crosshair;
         [SerializeField] private Color _crosshair_color = new(1f, 1f, 1f, 0.86f);
+        [SerializeField] private float _base_crosshair_gap = 9f;
+        [SerializeField] private float _spread_crosshair_gap_scale = 5f;
+        [SerializeField] private float _max_crosshair_gap = 42f;
+        [SerializeField] private float _crosshair_lerp_speed = 18f;
         [SerializeField] private GameObject _hit_marker;
         [SerializeField] private Color _hit_marker_color = new(1f, 0.96f, 0.72f, 1f);
 
@@ -48,6 +52,11 @@ namespace Core.ClientPresentation
         private ClientUiLayer _layer;
         private Image[] _hit_marker_lines = Array.Empty<Image>();
         private RectTransform[] _hit_marker_line_rects = Array.Empty<RectTransform>();
+        private RectTransform _crosshair_top;
+        private RectTransform _crosshair_bottom;
+        private RectTransform _crosshair_left;
+        private RectTransform _crosshair_right;
+        private float _current_crosshair_gap;
         private float _hit_marker_started_at = -1f;
 
         public static void PlayLocalHitMarker()
@@ -77,6 +86,7 @@ namespace Core.ClientPresentation
 
         private void Update()
         {
+            UpdateCrosshairSpread();
             UpdateHitMarker();
             UpdateWeaponPanel();
             UpdateHealth();
@@ -295,7 +305,10 @@ namespace Core.ClientPresentation
         private void EnsureCrosshair()
         {
             if (_crosshair != null)
+            {
+                CacheCrosshairLines();
                 return;
+            }
 
             _crosshair = new GameObject("Crosshair", typeof(RectTransform));
             _crosshair.transform.SetParent(transform, false);
@@ -307,13 +320,30 @@ namespace Core.ClientPresentation
             rect_transform.anchoredPosition = Vector2.zero;
             rect_transform.sizeDelta = new Vector2(40f, 40f);
 
-            CreateCrosshairLine("Top", _crosshair.transform, new Vector2(0f, 9f), new Vector2(2f, 8f));
-            CreateCrosshairLine("Bottom", _crosshair.transform, new Vector2(0f, -9f), new Vector2(2f, 8f));
-            CreateCrosshairLine("Left", _crosshair.transform, new Vector2(-9f, 0f), new Vector2(8f, 2f));
-            CreateCrosshairLine("Right", _crosshair.transform, new Vector2(9f, 0f), new Vector2(8f, 2f));
+            _crosshair_top = CreateCrosshairLine("Top", _crosshair.transform, new Vector2(0f, _base_crosshair_gap), new Vector2(2f, 8f));
+            _crosshair_bottom = CreateCrosshairLine("Bottom", _crosshair.transform, new Vector2(0f, -_base_crosshair_gap), new Vector2(2f, 8f));
+            _crosshair_left = CreateCrosshairLine("Left", _crosshair.transform, new Vector2(-_base_crosshair_gap, 0f), new Vector2(8f, 2f));
+            _crosshair_right = CreateCrosshairLine("Right", _crosshair.transform, new Vector2(_base_crosshair_gap, 0f), new Vector2(8f, 2f));
+            _current_crosshair_gap = _base_crosshair_gap;
         }
 
-        private void CreateCrosshairLine(
+        private void CacheCrosshairLines()
+        {
+            _crosshair_top = FindCrosshairLine("Top");
+            _crosshair_bottom = FindCrosshairLine("Bottom");
+            _crosshair_left = FindCrosshairLine("Left");
+            _crosshair_right = FindCrosshairLine("Right");
+            if (_current_crosshair_gap <= 0f)
+                _current_crosshair_gap = _base_crosshair_gap;
+        }
+
+        private RectTransform FindCrosshairLine(string name)
+        {
+            Transform line = _crosshair == null ? null : _crosshair.transform.Find(name);
+            return line == null ? null : line.GetComponent<RectTransform>();
+        }
+
+        private RectTransform CreateCrosshairLine(
             string name,
             Transform parent,
             Vector2 anchored_position,
@@ -332,6 +362,39 @@ namespace Core.ClientPresentation
             Image image = line.GetComponent<Image>();
             image.color = _crosshair_color;
             image.raycastTarget = false;
+
+            return rect_transform;
+        }
+
+        private void UpdateCrosshairSpread()
+        {
+            if (_crosshair == null)
+                return;
+
+            WeaponController weapon_controller = ResolveLocalWeaponController();
+            float target_gap = _base_crosshair_gap;
+            if (weapon_controller != null)
+                target_gap += weapon_controller.CurrentEffectiveSpreadDegrees * _spread_crosshair_gap_scale;
+
+            target_gap = Mathf.Clamp(target_gap, _base_crosshair_gap, _max_crosshair_gap);
+            float lerp = 1f - Mathf.Exp(-Mathf.Max(0f, _crosshair_lerp_speed) * Time.unscaledDeltaTime);
+            _current_crosshair_gap = _current_crosshair_gap <= 0f
+                ? target_gap
+                : Mathf.Lerp(_current_crosshair_gap, target_gap, lerp);
+
+            ApplyCrosshairGap(_current_crosshair_gap);
+        }
+
+        private void ApplyCrosshairGap(float gap)
+        {
+            if (_crosshair_top != null)
+                _crosshair_top.anchoredPosition = new Vector2(0f, gap);
+            if (_crosshair_bottom != null)
+                _crosshair_bottom.anchoredPosition = new Vector2(0f, -gap);
+            if (_crosshair_left != null)
+                _crosshair_left.anchoredPosition = new Vector2(-gap, 0f);
+            if (_crosshair_right != null)
+                _crosshair_right.anchoredPosition = new Vector2(gap, 0f);
         }
 
         private void EnsureHitMarker()

@@ -150,13 +150,7 @@ namespace Game.Players
 
         private static float GetStateSpread(PlayerState state, WeaponStats weapon_stats)
         {
-            float spread = weapon_stats.SpreadDegrees;
-            if (!state.IsGrounded)
-                spread += weapon_stats.AirSpread;
-            if (state.Stance == MovementStance.Crouching)
-                spread *= weapon_stats.CrouchSpreadMultiplier;
-
-            return Mathf.Min(weapon_stats.MaxSpread, spread);
+            return Mathf.Min(weapon_stats.MaxSpread, weapon_stats.SpreadDegrees);
         }
 
         private static Quaternion GetSpreadRotation(

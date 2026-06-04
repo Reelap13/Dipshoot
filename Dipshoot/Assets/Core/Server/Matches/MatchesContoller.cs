@@ -23,5 +23,6 @@ namespace Server.Match
 
         public MatchController CreateMatchController() => Instantiate(_match_controller_pref, transform);
         public MatchController GetMatchController(int match_id) => _matches[match_id];
+        public void RemoveMatch(int match_id) => _matches.Remove(match_id);
     }
 }

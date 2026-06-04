@@ -38,6 +38,7 @@ namespace Server.Match
         public void FinishGame()
         {
             EndGame();
+            MatchController.FinishMatch();
         }
 
         protected void DestoryGame()

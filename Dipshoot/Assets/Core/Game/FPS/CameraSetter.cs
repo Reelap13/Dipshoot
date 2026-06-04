@@ -8,6 +8,7 @@ namespace Game.Players
     {
         [SerializeField] private Transform _camera_point;
         [SerializeField] private PlayerCharacter _character;
+        [SerializeField] private PlayerViewRecoilController _view_recoil;
 
         private Camera _attached_camera;
         private Transform _initial_parent;
@@ -139,7 +140,14 @@ namespace Game.Players
             if (!_character.StateBuffer.TryGetLastAtOrBefore(_character.TickManager.CurrentTick, out PlayerState state))
                 return;
 
-            _camera_point.localRotation = PlayerAimUtility.GetEffectivePitchRotation(state);
+            if (_view_recoil == null)
+                _view_recoil = _character.GetComponent<PlayerViewRecoilController>();
+
+            Quaternion rotation = Quaternion.Euler(state.CameraPitch, 0f, 0f);
+            if (_view_recoil != null)
+                rotation *= _view_recoil.GetRotationOffset();
+
+            _camera_point.localRotation = rotation;
         }
     }
 }
