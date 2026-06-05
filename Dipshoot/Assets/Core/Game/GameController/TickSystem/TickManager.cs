@@ -7,10 +7,10 @@ namespace Game.TickSystem
     {
         InputCollect = 0,
         AimSimulation = 50,
+        Movement = 75,
         WeaponInput = 100,
         WeaponSimulation = 110,
         InputSend = 150,
-        Movement = 200,
         PhysicsResolve = 300,
         Objective = 500,
         MatchState = 800,

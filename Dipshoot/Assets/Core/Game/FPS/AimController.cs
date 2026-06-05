@@ -20,17 +20,11 @@ namespace Game.Players
 
         public override bool ShouldTick(GameTickContext context)
         {
-            return base.ShouldTick(context) && IsAlive && IsGameplayActive && (IsServer || IsClient && IsOwned);
+            return base.ShouldTick(context) && IsAlive && IsGameplayActive && !IsServer && IsClient && IsOwned;
         }
 
         protected override void OnTick(GameTickContext context)
         {
-            if (IsServer)
-            {
-                SimulateServerTick(context.Tick);
-                return;
-            }
-
             SimulateTick(context.Tick);
         }
 
@@ -55,6 +49,16 @@ namespace Game.Players
             previous_state = FillMissingStates(previous_state, server_tick - 1);
             PlayerInputData input = GetServerInput(server_tick);
             PlayerState new_state = Simulate(previous_state, input, server_tick);
+            Character.StateBuffer.Add(new_state);
+            return true;
+        }
+
+        public bool SimulateServerReplayTick(PlayerInputData input, int tick)
+        {
+            if (!TryGetPreviousStateForTick(tick, out PlayerState previous_state))
+                return false;
+
+            PlayerState new_state = Simulate(previous_state, input, tick);
             Character.StateBuffer.Add(new_state);
             return true;
         }

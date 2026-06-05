@@ -115,15 +115,15 @@ namespace Game.Players
                 : stats_controller.GetStatValue(stat, fallback_value);
         }
 
-        private float DefaultSpreadPerShot => _slot == WeaponSlot.Pistol ? 0.18f : 0.45f;
-        private float DefaultSpreadRecovery => _slot == WeaponSlot.Pistol ? 7f : 2f;
-        private float DefaultMaxSpread => _slot == WeaponSlot.Pistol ? 3f : 5f;
-        private float DefaultMoveSpread => _slot == WeaponSlot.Pistol ? 0.35f : 1f;
-        private float DefaultAirSpread => _slot == WeaponSlot.Pistol ? 1.2f : 2.5f;
+        private float DefaultSpreadPerShot => _slot == WeaponSlot.Pistol ? 0.28f : 0.24f;
+        private float DefaultSpreadRecovery => _slot == WeaponSlot.Pistol ? 12f : 10f;
+        private float DefaultMaxSpread => _slot == WeaponSlot.Pistol ? 3f : 4f;
+        private float DefaultMoveSpread => _slot == WeaponSlot.Pistol ? 1.4f : 2f;
+        private float DefaultAirSpread => _slot == WeaponSlot.Pistol ? 5f : 6f;
         private float DefaultCrouchSpreadMultiplier => 0.65f;
-        private float DefaultRecoilPitch => _slot == WeaponSlot.Pistol ? 0.75f : 0.45f;
-        private float DefaultRecoilYaw => _slot == WeaponSlot.Pistol ? 0.28f : 0.22f;
-        private float DefaultRecoilRecovery => _slot == WeaponSlot.Pistol ? 12f : 3f;
-        private float DefaultRecoilMax => _slot == WeaponSlot.Pistol ? 8f : 12f;
+        private float DefaultRecoilPitch => 0f;
+        private float DefaultRecoilYaw => 0f;
+        private float DefaultRecoilRecovery => 0f;
+        private float DefaultRecoilMax => 0f;
     }
 }

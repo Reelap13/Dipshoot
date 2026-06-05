@@ -14,6 +14,8 @@ namespace Game.Players
         private const float CameraHeightRatio = 0.745f;
 
         [SerializeField] private StatsController _stats;
+        [SerializeField] private AimController _aim_controller;
+        [SerializeField] private PlayerHitboxLagCompensation _hitbox_lag_compensation;
         [SerializeField] private CapsuleCollider _capsule;
         [SerializeField] private Transform _camera_point;
         [SerializeField] private LayerMask _collision_mask = Physics.DefaultRaycastLayers;
@@ -23,6 +25,7 @@ namespace Game.Players
         private readonly Collider[] _overlap_hits = new Collider[MaxOverlapHits];
         private Collider[] _own_colliders = System.Array.Empty<Collider>();
         private int _last_server_processed_input_tick = -1;
+        private int _last_server_simulated_tick = -1;
         private bool _has_last_server_input;
         private PlayerInputData _last_server_input;
 
@@ -86,24 +89,37 @@ namespace Game.Players
 
         public bool SimulateServerTick(int server_tick, float delta_time)
         {
-            if (!TryGetSimulationStateForTick(server_tick, out PlayerState previous_state))
-            {
+            if (!TryGetServerReplayStartTick(server_tick, out int replay_from_tick))
                 return false;
+
+            bool simulated = false;
+            for (int tick = replay_from_tick; tick <= server_tick; tick++)
+            {
+                PlayerInputData input = GetServerReplayInput(tick);
+
+                if (_aim_controller != null &&
+                    !_aim_controller.SimulateServerReplayTick(input, tick))
+                {
+                    return simulated;
+                }
+
+                if (!TryGetSimulationStateForTick(tick, out PlayerState previous_state))
+                    return simulated;
+
+                PlayerState new_state = Simulate(
+                    previous_state,
+                    input,
+                    delta_time,
+                    tick);
+
+                Character.StateBuffer.Add(new_state);
+                ApplyState(new_state);
+                _hitbox_lag_compensation?.CaptureCurrentFrame(tick);
+                _last_server_simulated_tick = tick;
+                simulated = true;
             }
 
-            previous_state = FillMissingStates(previous_state, server_tick - 1, delta_time);
-
-            PlayerInputData input = GetServerInput(server_tick);
-
-            PlayerState new_state = Simulate(
-                previous_state,
-                input,
-                delta_time,
-                server_tick);
-
-            Character.StateBuffer.Add(new_state);
-            ApplyState(new_state);
-            return true;
+            return simulated;
         }
 
         public void ReplayFromTick(int from_tick, int to_tick)
@@ -150,6 +166,12 @@ namespace Game.Players
         {
             if (_stats == null)
                 _stats = GetComponent<StatsController>();
+
+            if (_aim_controller == null)
+                _aim_controller = GetComponent<AimController>();
+
+            if (_hitbox_lag_compensation == null)
+                _hitbox_lag_compensation = GetComponent<PlayerHitboxLagCompensation>();
 
             if (_capsule == null)
                 _capsule = GetComponentInChildren<CapsuleCollider>(true);
@@ -735,31 +757,30 @@ namespace Game.Players
             return false;
         }
 
-        private PlayerState FillMissingStates(PlayerState previous_state, int target_tick, float delta_time)
+        private bool TryGetServerReplayStartTick(int server_tick, out int replay_from_tick)
         {
-            while (previous_state.Tick < target_tick)
-            {
-                int next_tick = previous_state.Tick + 1;
-                PlayerInputData input = GetServerInput(next_tick);
-                PlayerState state = Simulate(
-                    previous_state,
-                    input,
-                    delta_time,
-                    next_tick);
+            replay_from_tick = _last_server_simulated_tick >= 0
+                ? _last_server_simulated_tick + 1
+                : server_tick;
 
-                Character.StateBuffer.Add(state);
-                previous_state = state;
-            }
-
-            return previous_state;
-        }
-
-        private PlayerInputData GetServerInput(int server_tick)
-        {
-            if (Character.InputBuffet.TryGetFirstAfter(_last_server_processed_input_tick, out PlayerInputData input) &&
+            if (Character.InputBuffet.TryGetFirstAfter(
+                    _last_server_processed_input_tick,
+                    out PlayerInputData input) &&
                 input.Tick <= server_tick)
             {
-                _last_server_processed_input_tick = input.Tick;
+                replay_from_tick = Mathf.Min(replay_from_tick, input.Tick);
+            }
+
+            return replay_from_tick <= server_tick;
+        }
+
+        private PlayerInputData GetServerReplayInput(int tick)
+        {
+            if (Character.InputBuffet.TryGet(tick, out PlayerInputData input))
+            {
+                if (input.Tick > _last_server_processed_input_tick)
+                    _last_server_processed_input_tick = input.Tick;
+
                 _last_server_input = input;
                 _has_last_server_input = true;
                 return input;
@@ -767,15 +788,20 @@ namespace Game.Players
 
             if (_has_last_server_input)
             {
-                return _last_server_input;
+                input = _last_server_input;
+                input.Tick = tick;
+                return input;
             }
 
-            return default;
+            input = default;
+            input.Tick = tick;
+            return input;
         }
 
         public override void ResetSimulation()
         {
             _last_server_processed_input_tick = -1;
+            _last_server_simulated_tick = -1;
             _has_last_server_input = false;
             _last_server_input = default;
         }

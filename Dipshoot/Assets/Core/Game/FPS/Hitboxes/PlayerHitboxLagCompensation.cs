@@ -64,6 +64,11 @@ namespace Game.Players
             CaptureFrame(context.Tick);
         }
 
+        public void CaptureCurrentFrame(int tick)
+        {
+            CaptureFrame(tick);
+        }
+
         public void ResetSimulation()
         {
             ClearHistory();

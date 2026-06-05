@@ -194,15 +194,23 @@ namespace Game.Players
                 simulation_result.FiredWeaponStats.WithSpread(simulation_result.FiredSpreadDegrees),
                 simulation_state,
                 input,
+                simulation_result.FiredSlotState,
                 server_tick,
                 _eye_offset,
                 _hit_mask,
                 _trigger_interaction,
                 _hits);
 
-            LogShotCompare(ShotCompareServerPrefix, shot_result, simulation_state, simulation_result.FiredSpreadDegrees);
+            LogShotCompare(
+                ShotCompareServerPrefix,
+                shot_result,
+                simulation_state,
+                simulation_result.FiredSpreadDegrees,
+                simulation_result.FiredSlotState.ConsecutiveShots,
+                WeaponShotResolver.GetSprayPatternOffset(
+                    simulation_result.FiredWeaponStats,
+                    simulation_result.FiredSlotState.ConsecutiveShots));
 
-            ApplyRecoil(simulation_result.RecoilPitch, simulation_result.RecoilYaw);
             if (isOwned)
                 ApplyViewRecoil(
                     simulation_result.RecoilPitch,
@@ -267,6 +275,7 @@ namespace Game.Players
                 simulation_result.FiredWeaponStats.WithSpread(simulation_result.FiredSpreadDegrees),
                 simulation_state,
                 input,
+                simulation_result.FiredSlotState,
                 _eye_offset,
                 _hit_mask,
                 _trigger_interaction,
@@ -274,8 +283,15 @@ namespace Game.Players
 
             _predicted_shots[new PredictedShotKey(result.WeaponSlot, result.ShotSequence)] =
                 new PredictedShot(result, tick);
-            LogShotCompare(ShotCompareLocalPrefix, result, simulation_state, simulation_result.FiredSpreadDegrees);
-            ApplyRecoil(simulation_result.RecoilPitch, simulation_result.RecoilYaw);
+            LogShotCompare(
+                ShotCompareLocalPrefix,
+                result,
+                simulation_state,
+                simulation_result.FiredSpreadDegrees,
+                simulation_result.FiredSlotState.ConsecutiveShots,
+                WeaponShotResolver.GetSprayPatternOffset(
+                    simulation_result.FiredWeaponStats,
+                    simulation_result.FiredSlotState.ConsecutiveShots));
             ApplyViewRecoil(
                 simulation_result.RecoilPitch,
                 simulation_result.RecoilYaw,
@@ -358,8 +374,6 @@ namespace Game.Players
                 WarnIfPredictedShotMismatch(predicted_result, result);
                 WeaponPresentation.PlayConfirmedOwnerShot(this, result, GetWeaponDefinition(result.WeaponSlot));
                 WeaponPresentation.PlayOwnerHitFeedback(result);
-                if (_predicted_shots.Count == 0)
-                    ResetPredictedStateFromSync();
                 return;
             }
 
@@ -490,7 +504,9 @@ namespace Game.Players
             string prefix,
             ShotResult result,
             PlayerState state,
-            float spread_degrees)
+            float spread_degrees,
+            int shot_index,
+            Vector2 pattern_offset)
         {
             if (!ShouldLogShotCompare())
                 return;
@@ -507,7 +523,8 @@ namespace Game.Players
                 $"pos={FormatVector(state.Position)} origin={FormatVector(result.Origin)} " +
                 $"dir={FormatVector(result.Direction)} point={FormatVector(result.Point)} " +
                 $"rotY={FormatFloat(state.Rotation.eulerAngles.y)} pitch={FormatFloat(state.CameraPitch)} " +
-                $"spread={FormatFloat(spread_degrees)} seed={result.SpreadSeed} " +
+                $"spread={FormatFloat(spread_degrees)} shotIndex={shot_index} " +
+                $"patternOffset={FormatVector2(pattern_offset)} seed={result.SpreadSeed} " +
                 $"hit={result.HasHit} damage={result.DidDamage} target={result.HitNetId} " +
                 $"hitbox={result.HitboxType} suppressed={suppressed}");
         }
@@ -542,6 +559,11 @@ namespace Game.Players
         private static string FormatVector(Vector3 value)
         {
             return $"({FormatFloat(value.x)},{FormatFloat(value.y)},{FormatFloat(value.z)})";
+        }
+
+        private static string FormatVector2(Vector2 value)
+        {
+            return $"({FormatFloat(value.x)},{FormatFloat(value.y)})";
         }
 
         private static string FormatFloat(float value)

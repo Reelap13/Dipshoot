@@ -473,9 +473,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d13a3fdc90a1eb409b4657e81f4e0ec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _character: {fileID: 0}
   _input_controller: {fileID: 563671470526942404}
-  _is_active: 1
-  _switch_interval_seconds: 5
+  _is_active: 0
+  _switch_interval_seconds: 2
 --- !u!1 &2530876336101798869
 GameObject:
   m_ObjectHideFlags: 0

@@ -13,6 +13,7 @@ namespace Game.Players
             WeaponStats weapon_stats,
             PlayerState shot_state,
             PlayerInputData input,
+            WeaponSlotState fired_slot_state,
             int server_tick,
             Vector3 eye_offset,
             LayerMask hit_mask,
@@ -21,7 +22,7 @@ namespace Game.Players
         {
             Vector3 origin = GetShotOrigin(shot_state, eye_offset);
             int spread_seed = WeaponShotSeed.Get(shooter.netId, input.Tick, weapon.Slot, input.ShotSequence);
-            Vector3 direction = GetShotDirection(shot_state, weapon_stats, spread_seed);
+            Vector3 direction = GetShotDirection(shot_state, weapon_stats, spread_seed, fired_slot_state.ConsecutiveShots);
             bool has_world_hit = TryGetWorldHit(
                 shooter,
                 origin,
@@ -88,6 +89,7 @@ namespace Game.Players
             WeaponStats weapon_stats,
             PlayerState shot_state,
             PlayerInputData input,
+            WeaponSlotState fired_slot_state,
             Vector3 eye_offset,
             LayerMask hit_mask,
             QueryTriggerInteraction trigger_interaction,
@@ -95,7 +97,7 @@ namespace Game.Players
         {
             Vector3 origin = GetShotOrigin(shot_state, eye_offset);
             int spread_seed = WeaponShotSeed.Get(shooter.netId, input.Tick, weapon.Slot, input.ShotSequence);
-            Vector3 direction = GetShotDirection(shot_state, weapon_stats, spread_seed);
+            Vector3 direction = GetShotDirection(shot_state, weapon_stats, spread_seed, fired_slot_state.ConsecutiveShots);
             bool has_hit = TryGetVisualHit(
                 shooter,
                 origin,
@@ -143,13 +145,32 @@ namespace Game.Players
         public static Vector3 GetShotDirection(
             PlayerState state,
             WeaponStats weapon_stats,
-            int spread_seed)
+            int spread_seed,
+            int shot_index)
         {
             Quaternion pitch_rotation = PlayerAimUtility.GetEffectivePitchRotation(state);
+            Quaternion pattern_rotation = GetSprayPatternRotation(weapon_stats, shot_index);
             float spread_degrees = GetStateSpread(state, weapon_stats);
             Quaternion spread_rotation = GetSpreadRotation(spread_degrees, spread_seed);
 
-            return state.Rotation * pitch_rotation * spread_rotation * Vector3.forward;
+            return state.Rotation * pitch_rotation * pattern_rotation * spread_rotation * Vector3.forward;
+        }
+
+        public static Vector2 GetSprayPatternOffset(WeaponStats weapon_stats, int shot_index)
+        {
+            WeaponRecoilPatternDefinition pattern = weapon_stats.RecoilPattern;
+            Vector2[] offsets = pattern == null ? null : pattern.Pattern;
+            if (offsets == null || offsets.Length == 0 || shot_index <= 0)
+                return Vector2.zero;
+
+            int index = Mathf.Clamp(shot_index - 1, 0, offsets.Length - 1);
+            return offsets[index] * pattern.GameplayScale;
+        }
+
+        private static Quaternion GetSprayPatternRotation(WeaponStats weapon_stats, int shot_index)
+        {
+            Vector2 offset = GetSprayPatternOffset(weapon_stats, shot_index);
+            return Quaternion.Euler(-offset.y, offset.x, 0f);
         }
 
         private static float GetStateSpread(PlayerState state, WeaponStats weapon_stats)

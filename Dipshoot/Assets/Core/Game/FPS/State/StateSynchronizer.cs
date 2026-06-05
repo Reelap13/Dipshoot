@@ -122,7 +122,12 @@ namespace Game.Players
             }
 
             int server_tick = _character.TickManager.CurrentTick;
-            if (!_character.StateBuffer.TryGet(server_tick, out PlayerState state))
+            int state_tick = _movement.LastServerProcessedInputTick;
+            if (state_tick < 0)
+                return;
+
+            if (!_character.StateBuffer.TryGet(state_tick, out PlayerState state) &&
+                !_character.StateBuffer.TryGetLastAtOrBefore(state_tick, out state))
             {
                 return;
             }
@@ -130,7 +135,7 @@ namespace Game.Players
             PlayerStateSnapshot snapshot = PlayerStateSnapshot.Create(
                 state,
                 server_tick,
-                _movement.LastServerProcessedInputTick);
+                state.Tick);
 
             if (connectionToClient != null)
                 TargetReceiveAuthoritativeState(snapshot);
