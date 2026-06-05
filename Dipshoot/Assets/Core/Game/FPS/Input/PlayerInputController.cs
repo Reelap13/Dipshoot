@@ -8,10 +8,13 @@ namespace Game.Players.Input
 {
     public class PlayerInputController : PlayerCharacterComponent
     {
+        public delegate bool InputOverrideProvider(int tick, out PlayerInputData input);
+
         public override TickLayer TickLayer => TickLayer.InputCollect;
 
         public event Action<PlayerInputData> OnInputCaptured;
 
+        private InputOverrideProvider _input_override_provider;
         private bool _was_shoot_pressed;
         private bool _was_reload_pressed;
         private bool _was_primary_weapon_pressed;
@@ -35,11 +38,28 @@ namespace Game.Players.Input
 
         protected override void OnTick(GameTickContext context)
         {
-            PlayerInputData input = GetInput();
+            PlayerInputData input;
+            if (_input_override_provider == null ||
+                !_input_override_provider(context.Tick, out input))
+            {
+                input = GetInput();
+            }
+
             input.Tick = context.Tick;
             Character.InputBuffet.Add(input);
 
             OnInputCaptured?.Invoke(input);
+        }
+
+        public void SetInputOverrideProvider(InputOverrideProvider provider)
+        {
+            _input_override_provider = provider;
+        }
+
+        public void ClearInputOverrideProvider(InputOverrideProvider provider)
+        {
+            if (_input_override_provider == provider)
+                _input_override_provider = null;
         }
 
         public PlayerInputData GetInput()

@@ -25,7 +25,6 @@ namespace Game.Players
             WeaponDefinition weapon)
         {
             PlayShotVisual(owner, result, weapon, true, true, false);
-            PlayOwnerHitFeedback(result);
         }
 
         public static void PlayOwnerHitFeedback(ShotResult result)

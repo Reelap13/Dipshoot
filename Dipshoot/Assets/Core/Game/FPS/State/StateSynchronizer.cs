@@ -10,6 +10,7 @@ namespace Game.Players
     public class StateSynchronizer : NetworkBehaviour, ITickSystem
     {
         private const string LogPrefix = "[NetTick][StateSync]";
+        private const string TickSyncDebugPrefix = "[TickSync][Client]";
 
         [SerializeField] private PlayerCharacter _character;
         [SerializeField] private AimController _aim_controller;
@@ -19,6 +20,14 @@ namespace Game.Players
         [SerializeField] private float _rotation_error_threshold = 0.1f;
         [SerializeField] private int _remote_interpolation_back_ticks = 2;
         [SerializeField] private float _server_tick_offset_lerp_factor = 0.1f;
+        [SerializeField] private bool _tick_sync_debug_enabled = true;
+        [SerializeField] private int _tick_sync_debug_max_logs_per_second = 3;
+        [SerializeField] private bool _client_tick_correction_enabled = true;
+        [SerializeField] private float _target_server_lead_ticks = 3f;
+        [SerializeField] private float _tick_correction_deadzone = 1f;
+        [SerializeField] private float _tick_correction_proportional = 0.015f;
+        [SerializeField] private float _tick_correction_max_scale_delta = 0.05f;
+        [SerializeField] private float _tick_correction_lerp = 0.1f;
 
         public int LastReceivedStateTick { get; private set; } = -1;
         public int LastAppliedStateTick { get; private set; } = -1;
@@ -29,6 +38,10 @@ namespace Game.Players
         private double _server_tick_offset;
         private bool _has_render_state;
         private PlayerState _render_state;
+        private float _last_tick_correction_error;
+        private float _tick_sync_debug_window_started_at;
+        private int _tick_sync_debug_logged_in_window;
+        private int _tick_sync_debug_suppressed;
         private readonly RemoteInterpolationBuffer _remote_interpolation_buffer = new();
 
         public TickLayer TickLayer => TickLayer.StateSnapshot;
@@ -48,6 +61,7 @@ namespace Game.Players
 
         private void OnDisable()
         {
+            ResetClientTickCorrection();
             TryUnregisterTickSystem();
         }
 
@@ -118,7 +132,9 @@ namespace Game.Players
                 server_tick,
                 _movement.LastServerProcessedInputTick);
 
-            TargetReceiveAuthoritativeState(snapshot);
+            if (connectionToClient != null)
+                TargetReceiveAuthoritativeState(snapshot);
+
             RpcReceiveRemoteAuthoritativeState(snapshot);
         }
 
@@ -145,6 +161,8 @@ namespace Game.Players
             LastReceivedStateTick = snapshot.ServerTick;
             LastProcessedInputTick = snapshot.LastProcessedInputTick;
             UpdateServerTickEstimate(snapshot.ServerTick);
+            ApplyClientTickCorrection();
+            LogTickSyncSnapshot(snapshot, true);
 
             if (_character == null || _movement == null)
                 return;
@@ -216,6 +234,7 @@ namespace Game.Players
 
             LastReceivedStateTick = snapshot.ServerTick;
             UpdateServerTickEstimate(snapshot.ServerTick);
+            LogTickSyncSnapshot(snapshot, false);
             PlayerState state = snapshot.ToState(snapshot.ServerTick);
             _remote_interpolation_buffer.Add(state);
         }
@@ -294,6 +313,48 @@ namespace Game.Players
                 _server_tick_offset_lerp_factor);
         }
 
+        private void ApplyClientTickCorrection()
+        {
+            if (_character == null || _character.TickManager == null)
+                return;
+
+            TickManager tick_manager = _character.TickManager;
+            if (!_client_tick_correction_enabled || !_has_server_tick_offset)
+            {
+                tick_manager.TickRateScale = Mathf.Lerp(
+                    tick_manager.TickRateScale,
+                    1f,
+                    _tick_correction_lerp);
+                _last_tick_correction_error = 0f;
+                return;
+            }
+
+            _last_tick_correction_error = (float)(GetEstimatedServerTick() -
+                tick_manager.CurrentTick -
+                _target_server_lead_ticks);
+
+            float target_scale = 1f;
+            if (Mathf.Abs(_last_tick_correction_error) > _tick_correction_deadzone)
+            {
+                float scale_delta = Mathf.Clamp(
+                    _last_tick_correction_error * _tick_correction_proportional,
+                    -_tick_correction_max_scale_delta,
+                    _tick_correction_max_scale_delta);
+                target_scale += scale_delta;
+            }
+
+            tick_manager.TickRateScale = Mathf.Lerp(
+                tick_manager.TickRateScale,
+                target_scale,
+                _tick_correction_lerp);
+        }
+
+        private void ResetClientTickCorrection()
+        {
+            if (isOwned && _character != null && _character.TickManager != null)
+                _character.TickManager.TickRateScale = 1f;
+        }
+
         private double GetEstimatedServerTick()
         {
             if (_character == null || _character.TickManager == null)
@@ -304,6 +365,57 @@ namespace Game.Players
                 return network_time_tick;
 
             return network_time_tick + _server_tick_offset;
+        }
+
+        private void LogTickSyncSnapshot(PlayerStateSnapshot snapshot, bool owner_snapshot)
+        {
+            if (!_tick_sync_debug_enabled ||
+                _character == null ||
+                _character.TickManager == null ||
+                !ShouldLogTickSyncDebug())
+            {
+                return;
+            }
+
+            int suppressed = _tick_sync_debug_suppressed;
+            _tick_sync_debug_suppressed = 0;
+            int client_tick = _character.TickManager.CurrentTick;
+            float tick_delta = _character.TickManager.TickDelta;
+            double network_time_tick = tick_delta <= 0f ? 0d : NetworkTime.time / tick_delta;
+            double estimated_server_tick = GetEstimatedServerTick();
+            double offset = _has_server_tick_offset ? _server_tick_offset : 0d;
+            double rtt_ms = NetworkTime.rtt * 1000d;
+            float tick_rate_scale = _character.TickManager.CurrentTickRateScale;
+
+            Debug.Log(
+                $"{TickSyncDebugPrefix} owner={owner_snapshot} netId={netId} " +
+                $"clientTick={client_tick} serverTick={snapshot.ServerTick} " +
+                $"lastProcessedInputTick={snapshot.LastProcessedInputTick} " +
+                $"serverMinusClient={snapshot.ServerTick - client_tick} " +
+                $"serverMinusInput={snapshot.ServerTick - snapshot.LastProcessedInputTick} " +
+                $"networkTimeTick={network_time_tick:0.##} estimatedServerTick={estimated_server_tick:0.##} " +
+                $"offset={offset:0.##} estimatedMinusClient={estimated_server_tick - client_tick:0.##} " +
+                $"tickRateScale={tick_rate_scale:0.###} tickCorrectionError={_last_tick_correction_error:0.##} " +
+                $"rttMs={rtt_ms:0.#} suppressed={suppressed}");
+        }
+
+        private bool ShouldLogTickSyncDebug()
+        {
+            int max_logs = Mathf.Max(1, _tick_sync_debug_max_logs_per_second);
+            if (Time.unscaledTime - _tick_sync_debug_window_started_at >= 1f)
+            {
+                _tick_sync_debug_window_started_at = Time.unscaledTime;
+                _tick_sync_debug_logged_in_window = 0;
+            }
+
+            if (_tick_sync_debug_logged_in_window >= max_logs)
+            {
+                _tick_sync_debug_suppressed++;
+                return false;
+            }
+
+            _tick_sync_debug_logged_in_window++;
+            return true;
         }
     }
 }

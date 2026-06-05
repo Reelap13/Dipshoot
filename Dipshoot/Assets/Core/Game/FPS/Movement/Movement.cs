@@ -93,7 +93,7 @@ namespace Game.Players
 
             previous_state = FillMissingStates(previous_state, server_tick - 1, delta_time);
 
-            PlayerInputData input = GetServerInput();
+            PlayerInputData input = GetServerInput(server_tick);
 
             PlayerState new_state = Simulate(
                 previous_state,
@@ -740,7 +740,7 @@ namespace Game.Players
             while (previous_state.Tick < target_tick)
             {
                 int next_tick = previous_state.Tick + 1;
-                PlayerInputData input = GetServerInput();
+                PlayerInputData input = GetServerInput(next_tick);
                 PlayerState state = Simulate(
                     previous_state,
                     input,
@@ -754,9 +754,10 @@ namespace Game.Players
             return previous_state;
         }
 
-        private PlayerInputData GetServerInput()
+        private PlayerInputData GetServerInput(int server_tick)
         {
-            if (Character.InputBuffet.TryGetFirstAfter(_last_server_processed_input_tick, out PlayerInputData input))
+            if (Character.InputBuffet.TryGetFirstAfter(_last_server_processed_input_tick, out PlayerInputData input) &&
+                input.Tick <= server_tick)
             {
                 _last_server_processed_input_tick = input.Tick;
                 _last_server_input = input;

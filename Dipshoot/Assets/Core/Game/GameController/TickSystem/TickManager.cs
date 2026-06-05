@@ -47,9 +47,13 @@ namespace Game.TickSystem
     {
         public int TickRate = 60;
         public int MaxTicksPerFrame = 8;
+        [SerializeField] private float _min_tick_rate_scale = 0.95f;
+        [SerializeField] private float _max_tick_rate_scale = 1.05f;
 
         public float TickDelta => TickRate <= 0 ? 0f : 1f / TickRate;
-        public float TickProgress => TickDelta <= 0f ? 0f : _accumulator / TickDelta;
+        public float TickProgress => GetScaledTickDelta() <= 0f ? 0f : _accumulator / GetScaledTickDelta();
+        public float TickRateScale { get; set; } = 1f;
+        public float CurrentTickRateScale => Mathf.Clamp(TickRateScale, _min_tick_rate_scale, _max_tick_rate_scale);
 
         public int CurrentTick { get; private set; } = 0;
 
@@ -62,12 +66,13 @@ namespace Game.TickSystem
             if (TickRate <= 0)
                 return;
 
-            float max_accumulator = TickDelta * MaxTicksPerFrame;
+            float scaled_tick_delta = GetScaledTickDelta();
+            float max_accumulator = scaled_tick_delta * MaxTicksPerFrame;
             _accumulator = Mathf.Min(_accumulator + Time.deltaTime, max_accumulator);
 
-            while (_accumulator >= TickDelta)
+            while (_accumulator >= scaled_tick_delta)
             {
-                _accumulator -= TickDelta;
+                _accumulator -= scaled_tick_delta;
                 RunTick();
             }
         }
@@ -103,6 +108,15 @@ namespace Game.TickSystem
 
                 system.Tick(context);
             }
+        }
+
+        private float GetScaledTickDelta()
+        {
+            float tick_delta = TickDelta;
+            if (tick_delta <= 0f)
+                return 0f;
+
+            return tick_delta / CurrentTickRateScale;
         }
 
         private bool ContainsSystem(ITickSystem system)

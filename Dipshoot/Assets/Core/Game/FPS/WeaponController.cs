@@ -4,6 +4,7 @@ using Mirror;
 using Scripts.Stats;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 
 namespace Game.Players
@@ -12,6 +13,8 @@ namespace Game.Players
     public class WeaponController : NetworkBehaviour, ITickSystem, IPlayerSimulationResettable
     {
         private const string LogPrefix = "[NetTick][Weapon]";
+        private const string ShotCompareLocalPrefix = "[ShotCompare][Local]";
+        private const string ShotCompareServerPrefix = "[ShotCompare][Server]";
         private const int MaxShotHits = 32;
         private const float PredictedShotPointWarningThreshold = 0.35f;
         private const float PredictedShotAngleWarningThreshold = 0.5f;
@@ -24,6 +27,8 @@ namespace Game.Players
         [SerializeField] private Vector3 _eye_offset = new(0f, 0.49f, 0.359f);
         [SerializeField] private LayerMask _hit_mask = ~0;
         [SerializeField] private QueryTriggerInteraction _trigger_interaction = QueryTriggerInteraction.Collide;
+        [SerializeField] private bool _shot_compare_debug_enabled = true;
+        [SerializeField] private int _shot_compare_debug_max_logs_per_second = 20;
 
         [SyncVar] private WeaponSlot _active_slot = WeaponSlot.Primary;
         [SyncVar] private int _primary_ammo;
@@ -45,6 +50,9 @@ namespace Game.Players
         private WeaponRuntimeState _predicted_weapon_state;
         private bool _has_predicted_weapon_state;
         private int _predicted_shot_sequence;
+        private float _shot_compare_debug_window_started_at;
+        private int _shot_compare_debug_logged_in_window;
+        private int _shot_compare_debug_suppressed;
         private readonly Dictionary<PredictedShotKey, PredictedShot> _predicted_shots = new();
 
         public TickLayer TickLayer => TickLayer.WeaponSimulation;
@@ -139,13 +147,23 @@ namespace Game.Players
         {
             EnsureWeaponState(server_tick);
 
-            bool has_input = _character.InputBuffet.TryGetFirstAfter(
-                _last_processed_input_tick,
-                out PlayerInputData input);
-            if (has_input)
+            bool processed_input = false;
+            while (_character.InputBuffet.TryGetFirstAfter(_last_processed_input_tick, out PlayerInputData input) &&
+                   input.Tick <= server_tick)
+            {
                 _last_processed_input_tick = input.Tick;
+                processed_input = true;
+                ProcessWeaponInput(input, server_tick);
+            }
 
-            bool has_simulation_state = TryGetPlayerState(server_tick, out PlayerState simulation_state);
+            if (!processed_input)
+                ProcessWeaponInput(default, server_tick, false);
+        }
+
+        private void ProcessWeaponInput(PlayerInputData input, int server_tick, bool has_input = true)
+        {
+            int simulation_tick = has_input ? input.Tick : server_tick;
+            bool has_simulation_state = TryGetPlayerState(simulation_tick, out PlayerState simulation_state);
             WeaponSimulationResult simulation_result = WeaponSimulation.Simulate(
                 _weapon_state,
                 input,
@@ -153,7 +171,7 @@ namespace Game.Players
                 _primary_weapon,
                 _pistol_weapon,
                 _stats,
-                server_tick,
+                simulation_tick,
                 _character.TickManager == null ? 0 : _character.TickManager.TickRate,
                 simulation_state);
 
@@ -182,15 +200,7 @@ namespace Game.Players
                 _trigger_interaction,
                 _hits);
 
-            Debug.Log(
-                $"{LogPrefix} Shot. netId={shot_result.ShooterNetId} slot={shot_result.WeaponSlot} " +
-                $"inputTick={shot_result.InputTick} serverTick={shot_result.ServerTick} " +
-                $"hit={shot_result.HasHit} hitNetId={shot_result.HitNetId} " +
-                $"hitbox={shot_result.HitboxType} damage={shot_result.DidDamage} " +
-                $"appliedDamage={shot_result.Damage} multiplier={shot_result.DamageMultiplier:0.##} " +
-                $"spread={simulation_result.FiredSpreadDegrees:0.##} " +
-                $"recoil=({simulation_result.RecoilPitch:0.##},{simulation_result.RecoilYaw:0.##}) " +
-                $"ammo={simulation_result.FiredSlotState.AmmoInMagazine}/{simulation_result.FiredSlotState.ReserveAmmo}");
+            LogShotCompare(ShotCompareServerPrefix, shot_result, simulation_state, simulation_result.FiredSpreadDegrees);
 
             ApplyRecoil(simulation_result.RecoilPitch, simulation_result.RecoilYaw);
             if (isOwned)
@@ -264,6 +274,7 @@ namespace Game.Players
 
             _predicted_shots[new PredictedShotKey(result.WeaponSlot, result.ShotSequence)] =
                 new PredictedShot(result, tick);
+            LogShotCompare(ShotCompareLocalPrefix, result, simulation_state, simulation_result.FiredSpreadDegrees);
             ApplyRecoil(simulation_result.RecoilPitch, simulation_result.RecoilYaw);
             ApplyViewRecoil(
                 simulation_result.RecoilPitch,
@@ -342,17 +353,18 @@ namespace Game.Players
         [ClientRpc]
         private void RpcRegisterShot(ShotResult result)
         {
-            if (isOwned && isServer)
-                WeaponPresentation.PlayOwnerHitFeedback(result);
-
             if (isOwned && TryConsumePredictedShot(result, out ShotResult predicted_result))
             {
                 WarnIfPredictedShotMismatch(predicted_result, result);
                 WeaponPresentation.PlayConfirmedOwnerShot(this, result, GetWeaponDefinition(result.WeaponSlot));
+                WeaponPresentation.PlayOwnerHitFeedback(result);
                 if (_predicted_shots.Count == 0)
                     ResetPredictedStateFromSync();
                 return;
             }
+
+            if (isOwned && isServer)
+                WeaponPresentation.PlayOwnerHitFeedback(result);
 
             WeaponPresentation.PlayRemoteShot(this, result, GetWeaponDefinition(result.WeaponSlot));
         }
@@ -472,6 +484,69 @@ namespace Game.Players
                 weapon.GetStats(_stats),
                 input,
                 player_state);
+        }
+
+        private void LogShotCompare(
+            string prefix,
+            ShotResult result,
+            PlayerState state,
+            float spread_degrees)
+        {
+            if (!ShouldLogShotCompare())
+                return;
+
+            int suppressed = _shot_compare_debug_suppressed;
+            _shot_compare_debug_suppressed = 0;
+
+            Debug.Log(
+                $"{prefix} shotId={GetShotDebugId(result)} " +
+                $"inputTick={result.InputTick} serverTick={result.ServerTick} " +
+                $"serverMinusInput={result.ServerTick - result.InputTick} " +
+                $"stateTick={state.Tick} hitboxQueryTick={result.HitboxQueryTick} " +
+                $"hitboxSnapshotTick={result.HitboxSnapshotTick} " +
+                $"pos={FormatVector(state.Position)} origin={FormatVector(result.Origin)} " +
+                $"dir={FormatVector(result.Direction)} point={FormatVector(result.Point)} " +
+                $"rotY={FormatFloat(state.Rotation.eulerAngles.y)} pitch={FormatFloat(state.CameraPitch)} " +
+                $"spread={FormatFloat(spread_degrees)} seed={result.SpreadSeed} " +
+                $"hit={result.HasHit} damage={result.DidDamage} target={result.HitNetId} " +
+                $"hitbox={result.HitboxType} suppressed={suppressed}");
+        }
+
+        private bool ShouldLogShotCompare()
+        {
+            if (!_shot_compare_debug_enabled)
+                return false;
+
+            int max_logs = Mathf.Max(1, _shot_compare_debug_max_logs_per_second);
+            if (Time.unscaledTime - _shot_compare_debug_window_started_at >= 1f)
+            {
+                _shot_compare_debug_window_started_at = Time.unscaledTime;
+                _shot_compare_debug_logged_in_window = 0;
+            }
+
+            if (_shot_compare_debug_logged_in_window >= max_logs)
+            {
+                _shot_compare_debug_suppressed++;
+                return false;
+            }
+
+            _shot_compare_debug_logged_in_window++;
+            return true;
+        }
+
+        private static string GetShotDebugId(ShotResult result)
+        {
+            return $"{result.ShooterNetId}:{result.WeaponSlot}:{result.ShotSequence}";
+        }
+
+        private static string FormatVector(Vector3 value)
+        {
+            return $"({FormatFloat(value.x)},{FormatFloat(value.y)},{FormatFloat(value.z)})";
+        }
+
+        private static string FormatFloat(float value)
+        {
+            return value.ToString("0.###", CultureInfo.InvariantCulture);
         }
 
         private bool TryConsumePredictedShot(ShotResult confirmed_result, out ShotResult predicted_result)

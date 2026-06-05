@@ -13,6 +13,8 @@ namespace Game.Players
         [SerializeField] private WeaponController _weapon_controller;
 
         private int _last_server_processed_input_tick = -1;
+        private bool _has_last_server_input;
+        private PlayerInputData _last_server_input;
 
         public override TickLayer TickLayer => TickLayer.AimSimulation;
 
@@ -51,7 +53,7 @@ namespace Game.Players
                 return false;
 
             previous_state = FillMissingStates(previous_state, server_tick - 1);
-            PlayerInputData input = GetServerInput();
+            PlayerInputData input = GetServerInput(server_tick);
             PlayerState new_state = Simulate(previous_state, input, server_tick);
             Character.StateBuffer.Add(new_state);
             return true;
@@ -103,7 +105,8 @@ namespace Game.Players
             while (previous_state.Tick < target_tick)
             {
                 int next_tick = previous_state.Tick + 1;
-                PlayerState state = Simulate(previous_state, default, next_tick);
+                PlayerInputData input = GetServerInput(next_tick);
+                PlayerState state = Simulate(previous_state, input, next_tick);
                 Character.StateBuffer.Add(state);
                 previous_state = state;
             }
@@ -111,13 +114,19 @@ namespace Game.Players
             return previous_state;
         }
 
-        private PlayerInputData GetServerInput()
+        private PlayerInputData GetServerInput(int server_tick)
         {
-            if (Character.InputBuffet.TryGetFirstAfter(_last_server_processed_input_tick, out PlayerInputData input))
+            if (Character.InputBuffet.TryGetFirstAfter(_last_server_processed_input_tick, out PlayerInputData input) &&
+                input.Tick <= server_tick)
             {
                 _last_server_processed_input_tick = input.Tick;
+                _last_server_input = input;
+                _has_last_server_input = true;
                 return input;
             }
+
+            if (_has_last_server_input)
+                return _last_server_input;
 
             return default;
         }
@@ -125,6 +134,8 @@ namespace Game.Players
         public override void ResetSimulation()
         {
             _last_server_processed_input_tick = -1;
+            _has_last_server_input = false;
+            _last_server_input = default;
         }
 
         private float GetRecoilRecoveryPerTick()

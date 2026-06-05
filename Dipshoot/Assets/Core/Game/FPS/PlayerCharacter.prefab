@@ -29,6 +29,7 @@ GameObject:
   - component: {fileID: 6489169105075015264}
   - component: {fileID: 2466316326035865716}
   - component: {fileID: 520774502524608603}
+  - component: {fileID: 7243700782325910144}
   m_Layer: 0
   m_Name: PlayerCharacter
   m_TagString: Untagged
@@ -182,8 +183,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 955b9eeb372f4ba6a8c0310352096bcf, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   _pitch_impulse_scale: 1
   _yaw_impulse_scale: 0.75
   _return_speed: 6
@@ -279,6 +280,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   _trigger_interaction: 2
+  _shot_compare_debug_enabled: 1
+  _shot_compare_debug_max_logs_per_second: 20
 --- !u!114 &9044189472314785501
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -302,6 +305,14 @@ MonoBehaviour:
   _rotation_error_threshold: 0.1
   _remote_interpolation_back_ticks: 2
   _server_tick_offset_lerp_factor: 0.1
+  _tick_sync_debug_enabled: 1
+  _tick_sync_debug_max_logs_per_second: 3
+  _client_tick_correction_enabled: 1
+  _target_server_lead_ticks: 3
+  _tick_correction_deadzone: 1
+  _tick_correction_proportional: 0.015
+  _tick_correction_max_scale_delta: 0.05
+  _tick_correction_lerp: 0.1
 --- !u!114 &3177800008363529745
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -392,6 +403,7 @@ MonoBehaviour:
   _character: {fileID: 7358710916428720345}
   _visual: {fileID: 3177800008363529745}
   _weapon_controller: {fileID: 6332809675569614723}
+  _state_synchronizer: {fileID: 0}
   _skeleton_root: {fileID: 0}
   _third_person_animator: {fileID: 0}
   _server_updates_animator: 1
@@ -419,6 +431,16 @@ MonoBehaviour:
   _template_airborne_parameter: airborne
   _template_sprinting_parameter: sprinting
   _template_dead_parameter: dead
+  _kinemation_velocity_parameter: Velocity
+  _kinemation_moving_parameter: Moving
+  _kinemation_crouching_parameter: Crouching
+  _kinemation_in_air_parameter: InAir
+  _kinemation_sprinting_parameter: Sprinting
+  _kinemation_crouch_weight_parameter: CrouchWeight
+  _kinemation_sprint_pose_weight_parameter: SprintPoseWeight
+  _kinemation_full_body_weight_parameter: FullBodyWeight
+  _kinemation_proning_parameter: Proning
+  _kinemation_prone_weight_parameter: ProneWeight
 --- !u!114 &520774502524608603
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -439,6 +461,21 @@ MonoBehaviour:
   _min_step_speed: 0.25
   _run_speed_threshold: 5.8
   _hard_land_velocity: 8
+--- !u!114 &7243700782325910144
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1239777248742655304}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d13a3fdc90a1eb409b4657e81f4e0ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _input_controller: {fileID: 563671470526942404}
+  _is_active: 1
+  _switch_interval_seconds: 5
 --- !u!1 &2530876336101798869
 GameObject:
   m_ObjectHideFlags: 0
