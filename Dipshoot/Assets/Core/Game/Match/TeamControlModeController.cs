@@ -64,6 +64,12 @@ namespace Game.MatchMode
                 return;
 
             _rounds_count = Mathf.Max(1, _game_controller.MatchController.MatchData.LobbyData.SelectedRoundsCount);
+            _round_duration = _game_controller.MatchController.MatchData.LobbyData.SelectedRoundDurationSeconds > 0f
+                ? _game_controller.MatchController.MatchData.LobbyData.SelectedRoundDurationSeconds
+                : _round_duration;
+            _score_limit = _game_controller.MatchController.MatchData.LobbyData.SelectedMaxCaptureScore > 0f
+                ? _game_controller.MatchController.MatchData.LobbyData.SelectedMaxCaptureScore
+                : _score_limit;
             _stats_controller.ResetMatch();
             _team_roster.AssignLobbyTeams(_game_controller.MatchController.MatchData.LobbyData.Players);
             _spawn_controller.Initialize(_game_controller, _team_roster, _stats_controller);

@@ -21,10 +21,15 @@ namespace Server.PlayerHub
         public void UpdateLobbyData(LobbyData lobby)
         {
             Lobby = lobby;
-            _connector.TargetUpdateLobbyData(lobby);
+            if (Player != null && Player.IsHasClient())
+                _connector.TargetUpdateLobbyData(lobby);
         }
 
-        public void RegisterError(string error) => _connector.TargetRegisterError(error);
+        public void RegisterError(string error)
+        {
+            if (Player != null && Player.IsHasClient())
+                _connector.TargetRegisterError(error);
+        }
 
         public void CreateLobby(string lobby_code)
         {

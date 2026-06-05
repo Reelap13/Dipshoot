@@ -15,6 +15,7 @@ namespace Game.Players
             PlayerInputData input,
             WeaponSlotState fired_slot_state,
             int server_tick,
+            int hitbox_visual_back_ticks,
             Vector3 eye_offset,
             LayerMask hit_mask,
             QueryTriggerInteraction trigger_interaction,
@@ -33,7 +34,10 @@ namespace Game.Players
                 hits,
                 out RaycastHit world_hit);
             float player_hit_range = has_world_hit ? world_hit.distance : weapon_stats.Range;
-            int hitbox_snapshot_tick = ResolveHitboxSnapshotTick(input, server_tick);
+            int hitbox_snapshot_tick = ResolveHitboxSnapshotTick(
+                input,
+                server_tick,
+                hitbox_visual_back_ticks);
             bool has_player_hit = PlayerHitboxLagCompensation.TryRaycast(
                 shooter,
                 hitbox_snapshot_tick,
@@ -206,12 +210,15 @@ namespace Game.Players
             return (value & 0x00ffffff) / 16777215f;
         }
 
-        private static int ResolveHitboxSnapshotTick(PlayerInputData input, int server_tick)
+        private static int ResolveHitboxSnapshotTick(
+            PlayerInputData input,
+            int server_tick,
+            int hitbox_visual_back_ticks)
         {
-            if (input.Tick <= 0)
-                return server_tick;
+            int back_ticks = Mathf.Max(0, hitbox_visual_back_ticks);
+            int base_tick = input.Tick > 0 ? input.Tick : server_tick;
 
-            return Mathf.Min(input.Tick, server_tick);
+            return Mathf.Clamp(base_tick - back_ticks, 0, server_tick);
         }
 
         private static bool TryGetWorldHit(

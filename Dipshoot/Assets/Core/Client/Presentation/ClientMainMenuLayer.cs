@@ -102,7 +102,7 @@ namespace Core.ClientPresentation
 
         private void LeaveMatch()
         {
-            ClientAppRoot.Instance.LobbyActions.LeaveMatchView();
+            ClientAppRoot.Instance.LobbyActions.RequestLeaveMatch();
         }
 
         private void Exit()

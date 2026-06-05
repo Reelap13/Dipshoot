@@ -24,7 +24,7 @@ MonoBehaviour:
   m_MinSize: {x: 300, y: 100}
   m_MaxSize: {x: 24288, y: 16192}
   vertical: 0
-  controlID: 4866
+  controlID: 6214
   draggingID: 0
 --- !u!114 &2
 MonoBehaviour:
@@ -151,7 +151,7 @@ MonoBehaviour:
   m_MinSize: {x: 200, y: 100}
   m_MaxSize: {x: 16192, y: 16192}
   vertical: 1
-  controlID: 4867
+  controlID: 6215
   draggingID: 0
 --- !u!114 &4
 MonoBehaviour:
@@ -177,7 +177,7 @@ MonoBehaviour:
   m_MinSize: {x: 200, y: 50}
   m_MaxSize: {x: 16192, y: 8096}
   vertical: 0
-  controlID: 4868
+  controlID: 6216
   draggingID: 0
 --- !u!114 &5
 MonoBehaviour:
@@ -246,7 +246,7 @@ MonoBehaviour:
       scrollPos: {x: 0, y: 0}
       m_SelectedIDs: 
       m_LastClickedID: 0
-      m_ExpandedIDs: 5251f8ff6a51f8ffe661f8ffea61f8ff1e62f8ffdc62f8ffb808f9ffd008f9ff4c19f9ff5019f9ff8419f9ff441af9ffe2d9fafffad9faff76eafaff7aeafaffaeeafaff6eebfaff22b7fbff3ab7fbffb6c7fbffbac7fbffeec7fbffacc8fbff80f7fbff98f7fbff1408fcff1808fcff4c08fcff0a09fcffc0c0fcffd8c0fcff54d1fcff58d1fcff8cd1fcff4cd2fcffce15feffe615feff6226feff6626feff9a26feff5827feff7eb0feff32d5feff4ad5feffcae5feffd2e5feff0ae6feffcee6fefff86bffff20fbffff
+      m_ExpandedIDs: ca41f7ffe241f7ff5e52f7ff6252f7ff9652f7ff5453f7ffd87ff7fff07ff7ff6c90f7ff7090f7ffa490f7ff6491f7ff5251f8ff6a51f8ffe661f8ffea61f8ff1e62f8ffdc62f8ffb808f9ffd008f9ff4c19f9ff5019f9ff8419f9ff441af9ffe2d9fafffad9faff76eafaff7aeafaffaeeafaff6eebfaff22b7fbff3ab7fbffb6c7fbffbac7fbffeec7fbffacc8fbff80f7fbff98f7fbff1408fcff1808fcff4c08fcff0a09fcffc0c0fcffd8c0fcff54d1fcff58d1fcff8cd1fcff4cd2fcffce15feffe615feff6226feff6626feff9a26feff5827feff7eb0feff32d5feff4ad5feffcae5feffd2e5feff0ae6feffcee6fefff86bffff20fbffff
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -3125,7 +3125,7 @@ MonoBehaviour:
   m_ListAreaState:
     m_SelectedInstanceIDs: 
     m_LastClickedInstanceID: 0
-    m_HadKeyboardFocusLastEvent: 0
+    m_HadKeyboardFocusLastEvent: 1
     m_ExpandedInstanceIDs: 569b07002c900700aade0600a8ab0700464b07009edd06003a740600663b07007a1c07000c3207005820020012330200b21b0200e6650200ba6602007057020058ee0300620402003207010010b002004aef0000ecb20200784501007c030000b60300008e0900001cf0020018850400f2b6f6fffc0001000a5a02005c5a02005e4903000001010088f70200acba020076f702003e6b02005c5403007cf303003ce700008af10000b6f000001ce700006af3000012fe00004eff00007a05010028f90000f8f70000dc040100d25a04001e250400503001005e300100
     m_RenameOverlay:
       m_UserAcceptedRename: 0

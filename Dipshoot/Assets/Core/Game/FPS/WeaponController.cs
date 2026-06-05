@@ -27,6 +27,7 @@ namespace Game.Players
         [SerializeField] private Vector3 _eye_offset = new(0f, 0.49f, 0.359f);
         [SerializeField] private LayerMask _hit_mask = ~0;
         [SerializeField] private QueryTriggerInteraction _trigger_interaction = QueryTriggerInteraction.Collide;
+        [SerializeField] private float _lag_compensation_visual_back_ms = 33.3f;
         [SerializeField] private bool _shot_compare_debug_enabled = true;
         [SerializeField] private int _shot_compare_debug_max_logs_per_second = 20;
 
@@ -188,6 +189,7 @@ namespace Game.Players
                 return;
             }
 
+            int lag_compensation_visual_back_ticks = GetLagCompensationVisualBackTicks();
             ShotResult shot_result = WeaponShotResolver.Resolve(
                 _character,
                 simulation_result.FiredWeapon,
@@ -196,6 +198,7 @@ namespace Game.Players
                 input,
                 simulation_result.FiredSlotState,
                 server_tick,
+                lag_compensation_visual_back_ticks,
                 _eye_offset,
                 _hit_mask,
                 _trigger_interaction,
@@ -209,7 +212,8 @@ namespace Game.Players
                 simulation_result.FiredSlotState.ConsecutiveShots,
                 WeaponShotResolver.GetSprayPatternOffset(
                     simulation_result.FiredWeaponStats,
-                    simulation_result.FiredSlotState.ConsecutiveShots));
+                    simulation_result.FiredSlotState.ConsecutiveShots),
+                lag_compensation_visual_back_ticks);
 
             if (isOwned)
                 ApplyViewRecoil(
@@ -291,7 +295,8 @@ namespace Game.Players
                 simulation_result.FiredSlotState.ConsecutiveShots,
                 WeaponShotResolver.GetSprayPatternOffset(
                     simulation_result.FiredWeaponStats,
-                    simulation_result.FiredSlotState.ConsecutiveShots));
+                    simulation_result.FiredSlotState.ConsecutiveShots),
+                0);
             ApplyViewRecoil(
                 simulation_result.RecoilPitch,
                 simulation_result.RecoilYaw,
@@ -506,7 +511,8 @@ namespace Game.Players
             PlayerState state,
             float spread_degrees,
             int shot_index,
-            Vector2 pattern_offset)
+            Vector2 pattern_offset,
+            int lag_compensation_visual_back_ticks)
         {
             if (!ShouldLogShotCompare())
                 return;
@@ -519,7 +525,7 @@ namespace Game.Players
                 $"inputTick={result.InputTick} serverTick={result.ServerTick} " +
                 $"serverMinusInput={result.ServerTick - result.InputTick} " +
                 $"stateTick={state.Tick} hitboxQueryTick={result.HitboxQueryTick} " +
-                $"hitboxSnapshotTick={result.HitboxSnapshotTick} " +
+                $"hitboxSnapshotTick={result.HitboxSnapshotTick} visualBackTicks={lag_compensation_visual_back_ticks} " +
                 $"pos={FormatVector(state.Position)} origin={FormatVector(result.Origin)} " +
                 $"dir={FormatVector(result.Direction)} point={FormatVector(result.Point)} " +
                 $"rotY={FormatFloat(state.Rotation.eulerAngles.y)} pitch={FormatFloat(state.CameraPitch)} " +
@@ -549,6 +555,16 @@ namespace Game.Players
 
             _shot_compare_debug_logged_in_window++;
             return true;
+        }
+
+        private int GetLagCompensationVisualBackTicks()
+        {
+            if (_character == null || _character.TickManager == null || _lag_compensation_visual_back_ms <= 0f)
+                return 0;
+
+            return Mathf.Max(
+                0,
+                Mathf.RoundToInt(_lag_compensation_visual_back_ms * 0.001f * _character.TickManager.TickRate));
         }
 
         private static string GetShotDebugId(ShotResult result)

@@ -11,6 +11,8 @@ namespace Game.MatchConfig
         public WarehouseRecipe Recipe;
         public int Seed;
         public int RoundsCount = 1;
+        public float RoundDurationSeconds = 180f;
+        public float MaxCaptureScore = 100f;
         public string ResultUrl;
     }
 }

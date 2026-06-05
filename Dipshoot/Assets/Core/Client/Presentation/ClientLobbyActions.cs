@@ -1,4 +1,5 @@
 using Server.PlayerHub;
+using Server.Match;
 using UnityEngine;
 
 namespace Core.ClientPresentation
@@ -83,6 +84,17 @@ namespace Core.ClientPresentation
         public void LeaveMatchView()
         {
             StartCoroutine(ClientAppRoot.Instance.SceneFlow.ReturnToMenuFromMatch());
+        }
+
+        public void RequestLeaveMatch()
+        {
+            if (MatchPlayer.Local != null)
+            {
+                MatchPlayer.Local.RequestLeaveMatch();
+                return;
+            }
+
+            LeaveMatchView();
         }
     }
 }

@@ -12,6 +12,8 @@ namespace Server.Lobby
         public string SelectedPresetId;
         public int SelectedSeed;
         public int SelectedRoundsCount;
+        public float SelectedRoundDurationSeconds;
+        public float SelectedMaxCaptureScore;
         public string SelectedResultUrl;
         public bool IsConnectionBlocked;
         public List<LobbyPlayerData> Players;
@@ -25,6 +27,8 @@ namespace Server.Lobby
             MapId = map_id;
             SelectedPresetId = string.Empty;
             SelectedRoundsCount = 1;
+            SelectedRoundDurationSeconds = 180f;
+            SelectedMaxCaptureScore = 100f;
             SelectedResultUrl = string.Empty;
             IsConnectionBlocked = false;
             Players = new();

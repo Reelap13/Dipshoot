@@ -194,6 +194,12 @@ namespace Server.Lobby
             lobby.SelectedPresetId = preset.Id;
             lobby.SelectedSeed = preset.Seed;
             lobby.SelectedRoundsCount = Mathf.Max(1, preset.RoundsCount);
+            lobby.SelectedRoundDurationSeconds = preset.RoundDurationSeconds > 0f
+                ? preset.RoundDurationSeconds
+                : 180f;
+            lobby.SelectedMaxCaptureScore = preset.MaxCaptureScore > 0f
+                ? preset.MaxCaptureScore
+                : 100f;
             lobby.SelectedResultUrl = preset.ResultUrl;
         }
 

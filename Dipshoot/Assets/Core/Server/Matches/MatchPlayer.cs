@@ -17,10 +17,26 @@ namespace Server.Match
         private int _seed;
         private string _result_url;
 
+        public static MatchPlayer Local { get; private set; }
+        public int PlayerId => _player == null ? -1 : _player.PlayerId;
+
         public void Initialize(Player player, MatchPlayersController controller)
         {
             _controller = controller;
             _player = player;
+        }
+
+        public override void OnStartClient()
+        {
+            base.OnStartClient();
+            if (isOwned)
+                Local = this;
+        }
+
+        private void OnDestroy()
+        {
+            if (Local == this)
+                Local = null;
         }
 
         [TargetRpc]
@@ -50,10 +66,24 @@ namespace Server.Match
             ClientMatchPresetState.Clear();
         }
 
+        public void RequestLeaveMatch()
+        {
+            if (!isOwned)
+                return;
+
+            CommandLeaveMatch();
+        }
+
         [Command]
         private void CommandMarkPlayerReadiness()
         {
             _controller.MarkReadiness(_player);
+        }
+
+        [Command]
+        private void CommandLeaveMatch()
+        {
+            _controller.ProcessPlayerLeave(_player);
         }
     }
 }

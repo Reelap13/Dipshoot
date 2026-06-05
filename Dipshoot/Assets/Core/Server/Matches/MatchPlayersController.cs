@@ -87,7 +87,7 @@ namespace Server.Match
 
         private void ProcessPlayerDisconnection(Player player)
         {
-
+            RemovePlayer(player, false);
         }
 
         private void ProcessPlayerReconnection(Player player)
@@ -97,9 +97,55 @@ namespace Server.Match
 
         private void ProcessPlayerDeletion(Player player)
         {
+            RemovePlayer(player, false);
+        }
+
+        public void ProcessPlayerLeave(Player player)
+        {
+            RemovePlayer(player, true);
+        }
+
+        private void RemovePlayer(Player player, bool return_to_menu)
+        {
+            if (player == null || _players == null)
+                return;
+
+            if (!_players.TryGetValue(player.PlayerId, out MatchPlayer match_player))
+                return;
+
             _players.Remove(player.PlayerId);
+            _readiness?.Remove(player.PlayerId);
+            MatchController.MatchData.LobbyData.RemovePlayer(player.PlayerId);
+            player.RemoveNetworkObject(match_player.netIdentity);
+
+            if (return_to_menu && match_player != null)
+                match_player.TargetReturnToMenu();
+
+            DestroyPlayerMatchObjects(player, match_player);
+
+            if (match_player != null)
+                NetworkServer.Destroy(match_player.gameObject);
+
             if (_players.Count == 0)
-                MatchController.DestroyMatch();
+                MatchController.FinishMatch();
+        }
+
+        private void DestroyPlayerMatchObjects(Player player, MatchPlayer match_player)
+        {
+            List<NetworkIdentity> objects = new(player.OwnObjects);
+            for (int i = 0; i < objects.Count; i++)
+            {
+                NetworkIdentity identity = objects[i];
+                if (identity == null || match_player != null && identity == match_player.netIdentity)
+                    continue;
+
+                NetworkMatch network_match = identity.GetComponent<NetworkMatch>();
+                if (network_match == null || network_match.matchId != MatchController.MatchData.Guid)
+                    continue;
+
+                player.RemoveNetworkObject(identity);
+                NetworkServer.Destroy(identity.gameObject);
+            }
         }
     }
 }
