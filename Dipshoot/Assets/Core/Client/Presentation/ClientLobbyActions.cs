@@ -1,3 +1,4 @@
+using Game.MatchConfig;
 using Server.PlayerHub;
 using Server.Match;
 using UnityEngine;
@@ -7,6 +8,7 @@ namespace Core.ClientPresentation
     public class ClientLobbyActions : MonoBehaviour
     {
         private PlayerHubConnector _connector;
+        private bool _is_leaving_match;
 
         public bool IsBound => _connector != null;
 
@@ -83,7 +85,11 @@ namespace Core.ClientPresentation
 
         public void LeaveMatchView()
         {
-            StartCoroutine(ClientAppRoot.Instance.SceneFlow.ReturnToMenuFromMatch());
+            if (_is_leaving_match)
+                return;
+
+            _is_leaving_match = true;
+            StartCoroutine(LeaveMatchViewRoutine());
         }
 
         public void RequestLeaveMatch()
@@ -95,6 +101,13 @@ namespace Core.ClientPresentation
             }
 
             LeaveMatchView();
+        }
+
+        private System.Collections.IEnumerator LeaveMatchViewRoutine()
+        {
+            yield return ClientAppRoot.Instance.SceneFlow.ReturnToMenuFromMatch();
+            ClientMatchPresetState.Clear();
+            _is_leaving_match = false;
         }
     }
 }

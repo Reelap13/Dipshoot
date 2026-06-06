@@ -1,4 +1,5 @@
 using System;
+using Core.ClientPresentation;
 using Game.Players;
 using Game.TickSystem;
 using UnityEngine;
@@ -33,7 +34,17 @@ namespace Game.Players.Input
 
         public override bool ShouldTick(GameTickContext context)
         {
-            return base.ShouldTick(context) && IsClient && IsOwned && IsAlive && IsGameplayActive;
+            bool should_tick = base.ShouldTick(context) &&
+                               IsClient &&
+                               IsOwned &&
+                               IsAlive &&
+                               IsGameplayActive &&
+                               ClientAppRoot.Instance.InputRouter.IsGameplayInputAllowed;
+
+            if (!should_tick && IsClient && IsOwned)
+                ResetTransientInput();
+
+            return should_tick;
         }
 
         protected override void OnTick(GameTickContext context)
@@ -76,7 +87,7 @@ namespace Game.Players.Input
             bool is_jump_pressed = _jump_action.IsPressed();
 
             input.Move = controls.Player.Move.ReadValue<Vector2>();
-            input.Look = ConsumeLookInput();
+            input.Look = ConsumeLookInput() * ClientGameplaySettings.MouseSensitivity;
             input.IsShootPressed = is_shoot_pressed && !_was_shoot_pressed;
             input.IsShootHeld = is_shoot_pressed;
             input.IsReloadPressed = is_reload_pressed && !_was_reload_pressed;
@@ -98,6 +109,11 @@ namespace Game.Players.Input
         }
 
         public override void ResetSimulation()
+        {
+            ResetTransientInput();
+        }
+
+        private void ResetTransientInput()
         {
             _was_shoot_pressed = false;
             _was_reload_pressed = false;

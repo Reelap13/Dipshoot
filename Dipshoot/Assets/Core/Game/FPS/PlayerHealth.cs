@@ -16,6 +16,9 @@ namespace Game.Players
         [SerializeField] private float _respawn_invulnerability_seconds = 1.5f;
 
         [SyncVar] private int _current_health;
+        [SyncVar] private Vector3 _last_respawn_position;
+        [SyncVar] private Quaternion _last_respawn_rotation = Quaternion.identity;
+        [SyncVar(hook = nameof(HandleRespawnRevisionChanged))] private int _respawn_revision;
         [SyncVar(hook = nameof(HandleAliveChanged))] private bool _is_alive = true;
         private float _invulnerable_until;
 
@@ -95,14 +98,15 @@ namespace Game.Players
                 return;
 
             CacheReferences();
+            _last_respawn_position = position;
+            _last_respawn_rotation = rotation;
+            _respawn_revision++;
+            ApplyRespawnTransform(position, rotation);
             _is_alive = true;
             _invulnerable_until = Time.time + _respawn_invulnerability_seconds;
             ResetHealth();
             CachePresentationTargets();
             ApplyAlive(true);
-
-            if (_character != null)
-                _character.ResetSimulationState(position, rotation);
 
             Debug.Log($"{LogPrefix} Respawn. netId={netId} health={_current_health}/{MaxHealth}");
         }
@@ -171,7 +175,27 @@ namespace Game.Players
 
         private void HandleAliveChanged(bool old_value, bool new_value)
         {
+            if (new_value && _respawn_revision > 0)
+                ApplyRespawnTransform(_last_respawn_position, _last_respawn_rotation);
+
             ApplyAlive(new_value);
+        }
+
+        private void HandleRespawnRevisionChanged(int old_value, int new_value)
+        {
+            ApplyRespawnTransform(_last_respawn_position, _last_respawn_rotation);
+        }
+
+        private void ApplyRespawnTransform(Vector3 position, Quaternion rotation)
+        {
+            CacheReferences();
+            if (_character != null && _character.TickManager != null)
+            {
+                _character.ResetSimulationState(position, rotation);
+                return;
+            }
+
+            transform.SetPositionAndRotation(position, rotation);
         }
 
         private void ApplyAlive(bool is_alive)

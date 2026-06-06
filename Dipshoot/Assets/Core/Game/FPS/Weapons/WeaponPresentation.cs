@@ -32,7 +32,7 @@ namespace Game.Players
             if (!result.DidDamage)
                 return;
 
-            ClientMatchHudLayer.PlayLocalHitMarker();
+            ClientMatchHudLayer.PlayLocalHitMarker(result.DidKill);
 
             if (result.HitNetId == 0 ||
                 !NetworkClient.spawned.TryGetValue(result.HitNetId, out NetworkIdentity identity) ||

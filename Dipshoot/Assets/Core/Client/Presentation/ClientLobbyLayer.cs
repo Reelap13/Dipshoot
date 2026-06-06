@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Game.MatchConfig;
 using Game.MatchMode;
 using Server.Lobby;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,13 +10,14 @@ namespace Core.ClientPresentation
 {
     public class ClientLobbyLayer : MonoBehaviour
     {
-        [SerializeField] private Text _lobby_code_text;
-        [SerializeField] private Text _capacity_text;
-        [SerializeField] private List<Text> _player_rows;
-        [SerializeField] private List<Text> _red_player_rows;
-        [SerializeField] private List<Text> _blue_player_rows;
-        [SerializeField] private Text _selected_preset_text;
-        [SerializeField] private Dropdown _preset_dropdown;
+        [SerializeField] private TextMeshProUGUI _lobby_code_text;
+        [SerializeField] private TextMeshProUGUI _capacity_text;
+        [SerializeField] private List<TextMeshProUGUI> _player_rows;
+        [SerializeField] private List<TextMeshProUGUI> _red_player_rows;
+        [SerializeField] private List<TextMeshProUGUI> _blue_player_rows;
+        [SerializeField] private List<TextMeshProUGUI> _spectator_player_rows;
+        [SerializeField] private TextMeshProUGUI _selected_preset_text;
+        [SerializeField] private TMP_Dropdown _preset_dropdown;
         [SerializeField] private Button _preset_cycle_button;
         [SerializeField] private Button _switch_team_button;
         [SerializeField] private Button _leave_button;
@@ -30,7 +32,7 @@ namespace Core.ClientPresentation
             _layer = GetOrAddLayer();
             _layer.Initialize(ClientUiLayerKind.Lobby);
 
-            EnsureRuntimeLobbyUi();
+            ValidatePrefabReferences();
             _leave_button.onClick.AddListener(Leave);
             _start_game_button.onClick.AddListener(StartGame);
             _switch_team_button.onClick.AddListener(SwitchTeam);
@@ -79,8 +81,10 @@ namespace Core.ClientPresentation
 
             ClearRows(_red_player_rows);
             ClearRows(_blue_player_rows);
+            ClearRows(_spectator_player_rows);
             FillTeamRows(lobby, TeamId.Red, _red_player_rows);
             FillTeamRows(lobby, TeamId.Blue, _blue_player_rows);
+            FillTeamRows(lobby, TeamId.Spectator, _spectator_player_rows);
 
             int player_id = ClientAppRoot.Instance.SessionStore.PlayerId;
             LobbyPlayerData local_player = lobby.GetPlayer(player_id);
@@ -95,13 +99,14 @@ namespace Core.ClientPresentation
             _capacity_text.text = "Players: 0/0";
             ClearRows(_red_player_rows);
             ClearRows(_blue_player_rows);
+            ClearRows(_spectator_player_rows);
             if (_selected_preset_text != null)
                 _selected_preset_text.text = "Preset: -";
 
             _start_game_button.gameObject.SetActive(false);
         }
 
-        private void FillTeamRows(LobbyData lobby, TeamId team_id, List<Text> rows)
+        private void FillTeamRows(LobbyData lobby, TeamId team_id, List<TextMeshProUGUI> rows)
         {
             if (lobby.Players == null || rows == null)
                 return;
@@ -118,7 +123,7 @@ namespace Core.ClientPresentation
             }
         }
 
-        private static void ClearRows(List<Text> rows)
+        private static void ClearRows(List<TextMeshProUGUI> rows)
         {
             if (rows == null)
                 return;
@@ -155,7 +160,7 @@ namespace Core.ClientPresentation
             if (registry == null)
                 return;
 
-            List<Dropdown.OptionData> options = new();
+            List<TMP_Dropdown.OptionData> options = new();
             for (int i = 0; i < registry.Presets.Count; i++)
             {
                 MatchPreset preset = registry.Presets[i];
@@ -163,7 +168,7 @@ namespace Core.ClientPresentation
                     continue;
 
                 _preset_ids.Add(preset.Id);
-                options.Add(new Dropdown.OptionData(string.IsNullOrEmpty(preset.DisplayName) ? preset.Id : preset.DisplayName));
+                options.Add(new TMP_Dropdown.OptionData(string.IsNullOrEmpty(preset.DisplayName) ? preset.Id : preset.DisplayName));
             }
 
             if (_preset_dropdown == null)
@@ -231,7 +236,7 @@ namespace Core.ClientPresentation
             return layer != null ? layer : gameObject.AddComponent<ClientUiLayer>();
         }
 
-        private void EnsureRuntimeLobbyUi()
+        private void ValidatePrefabReferences()
         {
             if (_player_rows != null)
             {
@@ -242,24 +247,33 @@ namespace Core.ClientPresentation
                 }
             }
 
-            _red_player_rows ??= new List<Text>();
-            _blue_player_rows ??= new List<Text>();
+            _red_player_rows ??= new List<TextMeshProUGUI>();
+            _blue_player_rows ??= new List<TextMeshProUGUI>();
+            _spectator_player_rows ??= new List<TextMeshProUGUI>();
+
             if (_red_player_rows.Count == 0)
                 _red_player_rows = CreateTeamColumn("Red Team", new Color(0.45f, 0.08f, 0.08f, 0.78f), new Vector2(-180f, -40f));
             if (_blue_player_rows.Count == 0)
                 _blue_player_rows = CreateTeamColumn("Blue Team", new Color(0.08f, 0.16f, 0.5f, 0.78f), new Vector2(180f, -40f));
-
+            if (_spectator_player_rows.Count == 0)
+                _spectator_player_rows = CreateTeamColumn("Spectators", new Color(0.55f, 0.42f, 0.08f, 0.78f), new Vector2(0f, -286f), new Vector2(420f, 130f), 4);
             if (_selected_preset_text == null)
-                _selected_preset_text = CreateRuntimeText("SelectedPresetText", new Vector2(0f, -92f), new Vector2(420f, 30f), 18, TextAnchor.MiddleCenter);
-
+                _selected_preset_text = CreateRuntimeText("SelectedPresetText", new Vector2(0f, -92f), new Vector2(420f, 30f), 18, TextAlignmentOptions.Center);
             if (_preset_dropdown == null && _preset_cycle_button == null)
                 _preset_cycle_button = CreateRuntimeButton("PresetCycleButton", new Vector2(0f, -130f), new Vector2(230f, 34f), "Change Preset");
-
             if (_switch_team_button == null)
-                _switch_team_button = CreateRuntimeButton("SwitchTeamButton", new Vector2(0f, -272f), new Vector2(230f, 42f), "Switch Team");
+                _switch_team_button = CreateRuntimeButton("SwitchTeamButton", new Vector2(0f, -370f), new Vector2(230f, 42f), "Switch Team");
+
+            if (_lobby_code_text == null || _capacity_text == null || _leave_button == null || _start_game_button == null)
+                Debug.LogError($"{nameof(ClientLobbyLayer)} prefab is not fully assigned.", this);
         }
 
-        private List<Text> CreateTeamColumn(string title, Color color, Vector2 position)
+        private List<TextMeshProUGUI> CreateTeamColumn(string title, Color color, Vector2 position)
+        {
+            return CreateTeamColumn(title, color, position, new Vector2(300f, 220f), 8);
+        }
+
+        private List<TextMeshProUGUI> CreateTeamColumn(string title, Color color, Vector2 position, Vector2 size, int rows_count)
         {
             GameObject panel = new(title.Replace(" ", "") + "Panel", typeof(RectTransform), typeof(Image));
             panel.transform.SetParent(transform, false);
@@ -268,25 +282,24 @@ namespace Core.ClientPresentation
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = position;
-            rect.sizeDelta = new Vector2(300f, 220f);
-            panel.GetComponent<Image>().color = color;
+            rect.sizeDelta = size;
+            Image image = panel.GetComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
 
-            Text title_text = CreateRuntimeText(title.Replace(" ", "") + "Title", new Vector2(0f, 90f), new Vector2(260f, 26f), 20, TextAnchor.MiddleCenter, panel.transform);
+            TextMeshProUGUI title_text = CreateRuntimeText(title.Replace(" ", "") + "Title", new Vector2(0f, size.y * 0.5f - 28f), new Vector2(size.x - 40f, 26f), 20, TextAlignmentOptions.Center, panel.transform);
             title_text.text = title;
 
-            List<Text> rows = new();
-            for (int i = 0; i < 8; i++)
-            {
-                Text row = CreateRuntimeText($"{title}Row{i}", new Vector2(0f, 58f - i * 22f), new Vector2(260f, 22f), 16, TextAnchor.MiddleLeft, panel.transform);
-                rows.Add(row);
-            }
+            List<TextMeshProUGUI> rows = new();
+            for (int i = 0; i < rows_count; i++)
+                rows.Add(CreateRuntimeText($"{title}Row{i}", new Vector2(0f, size.y * 0.5f - 60f - i * 22f), new Vector2(size.x - 40f, 22f), 16, TextAlignmentOptions.Left, panel.transform));
 
             return rows;
         }
 
-        private Text CreateRuntimeText(string name, Vector2 position, Vector2 size, int fontSize, TextAnchor anchor, Transform parent = null)
+        private TextMeshProUGUI CreateRuntimeText(string name, Vector2 position, Vector2 size, int fontSize, TextAlignmentOptions alignment, Transform parent = null)
         {
-            GameObject obj = new(name, typeof(RectTransform), typeof(Text));
+            GameObject obj = new(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             obj.transform.SetParent(parent == null ? transform : parent, false);
             RectTransform rect = obj.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -295,11 +308,11 @@ namespace Core.ClientPresentation
             rect.anchoredPosition = position;
             rect.sizeDelta = size;
 
-            Text text = obj.GetComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            TextMeshProUGUI text = obj.GetComponent<TextMeshProUGUI>();
             text.fontSize = fontSize;
-            text.alignment = anchor;
+            text.alignment = alignment;
             text.color = Color.white;
+            text.raycastTarget = false;
             return text;
         }
 
@@ -315,7 +328,7 @@ namespace Core.ClientPresentation
             rect.sizeDelta = size;
             obj.GetComponent<Image>().color = new Color(0.16f, 0.16f, 0.16f, 0.95f);
 
-            Text text = CreateRuntimeText(name + "Text", Vector2.zero, size, 17, TextAnchor.MiddleCenter, obj.transform);
+            TextMeshProUGUI text = CreateRuntimeText(name + "Text", Vector2.zero, size, 17, TextAlignmentOptions.Center, obj.transform);
             text.text = label;
             return obj.GetComponent<Button>();
         }

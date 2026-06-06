@@ -9,7 +9,11 @@ namespace Game.ProcGen.Warehouse
     {
         private const float FloorThickness = 0.2f;
         private const float MarkerThickness = 0.04f;
-        private const float SpawnMarkerDiameter = 0.6f;
+        private const float SpawnMarkerRadiusScale = 0.5f;
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int ColorId = Shader.PropertyToID("_Color");
+        private static readonly Color RedSpawnColor = new(0.85f, 0.12f, 0.1f, 1f);
+        private static readonly Color BlueSpawnColor = new(0.1f, 0.35f, 0.85f, 1f);
 
         public static void Execute(
             WarehouseBuildPlan plan,
@@ -65,15 +69,17 @@ namespace Game.ProcGen.Warehouse
             for (int x = 0; x < layout.Width; x++)
             {
                 float worldX = (x + 0.5f - layout.Width * 0.5f) * GetCellSizeX(layout);
-                BuildWallStack(wallPrefab, topPrefab, wallsRoot, "NorthWall", new Vector3(worldX, 0f, halfHeight), Quaternion.Euler(0f, 180f, 0f), levelHeight);
-                BuildWallStack(wallPrefab, topPrefab, wallsRoot, "SouthWall", new Vector3(worldX, 0f, -halfHeight), Quaternion.identity, levelHeight);
+                Vector3 scale = GetWallSegmentScale(layout, GetCellSizeX(layout));
+                BuildWallStack(wallPrefab, topPrefab, wallsRoot, "NorthWall", new Vector3(worldX, 0f, halfHeight), Quaternion.Euler(0f, 180f, 0f), levelHeight, scale);
+                BuildWallStack(wallPrefab, topPrefab, wallsRoot, "SouthWall", new Vector3(worldX, 0f, -halfHeight), Quaternion.identity, levelHeight, scale);
             }
 
             for (int y = 0; y < layout.Height; y++)
             {
                 float worldZ = (y + 0.5f - layout.Height * 0.5f) * GetCellSizeZ(layout);
-                BuildWallStack(wallPrefab, topPrefab, wallsRoot, "EastWall", new Vector3(halfWidth, 0f, worldZ), Quaternion.Euler(0f, 270f, 0f), levelHeight);
-                BuildWallStack(wallPrefab, topPrefab, wallsRoot, "WestWall", new Vector3(-halfWidth, 0f, worldZ), Quaternion.Euler(0f, 90f, 0f), levelHeight);
+                Vector3 scale = GetWallSegmentScale(layout, GetCellSizeZ(layout));
+                BuildWallStack(wallPrefab, topPrefab, wallsRoot, "EastWall", new Vector3(halfWidth, 0f, worldZ), Quaternion.Euler(0f, 270f, 0f), levelHeight, scale);
+                BuildWallStack(wallPrefab, topPrefab, wallsRoot, "WestWall", new Vector3(-halfWidth, 0f, worldZ), Quaternion.Euler(0f, 90f, 0f), levelHeight, scale);
             }
         }
 
@@ -84,11 +90,12 @@ namespace Game.ProcGen.Warehouse
             string name,
             Vector3 basePosition,
             Quaternion rotation,
-            float levelHeight)
+            float levelHeight,
+            Vector3 scale)
         {
-            InstantiateWallLevel(wallPrefab, name, parent, basePosition, rotation, levelHeight, 0);
-            InstantiateWallLevel(wallPrefab, name, parent, basePosition, rotation, levelHeight, 1);
-            InstantiateWallLevel(topPrefab, $"{name}Top", parent, basePosition, rotation, levelHeight, 2);
+            InstantiateWallLevel(wallPrefab, name, parent, basePosition, rotation, levelHeight, 0, scale);
+            InstantiateWallLevel(wallPrefab, name, parent, basePosition, rotation, levelHeight, 1, scale);
+            InstantiateWallLevel(topPrefab, $"{name}Top", parent, basePosition, rotation, levelHeight, 2, scale);
         }
 
         private static void InstantiateWallLevel(
@@ -98,11 +105,18 @@ namespace Game.ProcGen.Warehouse
             Vector3 basePosition,
             Quaternion rotation,
             float levelHeight,
-            int level)
+            int level,
+            Vector3 scale)
         {
             Vector3 position = basePosition;
             position.y = levelHeight * (level + 0.5f);
-            InstantiatePrefab(prefab, $"{name}_{level}", parent, position, rotation, Vector3.one);
+            InstantiatePrefab(prefab, $"{name}_{level}", parent, position, rotation, scale);
+        }
+
+        private static Vector3 GetWallSegmentScale(WarehouseLayoutData layout, float segmentLength)
+        {
+            float baseLength = Mathf.Max(GetCellSizeX(layout), GetCellSizeZ(layout), 0.01f);
+            return new Vector3(Mathf.Max(0.01f, segmentLength / baseLength), 1f, 1f);
         }
 
         private static void BuildObjects(WarehouseLayoutData layout, Transform parent, WarehouseRecipe recipe)
@@ -239,9 +253,27 @@ namespace Game.ProcGen.Warehouse
             List<Transform> redSpawns = new();
             List<Transform> blueSpawns = new();
 
-            Vector3 spawnMarkerScale = new(SpawnMarkerDiameter, MarkerThickness, SpawnMarkerDiameter);
-            Transform spawnA = InstantiateMarker(recipe.GetSpawnMarkerPrefab(), "SpawnA", parent, recipe.GridToWorld(layout.SpawnA), Quaternion.identity, spawnMarkerScale);
-            Transform spawnB = InstantiateMarker(recipe.GetSpawnMarkerPrefab(), "SpawnB", parent, recipe.GridToWorld(layout.SpawnB), Quaternion.Euler(0f, 180f, 0f), spawnMarkerScale);
+            float spawnMarkerRadius = recipe.SpawnClearRadius * SpawnMarkerRadiusScale;
+            Vector3 spawnMarkerScale = new(
+                spawnMarkerRadius * GetCellSizeX(layout) * 2f,
+                MarkerThickness,
+                spawnMarkerRadius * GetCellSizeZ(layout) * 2f);
+            Transform spawnA = InstantiateMarker(
+                recipe.GetSpawnMarkerPrefab(TeamId.Red),
+                "SpawnA",
+                parent,
+                recipe.GridToWorld(layout.SpawnA),
+                Quaternion.identity,
+                spawnMarkerScale);
+            Transform spawnB = InstantiateMarker(
+                recipe.GetSpawnMarkerPrefab(TeamId.Blue),
+                "SpawnB",
+                parent,
+                recipe.GridToWorld(layout.SpawnB),
+                Quaternion.Euler(0f, 180f, 0f),
+                spawnMarkerScale);
+            ApplyMarkerColor(spawnA, RedSpawnColor);
+            ApplyMarkerColor(spawnB, BlueSpawnColor);
             if (spawnA != null)
             {
                 allSpawns.Add(spawnA);
@@ -257,7 +289,29 @@ namespace Game.ProcGen.Warehouse
             Transform capture = InstantiateMarker(recipe.GetCapturePointMarkerPrefab(), "CapturePoint", parent, recipe.GridToWorld(layout.CapturePoint), Quaternion.identity, Vector3.one);
 
             if (level != null)
-                level.ConfigureGeneratedLevel(allSpawns, redSpawns, blueSpawns, capture, recipe.CaptureClearRadius * recipe.GridCellSize);
+                level.ConfigureGeneratedLevel(
+                    allSpawns,
+                    redSpawns,
+                    blueSpawns,
+                    capture,
+                    spawnMarkerRadius * Mathf.Min(GetCellSizeX(layout), GetCellSizeZ(layout)),
+                    recipe.CaptureClearRadius * recipe.GridCellSize);
+        }
+
+        private static void ApplyMarkerColor(Transform marker, Color color)
+        {
+            if (marker == null)
+                return;
+
+            Renderer[] renderers = marker.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                MaterialPropertyBlock block = new();
+                renderers[i].GetPropertyBlock(block);
+                block.SetColor(BaseColorId, color);
+                block.SetColor(ColorId, color);
+                renderers[i].SetPropertyBlock(block);
+            }
         }
 
         private static Transform InstantiateMarker(

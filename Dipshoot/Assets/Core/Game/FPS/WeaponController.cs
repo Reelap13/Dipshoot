@@ -31,17 +31,17 @@ namespace Game.Players
         [SerializeField] private bool _shot_compare_debug_enabled = true;
         [SerializeField] private int _shot_compare_debug_max_logs_per_second = 20;
 
-        [SyncVar] private WeaponSlot _active_slot = WeaponSlot.Primary;
-        [SyncVar] private int _primary_ammo;
-        [SyncVar] private int _primary_reserve_ammo;
-        [SyncVar] private int _pistol_ammo;
-        [SyncVar] private int _pistol_reserve_ammo;
-        [SyncVar] private bool _primary_is_reloading;
-        [SyncVar] private int _primary_reload_start_tick = -1;
-        [SyncVar] private int _primary_reload_end_tick = -1;
-        [SyncVar] private bool _pistol_is_reloading;
-        [SyncVar] private int _pistol_reload_start_tick = -1;
-        [SyncVar] private int _pistol_reload_end_tick = -1;
+        [SyncVar(hook = nameof(HandleActiveSlotSynced))] private WeaponSlot _active_slot = WeaponSlot.Primary;
+        [SyncVar(hook = nameof(HandlePrimaryAmmoSynced))] private int _primary_ammo;
+        [SyncVar(hook = nameof(HandlePrimaryReserveAmmoSynced))] private int _primary_reserve_ammo;
+        [SyncVar(hook = nameof(HandlePistolAmmoSynced))] private int _pistol_ammo;
+        [SyncVar(hook = nameof(HandlePistolReserveAmmoSynced))] private int _pistol_reserve_ammo;
+        [SyncVar(hook = nameof(HandlePrimaryReloadingSynced))] private bool _primary_is_reloading;
+        [SyncVar(hook = nameof(HandlePrimaryReloadStartSynced))] private int _primary_reload_start_tick = -1;
+        [SyncVar(hook = nameof(HandlePrimaryReloadEndSynced))] private int _primary_reload_end_tick = -1;
+        [SyncVar(hook = nameof(HandlePistolReloadingSynced))] private bool _pistol_is_reloading;
+        [SyncVar(hook = nameof(HandlePistolReloadStartSynced))] private int _pistol_reload_start_tick = -1;
+        [SyncVar(hook = nameof(HandlePistolReloadEndSynced))] private int _pistol_reload_end_tick = -1;
 
         private readonly RaycastHit[] _hits = new RaycastHit[MaxShotHits];
         private TickManager _registered_tick_manager;
@@ -445,6 +445,26 @@ namespace Game.Players
                 input.RequestedWeaponSlot != _predicted_weapon_state.ActiveSlot &&
                 GetWeaponDefinition(input.RequestedWeaponSlot) != null;
         }
+
+        private void RefreshPredictedStateFromAuthoritativeSync()
+        {
+            if (!isClient || !isOwned || isServer || !_has_predicted_weapon_state)
+                return;
+
+            ResetPredictedStateFromSync();
+        }
+
+        private void HandleActiveSlotSynced(WeaponSlot old_value, WeaponSlot new_value) => RefreshPredictedStateFromAuthoritativeSync();
+        private void HandlePrimaryAmmoSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
+        private void HandlePrimaryReserveAmmoSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
+        private void HandlePistolAmmoSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
+        private void HandlePistolReserveAmmoSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
+        private void HandlePrimaryReloadingSynced(bool old_value, bool new_value) => RefreshPredictedStateFromAuthoritativeSync();
+        private void HandlePrimaryReloadStartSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
+        private void HandlePrimaryReloadEndSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
+        private void HandlePistolReloadingSynced(bool old_value, bool new_value) => RefreshPredictedStateFromAuthoritativeSync();
+        private void HandlePistolReloadStartSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
+        private void HandlePistolReloadEndSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
 
         private void ApplyRecoil(float pitch, float yaw)
         {

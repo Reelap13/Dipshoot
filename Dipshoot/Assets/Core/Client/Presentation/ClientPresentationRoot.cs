@@ -46,6 +46,7 @@ namespace Core.ClientPresentation
 
         private void ApplyState()
         {
+            ClientAppRoot.Instance.EnsureEventSystem();
             ApplyInputMode();
             ApplyCameraContext();
             ApplySceneUI();
@@ -70,7 +71,9 @@ namespace Core.ClientPresentation
                                               _state == ClientPresentationState.MatchMenu,
                 ClientUiLayerKind.Lobby => _state == ClientPresentationState.Lobby,
                 ClientUiLayerKind.MatchHud => _state == ClientPresentationState.Match,
+                ClientUiLayerKind.MatchEnd => _state == ClientPresentationState.MatchEnded,
                 ClientUiLayerKind.Loading => _state == ClientPresentationState.MatchLoading,
+                ClientUiLayerKind.MatchPause => _state == ClientPresentationState.MatchPause,
                 _ => false,
             };
         }
@@ -81,6 +84,8 @@ namespace Core.ClientPresentation
             {
                 ClientPresentationState.Match => ClientInputMode.Gameplay,
                 ClientPresentationState.MatchMenu => ClientInputMode.Overlay,
+                ClientPresentationState.MatchEnded => ClientInputMode.Overlay,
+                ClientPresentationState.MatchPause => ClientInputMode.Overlay,
                 _ => ClientInputMode.Menu,
             };
 

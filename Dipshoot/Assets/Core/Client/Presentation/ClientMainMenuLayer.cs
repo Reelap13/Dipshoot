@@ -1,4 +1,5 @@
 using Server.Lobby;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,8 +7,8 @@ namespace Core.ClientPresentation
 {
     public class ClientMainMenuLayer : MonoBehaviour
     {
-        [SerializeField] private Text _nickname_text;
-        [SerializeField] private InputField _lobby_code_field;
+        [SerializeField] private TextMeshProUGUI _nickname_text;
+        [SerializeField] private TMP_InputField _lobby_code_field;
         [SerializeField] private Button _create_lobby_button;
         [SerializeField] private Button _enter_lobby_button;
         [SerializeField] private Button _return_to_match_button;

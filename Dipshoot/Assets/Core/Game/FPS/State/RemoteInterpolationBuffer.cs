@@ -9,6 +9,11 @@ namespace Game.Players.State
 
         public int Count => _states.Count;
 
+        public void Clear()
+        {
+            _states.Clear();
+        }
+
         public void Add(PlayerState state)
         {
             for (int i = 0; i < _states.Count; i++)

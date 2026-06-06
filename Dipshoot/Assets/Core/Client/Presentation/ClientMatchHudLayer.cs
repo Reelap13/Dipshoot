@@ -1,6 +1,7 @@
 using System;
 using Game.MatchMode;
 using Game.Players;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -23,21 +24,21 @@ namespace Core.ClientPresentation
 
         [SerializeField] private GameObject _phase_banner;
         [SerializeField] private GameObject _result_panel;
-        [SerializeField] private Text _score_text;
-        [SerializeField] private Text _round_text;
-        [SerializeField] private Text _phase_text;
-        [SerializeField] private Text _result_text;
-        [SerializeField] private Text _point_text;
-        [SerializeField] private Text _inside_text;
+        [SerializeField] private TextMeshProUGUI _score_text;
+        [SerializeField] private TextMeshProUGUI _round_text;
+        [SerializeField] private TextMeshProUGUI _phase_text;
+        [SerializeField] private TextMeshProUGUI _result_text;
+        [SerializeField] private TextMeshProUGUI _point_text;
+        [SerializeField] private TextMeshProUGUI _inside_text;
         [SerializeField] private Image _point_owner_strip;
         [SerializeField] private Image _point_progress_fill;
         [SerializeField] private GameObject _weapon_panel;
-        [SerializeField] private Text _weapon_name_text;
-        [SerializeField] private Text _weapon_ammo_text;
-        [SerializeField] private Text _weapon_reserve_text;
-        [SerializeField] private Text _weapon_reload_text;
+        [SerializeField] private TextMeshProUGUI _weapon_name_text;
+        [SerializeField] private TextMeshProUGUI _weapon_ammo_text;
+        [SerializeField] private TextMeshProUGUI _weapon_reserve_text;
+        [SerializeField] private TextMeshProUGUI _weapon_reload_text;
         [SerializeField] private Image _weapon_reload_progress_fill;
-        [SerializeField] private Text _health_text;
+        [SerializeField] private TextMeshProUGUI _health_text;
         [SerializeField] private GameObject _crosshair;
         [SerializeField] private Color _crosshair_color = new(1f, 1f, 1f, 0.86f);
         [SerializeField] private float _base_crosshair_gap = 9f;
@@ -58,11 +59,12 @@ namespace Core.ClientPresentation
         private RectTransform _crosshair_right;
         private float _current_crosshair_gap;
         private float _hit_marker_started_at = -1f;
+        private Color _active_hit_marker_color;
 
-        public static void PlayLocalHitMarker()
+        public static void PlayLocalHitMarker(bool is_kill = false)
         {
             if (_active_instance != null)
-                _active_instance.PlayHitMarker();
+                _active_instance.PlayHitMarker(is_kill);
         }
 
         private void Awake()
@@ -455,9 +457,10 @@ namespace Core.ClientPresentation
                     : _hit_marker_lines[i].rectTransform;
         }
 
-        private void PlayHitMarker()
+        private void PlayHitMarker(bool is_kill)
         {
             EnsureHitMarker();
+            _active_hit_marker_color = is_kill ? Color.red : _hit_marker_color;
             _hit_marker_started_at = Time.unscaledTime;
             _hit_marker.SetActive(true);
         }
@@ -514,10 +517,10 @@ namespace Core.ClientPresentation
 
             rect_transform.anchoredPosition = direction.normalized * offset;
             image.color = new Color(
-                _hit_marker_color.r,
-                _hit_marker_color.g,
-                _hit_marker_color.b,
-                _hit_marker_color.a * alpha);
+                _active_hit_marker_color.r,
+                _active_hit_marker_color.g,
+                _active_hit_marker_color.b,
+                _active_hit_marker_color.a * alpha);
         }
     }
 }

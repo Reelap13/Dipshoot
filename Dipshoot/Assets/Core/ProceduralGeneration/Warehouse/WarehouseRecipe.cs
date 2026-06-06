@@ -91,6 +91,8 @@ namespace Game.ProcGen.Warehouse
         public GameObject WallPrefab;
         public GameObject WallTopPrefab;
         public GameObject SpawnMarkerPrefab;
+        public GameObject RedSpawnMarkerPrefab;
+        public GameObject BlueSpawnMarkerPrefab;
         public GameObject CapturePointMarkerPrefab;
 
         [Header("Placement Variants")]
@@ -229,6 +231,17 @@ namespace Game.ProcGen.Warehouse
         public GameObject GetSpawnMarkerPrefab()
         {
             return SpawnMarkerPrefab != null ? SpawnMarkerPrefab : LoadPrefab("SpawnMarker");
+        }
+
+        public GameObject GetSpawnMarkerPrefab(Game.MatchMode.TeamId teamId)
+        {
+            if (teamId == Game.MatchMode.TeamId.Red && RedSpawnMarkerPrefab != null)
+                return RedSpawnMarkerPrefab;
+
+            if (teamId == Game.MatchMode.TeamId.Blue && BlueSpawnMarkerPrefab != null)
+                return BlueSpawnMarkerPrefab;
+
+            return GetSpawnMarkerPrefab();
         }
 
         public GameObject GetCapturePointMarkerPrefab()

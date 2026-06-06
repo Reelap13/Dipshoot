@@ -22,5 +22,6 @@ namespace Game.Players
         public float DamageMultiplier;
         public bool HasHit;
         public bool DidDamage;
+        public bool DidKill;
     }
 }

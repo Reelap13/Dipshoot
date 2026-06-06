@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using Mirror;
 using Server.Data;
+using Server.Lobby;
+using Server.PlayerHub;
 using Server.ServerSide;
 using UnityEngine;
 
@@ -115,7 +117,7 @@ namespace Server.Match
 
             _players.Remove(player.PlayerId);
             _readiness?.Remove(player.PlayerId);
-            MatchController.MatchData.LobbyData.RemovePlayer(player.PlayerId);
+            RemovePlayerFromLobby(player);
             player.RemoveNetworkObject(match_player.netIdentity);
 
             if (return_to_menu && match_player != null)
@@ -146,6 +148,36 @@ namespace Server.Match
                 player.RemoveNetworkObject(identity);
                 NetworkServer.Destroy(identity.gameObject);
             }
+        }
+
+        private void RemovePlayerFromLobby(Player player)
+        {
+            MatchController.MatchData.LobbyData.RemovePlayer(player.PlayerId);
+
+            PlayerHubController player_hub = FindPlayerHub(player);
+            if (player_hub == null)
+                return;
+
+            LobbiesController.Instance.LeaveStartedLobby(player_hub, MatchController.MatchData.LobbyData.Id);
+        }
+
+        private static PlayerHubController FindPlayerHub(Player player)
+        {
+            if (player == null || player.OwnObjects == null)
+                return null;
+
+            for (int i = 0; i < player.OwnObjects.Count; i++)
+            {
+                NetworkIdentity identity = player.OwnObjects[i];
+                if (identity == null)
+                    continue;
+
+                PlayerHubController player_hub = identity.GetComponent<PlayerHubController>();
+                if (player_hub != null)
+                    return player_hub;
+            }
+
+            return null;
         }
     }
 }

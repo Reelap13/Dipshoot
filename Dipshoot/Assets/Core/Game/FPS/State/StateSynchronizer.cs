@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Game.Players
 {
     [DisallowMultipleComponent]
-    public class StateSynchronizer : NetworkBehaviour, ITickSystem
+    public class StateSynchronizer : NetworkBehaviour, ITickSystem, IPlayerSimulationResettable
     {
         private const string LogPrefix = "[NetTick][StateSync]";
         private const string TickSyncDebugPrefix = "[TickSync][Client]";
@@ -358,6 +358,15 @@ namespace Game.Players
         {
             if (isOwned && _character != null && _character.TickManager != null)
                 _character.TickManager.TickRateScale = 1f;
+        }
+
+        public void ResetSimulation()
+        {
+            LastReceivedStateTick = -1;
+            LastAppliedStateTick = -1;
+            LastProcessedInputTick = -1;
+            _has_render_state = false;
+            _remote_interpolation_buffer.Clear();
         }
 
         private double GetEstimatedServerTick()

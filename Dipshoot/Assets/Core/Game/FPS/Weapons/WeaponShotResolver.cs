@@ -358,6 +358,7 @@ namespace Game.Players
                 result.ShooterNetId,
                 result.HitboxType,
                 result.DamageMultiplier);
+            result.DidKill = result.DidDamage && !hit.Health.IsAlive;
             result.Damage = applied_damage;
         }
 

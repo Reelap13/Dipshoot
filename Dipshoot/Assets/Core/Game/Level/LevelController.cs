@@ -13,11 +13,13 @@ namespace Game.Level
         [SerializeField] private List<Transform> _red_spawn_points;
         [SerializeField] private List<Transform> _blue_spawn_points;
         [SerializeField] private Transform _capture_point;
+        [SerializeField] private float _spawn_marker_radius = 2f;
         [SerializeField] private float _capture_marker_radius = 4f;
         private bool _terrainGenerated;
         private bool _staticLayoutDisabled;
 
         public Transform CapturePoint => _capture_point == null ? transform : _capture_point;
+        public float SpawnMarkerRadius => Mathf.Max(0.1f, _spawn_marker_radius);
 
         public Transform GetRandomSpawnPoint() =>
             _spawn_points != null && _spawn_points.Count != 0
@@ -37,12 +39,14 @@ namespace Game.Level
             List<Transform> red_spawn_points,
             List<Transform> blue_spawn_points,
             Transform capture_point,
+            float spawn_marker_radius,
             float capture_marker_radius)
         {
             _spawn_points = spawn_points;
             _red_spawn_points = red_spawn_points;
             _blue_spawn_points = blue_spawn_points;
             _capture_point = capture_point;
+            _spawn_marker_radius = spawn_marker_radius;
             _capture_marker_radius = capture_marker_radius;
         }
 

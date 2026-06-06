@@ -1,6 +1,6 @@
 using System.Collections;
+using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace Core.ClientPresentation
 {
@@ -40,7 +40,7 @@ namespace Core.ClientPresentation
             else
                 canvas_group = panel.AddComponent<CanvasGroup>();
 
-            Text text = panel.GetComponentInChildren<Text>(true);
+            TextMeshProUGUI text = panel.GetComponentInChildren<TextMeshProUGUI>(true);
             if (text != null)
                 text.text = error;
 

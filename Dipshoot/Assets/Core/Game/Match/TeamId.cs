@@ -5,5 +5,6 @@ namespace Game.MatchMode
         None = 0,
         Red = 1,
         Blue = 2,
+        Spectator = 3,
     }
 }

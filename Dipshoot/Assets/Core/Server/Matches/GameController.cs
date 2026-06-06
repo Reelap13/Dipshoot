@@ -41,6 +41,11 @@ namespace Server.Match
             MatchController.FinishMatch();
         }
 
+        public void EndGameplay()
+        {
+            EndGame();
+        }
+
         protected void DestoryGame()
         {
             OnDestroingGame.Invoke();

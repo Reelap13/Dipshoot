@@ -78,6 +78,8 @@ namespace Core.ClientPresentation
             CreatePersistentPrefabLayer<ClientLobbyLayer>("ClientUI/ClientLobbyLayer", "ClientLobbyLayer");
             CreatePersistentPrefabLayer<ClientErrorLayer>("ClientUI/ClientErrorLayer", "ClientErrorLayer");
             CreatePersistentPrefabLayer<ClientMatchHudLayer>("ClientUI/ClientMatchHudLayer", "ClientMatchHudLayer");
+            CreatePersistentPrefabLayer<ClientMatchPauseLayer>("ClientUI/ClientMatchPauseLayer", "ClientMatchPauseLayer");
+            CreatePersistentPrefabLayer<ClientMatchEndLayer>("ClientUI/ClientMatchEndLayer", "ClientMatchEndLayer");
             CreatePersistentPrefabLayer<ClientLoadingLayer>("ClientUI/ClientLoadingLayer", "ClientLoadingLayer");
 
             PresentationRoot.SetState(ClientPresentationState.MainMenu);
@@ -114,20 +116,60 @@ namespace Core.ClientPresentation
             return instance.AddComponent<T>();
         }
 
-        private void EnsureEventSystem()
+        public void EnsureEventSystem()
         {
-            if (FindAnyObjectByType<EventSystem>() != null)
-                return;
+            EventSystem event_system = GetComponentInChildren<EventSystem>(true);
+            if (event_system == null)
+            {
+                event_system = FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include);
+                if (event_system != null)
+                {
+                    event_system.name = "ClientEventSystem";
+                    event_system.transform.SetParent(transform, false);
+                }
+            }
 
-            GameObject target = new("ClientEventSystem");
-            target.transform.SetParent(transform, false);
-            target.AddComponent<EventSystem>();
+            if (event_system == null)
+            {
+                GameObject target = new("ClientEventSystem");
+                target.transform.SetParent(transform, false);
+                event_system = target.AddComponent<EventSystem>();
+            }
 
 #if ENABLE_INPUT_SYSTEM
-            target.AddComponent<InputSystemUIInputModule>();
+            if (event_system.GetComponent<InputSystemUIInputModule>() == null)
+                event_system.gameObject.AddComponent<InputSystemUIInputModule>();
 #else
-            target.AddComponent<StandaloneInputModule>();
+            if (event_system.GetComponent<StandaloneInputModule>() == null)
+                event_system.gameObject.AddComponent<StandaloneInputModule>();
 #endif
+            event_system.gameObject.SetActive(true);
+            event_system.enabled = true;
+            EnableInputModules(event_system);
+            DisableOtherEventSystems(event_system);
+        }
+
+        private static void EnableInputModules(EventSystem event_system)
+        {
+            BaseInputModule[] modules = event_system.GetComponents<BaseInputModule>();
+            for (int i = 0; i < modules.Length; i++)
+                modules[i].enabled = true;
+        }
+
+        private static void DisableOtherEventSystems(EventSystem active_event_system)
+        {
+            EventSystem[] event_systems = FindObjectsByType<EventSystem>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < event_systems.Length; i++)
+            {
+                EventSystem event_system = event_systems[i];
+                if (event_system == null || event_system == active_event_system)
+                    continue;
+
+                event_system.enabled = false;
+                BaseInputModule[] modules = event_system.GetComponents<BaseInputModule>();
+                for (int j = 0; j < modules.Length; j++)
+                    modules[j].enabled = false;
+            }
         }
     }
 }

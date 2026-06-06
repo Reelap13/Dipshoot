@@ -30,8 +30,8 @@ namespace Server.ClientSide
 
         private string GetNickname()
         {
-            return $"Test{UnityEngine.Random.Range(1, 99999):D5}";
-            //return PlayerPrefs.GetString("Nickname");
+            string player_id = ClientConnectionSettings.PlayerId;
+            return $"Test{player_id}";
         }
     }
 }

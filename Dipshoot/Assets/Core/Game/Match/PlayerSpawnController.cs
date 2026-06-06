@@ -13,12 +13,17 @@ namespace Game.MatchMode
         [field: SerializeField]
         public DipshootGameController GameController { get; private set; }
         [SerializeField] private PlayerCharacter _character_prefab;
+        [SerializeField] private SpectatorPawn _spectator_prefab;
         [SerializeField] private float _respawn_delay = 2f;
+        [SerializeField] private float _spawn_occupied_radius = 0.9f;
+        [SerializeField] private int _spawn_position_attempts = 24;
 
         private readonly Dictionary<int, PlayerCharacter> _characters = new();
+        private readonly Dictionary<int, SpectatorPawn> _spectators = new();
         private readonly Dictionary<PlayerHealth, int> _health_owners = new();
         private readonly Dictionary<uint, int> _net_id_owners = new();
         private readonly Dictionary<int, Coroutine> _respawn_coroutines = new();
+        private readonly List<Vector3> _reserved_spawn_positions = new();
 
         private TeamRoster _team_roster;
         private MatchStatsController _stats_controller;
@@ -42,12 +47,22 @@ namespace Game.MatchMode
             if (GameController == null || _team_roster == null)
                 return;
 
+            _reserved_spawn_positions.Clear();
+
             foreach (var lobby_player in GameController.MatchController.MatchData.LobbyData.Players)
             {
                 TeamId team_id = _team_roster.GetTeam(lobby_player.PlayerId);
+                if (team_id == TeamId.Spectator)
+                {
+                    SpawnOrRespawnSpectator(lobby_player.PlayerId);
+                    continue;
+                }
+
                 _stats_controller?.RegisterPlayer(lobby_player.PlayerId, team_id);
                 SpawnOrRespawnPlayer(lobby_player.PlayerId, team_id);
             }
+
+            _reserved_spawn_positions.Clear();
         }
 
         public TeamId GetTeam(PlayerCharacter character)
@@ -86,12 +101,15 @@ namespace Game.MatchMode
         private void SpawnOrRespawnPlayer(int player_id, TeamId team_id)
         {
             Transform spawn_point = GameController.LevelCreator.Level.GetRandomSpawnPoint(team_id);
+            Vector3 spawn_position = GetFreeSpawnPosition(player_id, spawn_point);
+            Quaternion spawn_rotation = spawn_point == null ? Quaternion.identity : spawn_point.rotation;
 
             if (_characters.TryGetValue(player_id, out PlayerCharacter character) && character != null)
             {
                 character.GetComponent<PlayerMatchIdentity>()?.InitializeServer(player_id, team_id);
-                character.Health.Respawn(spawn_point);
+                character.Health.Respawn(spawn_position, spawn_rotation);
                 RegisterCharacter(player_id, character);
+                ReserveSpawnPosition(spawn_position);
                 return;
             }
 
@@ -100,13 +118,47 @@ namespace Game.MatchMode
                 _character_prefab,
                 GameController.Scene,
                 GameController.MatchId,
-                spawn_point,
+                spawn_position,
+                spawn_rotation,
                 transform);
 
             player.AddNetworkObject(character.netIdentity);
             character.GetComponent<PlayerMatchIdentity>()?.InitializeServer(player_id, team_id);
             character.InitializeServerSimulation(GameController.TickManager);
             RegisterCharacter(player_id, character);
+            ReserveSpawnPosition(spawn_position);
+        }
+
+        private void SpawnOrRespawnSpectator(int player_id)
+        {
+            Vector3 position = GetSpectatorSpawnPosition();
+            Quaternion rotation = Quaternion.Euler(35f, 0f, 0f);
+
+            if (_spectators.TryGetValue(player_id, out SpectatorPawn spectator) && spectator != null)
+            {
+                spectator.InitializeServer(player_id, TeamId.Spectator);
+                spectator.transform.SetPositionAndRotation(position, rotation);
+                return;
+            }
+
+            if (_spectator_prefab == null)
+            {
+                Debug.LogError($"{nameof(PlayerSpawnController)} spectator prefab is not assigned.", this);
+                return;
+            }
+
+            Player player = PlayersController.Instance.GetPlayer(player_id);
+            spectator = NetworkUtils.NetworkMatchInstantiate(
+                _spectator_prefab,
+                GameController.Scene,
+                GameController.MatchId,
+                position,
+                rotation,
+                transform);
+
+            player.AddNetworkObject(spectator.netIdentity);
+            spectator.InitializeServer(player_id, TeamId.Spectator);
+            _spectators[player_id] = spectator;
         }
 
         private void RegisterCharacter(int player_id, PlayerCharacter character)
@@ -162,7 +214,79 @@ namespace Game.MatchMode
 
             TeamId team_id = _team_roster.GetTeam(player_id);
             Transform spawn_point = GameController.LevelCreator.Level.GetRandomSpawnPoint(team_id);
-            character.Health.Respawn(spawn_point);
+            character.Health.Respawn(
+                GetFreeSpawnPosition(player_id, spawn_point),
+                spawn_point == null ? Quaternion.identity : spawn_point.rotation);
+        }
+
+        private Vector3 GetFreeSpawnPosition(int player_id, Transform spawn_point)
+        {
+            if (spawn_point == null || GameController?.LevelCreator?.Level == null)
+                return spawn_point == null ? transform.position : spawn_point.position;
+
+            Vector3 center = spawn_point.position;
+            float radius = GameController.LevelCreator.Level.SpawnMarkerRadius;
+            int attempts = Mathf.Max(1, _spawn_position_attempts);
+            float golden_angle = Mathf.PI * (3f - Mathf.Sqrt(5f));
+
+            if (!IsSpawnPositionOccupied(player_id, center))
+                return center;
+
+            for (int i = 0; i < attempts; i++)
+            {
+                float t = (i + 1f) / attempts;
+                float distance = Mathf.Sqrt(t) * radius;
+                float angle = i * golden_angle;
+                Vector3 candidate = center + new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
+
+                if (!IsSpawnPositionOccupied(player_id, candidate))
+                    return candidate;
+            }
+
+            return center;
+        }
+
+        private bool IsSpawnPositionOccupied(int player_id, Vector3 position)
+        {
+            float radius_sqr = _spawn_occupied_radius * _spawn_occupied_radius;
+
+            for (int i = 0; i < _reserved_spawn_positions.Count; i++)
+            {
+                if (HorizontalSqrDistance(position, _reserved_spawn_positions[i]) <= radius_sqr)
+                    return true;
+            }
+
+            foreach (KeyValuePair<int, PlayerCharacter> pair in _characters)
+            {
+                if (pair.Key == player_id || pair.Value == null || pair.Value.Health == null || !pair.Value.Health.IsAlive)
+                    continue;
+
+                if (HorizontalSqrDistance(position, pair.Value.transform.position) <= radius_sqr)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void ReserveSpawnPosition(Vector3 position)
+        {
+            _reserved_spawn_positions.Add(position);
+        }
+
+        private Vector3 GetSpectatorSpawnPosition()
+        {
+            Transform capture_point = GameController?.LevelCreator?.Level?.CapturePoint;
+            if (capture_point != null)
+                return capture_point.position + Vector3.up * 18f;
+
+            return transform.position + Vector3.up * 18f;
+        }
+
+        private static float HorizontalSqrDistance(Vector3 a, Vector3 b)
+        {
+            float dx = a.x - b.x;
+            float dz = a.z - b.z;
+            return dx * dx + dz * dz;
         }
     }
 }

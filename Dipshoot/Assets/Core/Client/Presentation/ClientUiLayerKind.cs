@@ -5,6 +5,8 @@ namespace Core.ClientPresentation
         MainMenu,
         Lobby,
         MatchHud,
+        MatchEnd,
         Loading,
+        MatchPause,
     }
 }

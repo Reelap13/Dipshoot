@@ -80,6 +80,24 @@ namespace Server.Lobby
             else UpdateClientsData(lobby.Id);
         }
 
+        public void LeaveStartedLobby(PlayerHubController player, int lobby_id)
+        {
+            if (player == null)
+                return;
+
+            if (!_lobbies_data.TryGetValue(lobby_id, out var lobby))
+            {
+                player.UpdateLobbyData(null);
+                return;
+            }
+
+            lobby.RemovePlayer(player.Player.PlayerId);
+            if (_lobbies_players.TryGetValue(lobby.Id, out List<PlayerHubController> players))
+                players.Remove(player);
+
+            player.UpdateLobbyData(null);
+        }
+
         public void StartGame(PlayerHubController player, int lobby_id)
         {
             if (!_lobbies_data.TryGetValue(lobby_id, out var lobby))
@@ -112,7 +130,12 @@ namespace Server.Lobby
             if (player_data == null)
                 return;
 
-            player_data.Team = player_data.Team == TeamId.Red ? TeamId.Blue : TeamId.Red;
+            player_data.Team = player_data.Team switch
+            {
+                TeamId.Red => TeamId.Blue,
+                TeamId.Blue => TeamId.Spectator,
+                _ => TeamId.Red,
+            };
             UpdateClientsData(lobby.Id);
         }
 

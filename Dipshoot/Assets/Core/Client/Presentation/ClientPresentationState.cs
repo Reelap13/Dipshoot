@@ -8,5 +8,7 @@ namespace Core.ClientPresentation
         MatchLoading,
         Match,
         MatchMenu,
+        MatchEnded,
+        MatchPause,
     }
 }

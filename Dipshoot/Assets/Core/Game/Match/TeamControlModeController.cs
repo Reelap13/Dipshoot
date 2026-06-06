@@ -13,7 +13,7 @@ namespace Game.MatchMode
         [SerializeField] private CapturePointController _capture_point_controller;
         [SerializeField] private MatchStatsController _stats_controller;
         [SerializeField] private int _rounds_count = 3;
-        [SerializeField] private float _map_intro_duration = 1.5f;
+        [SerializeField] private float _map_intro_duration = 10f;
         [SerializeField] private float _round_results_duration = 4f;
         [SerializeField] private float _round_duration = 180f;
         [SerializeField] private float _score_limit = 100f;
@@ -141,7 +141,7 @@ namespace Game.MatchMode
             SetPhase(RoundPhase.Finished, 0f);
             _spawn_controller.StopRespawns();
             _capture_point_controller.StopObjective();
-            _game_controller.FinishGame();
+            _game_controller.EndGameplay();
             Debug.Log($"{LogPrefix} Match finished. redWins={_red_round_wins} blueWins={_blue_round_wins}");
         }
 
