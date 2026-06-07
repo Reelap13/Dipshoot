@@ -52,13 +52,13 @@ namespace Game.MatchMode
             foreach (var lobby_player in GameController.MatchController.MatchData.LobbyData.Players)
             {
                 TeamId team_id = _team_roster.GetTeam(lobby_player.PlayerId);
+                _stats_controller?.RegisterPlayer(lobby_player.PlayerId, team_id, lobby_player.Nickname);
                 if (team_id == TeamId.Spectator)
                 {
                     SpawnOrRespawnSpectator(lobby_player.PlayerId);
                     continue;
                 }
 
-                _stats_controller?.RegisterPlayer(lobby_player.PlayerId, team_id);
                 SpawnOrRespawnPlayer(lobby_player.PlayerId, team_id);
             }
 

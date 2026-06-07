@@ -142,6 +142,7 @@ namespace Game.MatchMode
             _spawn_controller.StopRespawns();
             _capture_point_controller.StopObjective();
             _game_controller.EndGameplay();
+            _game_controller.MatchController.LogMatchStatsOnce();
             Debug.Log($"{LogPrefix} Match finished. redWins={_red_round_wins} blueWins={_blue_round_wins}");
         }
 

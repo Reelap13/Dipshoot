@@ -3,6 +3,7 @@ namespace Game.MatchMode
     public class PlayerRoundStats
     {
         public int PlayerId;
+        public string Nickname;
         public TeamId TeamId;
         public int Kills;
         public int Deaths;

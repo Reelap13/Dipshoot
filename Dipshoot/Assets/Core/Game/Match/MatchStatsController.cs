@@ -7,6 +7,7 @@ namespace Game.MatchMode
     {
         private readonly Dictionary<int, PlayerRoundStats> _player_stats = new();
 
+        public IEnumerable<PlayerRoundStats> PlayerStats => _player_stats.Values;
         public float RedScore { get; private set; }
         public float BlueScore { get; private set; }
         public int RedRoundWins { get; private set; }
@@ -25,12 +26,9 @@ namespace Game.MatchMode
         {
             RedScore = 0f;
             BlueScore = 0f;
-
-            foreach (PlayerRoundStats stats in _player_stats.Values)
-                stats.ResetRound();
         }
 
-        public void RegisterPlayer(int player_id, TeamId team_id)
+        public void RegisterPlayer(int player_id, TeamId team_id, string nickname = null)
         {
             if (!_player_stats.TryGetValue(player_id, out PlayerRoundStats stats))
             {
@@ -40,6 +38,8 @@ namespace Game.MatchMode
 
             stats.PlayerId = player_id;
             stats.TeamId = team_id;
+            if (!string.IsNullOrWhiteSpace(nickname))
+                stats.Nickname = nickname;
         }
 
         public void AddTeamScore(TeamId team_id, float amount)

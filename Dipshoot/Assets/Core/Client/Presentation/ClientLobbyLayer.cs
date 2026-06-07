@@ -256,7 +256,7 @@ namespace Core.ClientPresentation
             if (_blue_player_rows.Count == 0)
                 _blue_player_rows = CreateTeamColumn("Blue Team", new Color(0.08f, 0.16f, 0.5f, 0.78f), new Vector2(180f, -40f));
             if (_spectator_player_rows.Count == 0)
-                _spectator_player_rows = CreateTeamColumn("Spectators", new Color(0.55f, 0.42f, 0.08f, 0.78f), new Vector2(0f, -286f), new Vector2(420f, 130f), 4);
+                Debug.LogError($"{nameof(ClientLobbyLayer)} spectator rows are not assigned.", this);
             if (_selected_preset_text == null)
                 _selected_preset_text = CreateRuntimeText("SelectedPresetText", new Vector2(0f, -92f), new Vector2(420f, 30f), 18, TextAlignmentOptions.Center);
             if (_preset_dropdown == null && _preset_cycle_button == null)

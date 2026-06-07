@@ -24,6 +24,7 @@ namespace Server.Match
 
         private bool _is_finishing;
         private bool _is_destroyed;
+        private bool _is_stats_logged;
 
         public void LoadMatch(MatchData match_data)
         {
@@ -49,7 +50,17 @@ namespace Server.Match
                 return;
 
             _is_finishing = true;
+            LogMatchStatsOnce();
             StartCoroutine(FinishMatchRoutine());
+        }
+
+        public void LogMatchStatsOnce()
+        {
+            if (_is_stats_logged)
+                return;
+
+            _is_stats_logged = true;
+            MatchStatsFileLogger.Write(this);
         }
 
         private IEnumerator FinishMatchRoutine()
