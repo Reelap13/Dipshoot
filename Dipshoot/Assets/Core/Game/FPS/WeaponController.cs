@@ -25,6 +25,7 @@ namespace Game.Players
         [SerializeField] private WeaponDefinition _primary_weapon;
         [SerializeField] private WeaponDefinition _pistol_weapon;
         [SerializeField] private Vector3 _eye_offset = new(0f, 0.49f, 0.359f);
+        [SerializeField] private float _camera_height_ratio = 0.745f;
         [SerializeField] private LayerMask _hit_mask = ~0;
         [SerializeField] private QueryTriggerInteraction _trigger_interaction = QueryTriggerInteraction.Collide;
         [SerializeField] private float _lag_compensation_visual_back_ms = 33.3f;
@@ -199,7 +200,7 @@ namespace Game.Players
                 simulation_result.FiredSlotState,
                 server_tick,
                 lag_compensation_visual_back_ticks,
-                _eye_offset,
+                GetEyeOffset(simulation_state),
                 _hit_mask,
                 _trigger_interaction,
                 _hits);
@@ -280,7 +281,7 @@ namespace Game.Players
                 simulation_state,
                 input,
                 simulation_result.FiredSlotState,
-                _eye_offset,
+                GetEyeOffset(simulation_state),
                 _hit_mask,
                 _trigger_interaction,
                 _hits);
@@ -487,6 +488,33 @@ namespace Game.Players
 
             float scale = stats.RecoilPattern == null ? 1f : stats.RecoilPattern.VisualScale;
             view_recoil.AddImpulse(pitch * scale, yaw * scale);
+        }
+
+        private Vector3 GetEyeOffset(PlayerState state)
+        {
+            float stand_height = GetStat(Stat.MOVEMENT_STAND_HEIGHT, 2f);
+            float crouch_height = GetStat(Stat.MOVEMENT_CROUCH_HEIGHT, 1.2f);
+            float current_height = state.Stance == MovementStance.Crouching
+                ? crouch_height
+                : stand_height;
+            float stand_eye_y = GetEyeOffsetY(stand_height, stand_height);
+            float current_eye_y = GetEyeOffsetY(stand_height, current_height);
+
+            Vector3 offset = _eye_offset;
+            offset.y += current_eye_y - stand_eye_y;
+            return offset;
+        }
+
+        private float GetEyeOffsetY(float stand_height, float current_height)
+        {
+            return -stand_height * 0.5f + current_height * _camera_height_ratio;
+        }
+
+        private float GetStat(Stat stat, float fallback_value)
+        {
+            return _stats == null
+                ? fallback_value
+                : _stats.GetStatValue(stat, fallback_value);
         }
 
         private bool TryGetPlayerState(int tick, out PlayerState state)

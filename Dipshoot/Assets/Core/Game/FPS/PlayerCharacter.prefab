@@ -276,6 +276,7 @@ MonoBehaviour:
   _primary_weapon: {fileID: 11400000, guid: f0ee1a0ba5a241e0a2747fb26dc3e6e0, type: 2}
   _pistol_weapon: {fileID: 11400000, guid: a46453fc3a1b4bf4ac938f28cc029a9c, type: 2}
   _eye_offset: {x: 0, y: 0.49, z: 0.359}
+  _camera_height_ratio: 0.745
   _hit_mask:
     serializedVersion: 2
     m_Bits: 4294967295
