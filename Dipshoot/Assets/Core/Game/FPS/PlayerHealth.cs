@@ -117,6 +117,19 @@ namespace Game.Players
             ApplyAlive(_is_alive);
         }
 
+        public void ApplyConfirmedDeathVisual()
+        {
+            if (_is_alive)
+                _is_alive = false;
+
+            CachePresentationTargets();
+            ApplyAlive(false);
+
+            StateSynchronizer state_synchronizer = GetComponent<StateSynchronizer>();
+            if (state_synchronizer != null)
+                state_synchronizer.ClearRemoteInterpolation();
+        }
+
         private void CacheReferences()
         {
             if (_character == null)

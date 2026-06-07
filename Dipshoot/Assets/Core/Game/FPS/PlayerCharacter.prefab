@@ -273,6 +273,7 @@ MonoBehaviour:
   syncInterval: 0
   _character: {fileID: 7358710916428720345}
   _stats: {fileID: 2560981488615711837}
+  _state_synchronizer: {fileID: 9044189472314785501}
   _primary_weapon: {fileID: 11400000, guid: f0ee1a0ba5a241e0a2747fb26dc3e6e0, type: 2}
   _pistol_weapon: {fileID: 11400000, guid: a46453fc3a1b4bf4ac938f28cc029a9c, type: 2}
   _eye_offset: {x: 0, y: 0.49, z: 0.359}
@@ -281,6 +282,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   _trigger_interaction: 2
+  _lag_compensation_hit_reg_bias_ms: 33
+  _lag_compensation_max_rewind_ms: 200
   _shot_compare_debug_enabled: 1
   _shot_compare_debug_max_logs_per_second: 20
 --- !u!114 &9044189472314785501
@@ -304,7 +307,7 @@ MonoBehaviour:
   _input_buffer_synchronizer: {fileID: 1508822084912371000}
   _position_error_threshold: 0.001
   _rotation_error_threshold: 0.1
-  _remote_interpolation_back_ticks: 2
+  _remote_interpolation_back_ms: 50
   _server_tick_offset_lerp_factor: 0.1
   _tick_sync_debug_enabled: 1
   _tick_sync_debug_max_logs_per_second: 3

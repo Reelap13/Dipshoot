@@ -81,6 +81,7 @@ namespace Core.ClientPresentation
             CreatePersistentPrefabLayer<ClientMatchPauseLayer>("ClientUI/ClientMatchPauseLayer", "ClientMatchPauseLayer");
             CreatePersistentPrefabLayer<ClientMatchEndLayer>("ClientUI/ClientMatchEndLayer", "ClientMatchEndLayer");
             CreatePersistentPrefabLayer<ClientLoadingLayer>("ClientUI/ClientLoadingLayer", "ClientLoadingLayer");
+            CreatePersistentPrefabLayer<ClientDebugOverlayLayer>("ClientUI/ClientDebugOverlayLayer", "ClientDebugOverlayLayer");
 
             PresentationRoot.SetState(ClientPresentationState.MainMenu);
         }

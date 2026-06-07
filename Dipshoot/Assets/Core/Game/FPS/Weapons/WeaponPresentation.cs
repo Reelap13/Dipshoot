@@ -49,6 +49,21 @@ namespace Game.Players
             highlight_controller.Play();
         }
 
+        public static void ApplyConfirmedKill(ShotResult result)
+        {
+            if (!result.DidKill ||
+                result.HitNetId == 0 ||
+                !NetworkClient.spawned.TryGetValue(result.HitNetId, out NetworkIdentity identity) ||
+                identity == null)
+            {
+                return;
+            }
+
+            PlayerHealth health = identity.GetComponent<PlayerHealth>();
+            if (health != null)
+                health.ApplyConfirmedDeathVisual();
+        }
+
         public static void PlayConfirmedOwnerShot(
             MonoBehaviour owner,
             ShotResult result,

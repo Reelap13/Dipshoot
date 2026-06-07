@@ -22,13 +22,15 @@ namespace Game.Players
 
         [SerializeField] private PlayerCharacter _character;
         [SerializeField] private StatsController _stats;
+        [SerializeField] private StateSynchronizer _state_synchronizer;
         [SerializeField] private WeaponDefinition _primary_weapon;
         [SerializeField] private WeaponDefinition _pistol_weapon;
         [SerializeField] private Vector3 _eye_offset = new(0f, 0.49f, 0.359f);
         [SerializeField] private float _camera_height_ratio = 0.745f;
         [SerializeField] private LayerMask _hit_mask = ~0;
         [SerializeField] private QueryTriggerInteraction _trigger_interaction = QueryTriggerInteraction.Collide;
-        [SerializeField] private float _lag_compensation_visual_back_ms = 33.3f;
+        [SerializeField] private float _lag_compensation_hit_reg_bias_ms = 33f;
+        [SerializeField] private float _lag_compensation_max_rewind_ms = 200f;
         [SerializeField] private bool _shot_compare_debug_enabled = true;
         [SerializeField] private int _shot_compare_debug_max_logs_per_second = 20;
 
@@ -74,6 +76,10 @@ namespace Game.Players
         public float CurrentEffectiveSpreadDegrees { get; private set; }
         public WeaponDefinition PrimaryWeaponDefinition => _primary_weapon;
         public WeaponDefinition PistolWeaponDefinition => _pistol_weapon;
+        public float LagCompensationHitRegBiasMs => Mathf.Max(0f, _lag_compensation_hit_reg_bias_ms);
+        public float LagCompensationMaxRewindMs => Mathf.Max(0f, _lag_compensation_max_rewind_ms);
+        public bool HasLastConfirmedShot { get; private set; }
+        public ShotResult LastConfirmedShot { get; private set; }
 
         private void Awake()
         {
@@ -125,6 +131,9 @@ namespace Game.Players
 
             if (_stats == null)
                 _stats = GetComponent<StatsController>();
+
+            if (_state_synchronizer == null)
+                _state_synchronizer = GetComponent<StateSynchronizer>();
         }
 
         private void TryRegisterTickSystem()
@@ -191,6 +200,10 @@ namespace Game.Players
             }
 
             int lag_compensation_visual_back_ticks = GetLagCompensationVisualBackTicks();
+            int lag_compensation_bias_ticks = GetLagCompensationBiasTicks();
+            int lag_compensation_rewind_ticks = GetLagCompensationRewindTicks(
+                lag_compensation_visual_back_ticks,
+                lag_compensation_bias_ticks);
             ShotResult shot_result = WeaponShotResolver.Resolve(
                 _character,
                 simulation_result.FiredWeapon,
@@ -199,11 +212,14 @@ namespace Game.Players
                 input,
                 simulation_result.FiredSlotState,
                 server_tick,
-                lag_compensation_visual_back_ticks,
+                lag_compensation_rewind_ticks,
                 GetEyeOffset(simulation_state),
                 _hit_mask,
                 _trigger_interaction,
                 _hits);
+            shot_result.LagCompensationVisualBackTicks = lag_compensation_visual_back_ticks;
+            shot_result.LagCompensationBiasTicks = lag_compensation_bias_ticks;
+            shot_result.LagCompensationRewindTicks = lag_compensation_rewind_ticks;
 
             LogShotCompare(
                 ShotCompareServerPrefix,
@@ -214,7 +230,9 @@ namespace Game.Players
                 WeaponShotResolver.GetSprayPatternOffset(
                     simulation_result.FiredWeaponStats,
                     simulation_result.FiredSlotState.ConsecutiveShots),
-                lag_compensation_visual_back_ticks);
+                lag_compensation_visual_back_ticks,
+                lag_compensation_bias_ticks,
+                lag_compensation_rewind_ticks);
 
             if (isOwned)
                 ApplyViewRecoil(
@@ -297,6 +315,8 @@ namespace Game.Players
                 WeaponShotResolver.GetSprayPatternOffset(
                     simulation_result.FiredWeaponStats,
                     simulation_result.FiredSlotState.ConsecutiveShots),
+                0,
+                0,
                 0);
             ApplyViewRecoil(
                 simulation_result.RecoilPitch,
@@ -375,6 +395,10 @@ namespace Game.Players
         [ClientRpc]
         private void RpcRegisterShot(ShotResult result)
         {
+            LastConfirmedShot = result;
+            HasLastConfirmedShot = true;
+            WeaponPresentation.ApplyConfirmedKill(result);
+
             if (isOwned && TryConsumePredictedShot(result, out ShotResult predicted_result))
             {
                 WarnIfPredictedShotMismatch(predicted_result, result);
@@ -383,8 +407,12 @@ namespace Game.Players
                 return;
             }
 
-            if (isOwned && isServer)
+            if (isOwned)
+            {
+                WeaponPresentation.PlayConfirmedOwnerShot(this, result, GetWeaponDefinition(result.WeaponSlot));
                 WeaponPresentation.PlayOwnerHitFeedback(result);
+                return;
+            }
 
             WeaponPresentation.PlayRemoteShot(this, result, GetWeaponDefinition(result.WeaponSlot));
         }
@@ -401,6 +429,7 @@ namespace Game.Players
 
             _has_predicted_weapon_state = false;
             _predicted_shot_sequence = 0;
+            HasLastConfirmedShot = false;
             _predicted_shots.Clear();
         }
 
@@ -560,7 +589,9 @@ namespace Game.Players
             float spread_degrees,
             int shot_index,
             Vector2 pattern_offset,
-            int lag_compensation_visual_back_ticks)
+            int lag_compensation_visual_back_ticks,
+            int lag_compensation_bias_ticks,
+            int lag_compensation_rewind_ticks)
         {
             if (!ShouldLogShotCompare())
                 return;
@@ -574,6 +605,7 @@ namespace Game.Players
                 $"serverMinusInput={result.ServerTick - result.InputTick} " +
                 $"stateTick={state.Tick} hitboxQueryTick={result.HitboxQueryTick} " +
                 $"hitboxSnapshotTick={result.HitboxSnapshotTick} visualBackTicks={lag_compensation_visual_back_ticks} " +
+                $"biasTicks={lag_compensation_bias_ticks} rewindTicks={lag_compensation_rewind_ticks} " +
                 $"pos={FormatVector(state.Position)} origin={FormatVector(result.Origin)} " +
                 $"dir={FormatVector(result.Direction)} point={FormatVector(result.Point)} " +
                 $"rotY={FormatFloat(state.Rotation.eulerAngles.y)} pitch={FormatFloat(state.CameraPitch)} " +
@@ -607,12 +639,38 @@ namespace Game.Players
 
         private int GetLagCompensationVisualBackTicks()
         {
-            if (_character == null || _character.TickManager == null || _lag_compensation_visual_back_ms <= 0f)
+            if (_character == null || _character.TickManager == null)
+                return 0;
+
+            float visual_back_ms = _state_synchronizer == null
+                ? 50f
+                : _state_synchronizer.RemoteInterpolationBackMs;
+
+            return GetTicksFromMs(visual_back_ms);
+        }
+
+        private int GetLagCompensationBiasTicks()
+        {
+            return GetTicksFromMs(_lag_compensation_hit_reg_bias_ms);
+        }
+
+        private int GetLagCompensationRewindTicks(int visual_back_ticks, int bias_ticks)
+        {
+            int max_rewind_ticks = GetTicksFromMs(_lag_compensation_max_rewind_ms);
+            int rewind_ticks = Mathf.Max(0, visual_back_ticks - bias_ticks);
+            return max_rewind_ticks <= 0
+                ? rewind_ticks
+                : Mathf.Min(rewind_ticks, max_rewind_ticks);
+        }
+
+        private int GetTicksFromMs(float milliseconds)
+        {
+            if (_character == null || _character.TickManager == null || milliseconds <= 0f)
                 return 0;
 
             return Mathf.Max(
                 0,
-                Mathf.RoundToInt(_lag_compensation_visual_back_ms * 0.001f * _character.TickManager.TickRate));
+                Mathf.RoundToInt(milliseconds * 0.001f * _character.TickManager.TickRate));
         }
 
         private static string GetShotDebugId(ShotResult result)

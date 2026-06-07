@@ -13,6 +13,9 @@ namespace Game.Players
         public int ServerTick;
         public int HitboxQueryTick;
         public int HitboxSnapshotTick;
+        public int LagCompensationVisualBackTicks;
+        public int LagCompensationBiasTicks;
+        public int LagCompensationRewindTicks;
         public Vector3 Origin;
         public Vector3 Direction;
         public Vector3 Point;

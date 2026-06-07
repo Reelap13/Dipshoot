@@ -15,7 +15,7 @@ namespace Game.Players
             PlayerInputData input,
             WeaponSlotState fired_slot_state,
             int server_tick,
-            int hitbox_visual_back_ticks,
+            int hitbox_rewind_ticks,
             Vector3 eye_offset,
             LayerMask hit_mask,
             QueryTriggerInteraction trigger_interaction,
@@ -37,7 +37,7 @@ namespace Game.Players
             int hitbox_snapshot_tick = ResolveHitboxSnapshotTick(
                 input,
                 server_tick,
-                hitbox_visual_back_ticks);
+                hitbox_rewind_ticks);
             bool has_player_hit = PlayerHitboxLagCompensation.TryRaycast(
                 shooter,
                 hitbox_snapshot_tick,
