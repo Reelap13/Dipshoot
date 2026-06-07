@@ -15,6 +15,7 @@ namespace Server.Lobby
         public float SelectedRoundDurationSeconds;
         public float SelectedMaxCaptureScore;
         public string SelectedResultUrl;
+        public bool IsTutorialMode;
         public bool IsConnectionBlocked;
         public List<LobbyPlayerData> Players;
 
@@ -30,6 +31,7 @@ namespace Server.Lobby
             SelectedRoundDurationSeconds = 180f;
             SelectedMaxCaptureScore = 100f;
             SelectedResultUrl = string.Empty;
+            IsTutorialMode = false;
             IsConnectionBlocked = false;
             Players = new();
         }

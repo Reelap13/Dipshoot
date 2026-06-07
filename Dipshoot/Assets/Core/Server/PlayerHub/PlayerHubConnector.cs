@@ -72,5 +72,7 @@ namespace Server.PlayerHub
         public void CommandSwitchTeam() => _controller.SwitchTeam();
         [Command]
         public void CommandSelectPreset(string preset_id) => _controller.SelectPreset(preset_id);
+        [Command]
+        public void CommandSetTutorialMode(bool enabled) => _controller.SetTutorialMode(enabled);
     }
 }

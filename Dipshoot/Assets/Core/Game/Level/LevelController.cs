@@ -19,6 +19,8 @@ namespace Game.Level
         private bool _staticLayoutDisabled;
 
         public Transform CapturePoint => _capture_point == null ? transform : _capture_point;
+        public IReadOnlyList<Transform> RedSpawnPoints => _red_spawn_points;
+        public IReadOnlyList<Transform> BlueSpawnPoints => _blue_spawn_points;
         public float SpawnMarkerRadius => Mathf.Max(0.1f, _spawn_marker_radius);
 
         public Transform GetRandomSpawnPoint() =>
@@ -48,6 +50,7 @@ namespace Game.Level
             _capture_point = capture_point;
             _spawn_marker_radius = spawn_marker_radius;
             _capture_marker_radius = capture_marker_radius;
+            HideSpawnMarkerRenderers();
         }
 
         public void GenerateWarehouseLevel(WarehouseRecipe recipe, int seed)
@@ -69,11 +72,15 @@ namespace Game.Level
             }
 
             if (_terrainGenerated)
+            {
+                HideSpawnMarkerRenderers();
                 return;
+            }
 
             _terrainGenerated = true;
             //GetOrCreateTerrainGenerator().GenerateLevel();
             CreateCapturePointMarker();
+            HideSpawnMarkerRenderers();
         }
 
         public ChunkedTerrainLevelGenerator GetOrCreateTerrainGenerator()
@@ -127,6 +134,31 @@ namespace Game.Level
                     continue;
 
                 child.gameObject.SetActive(active);
+            }
+        }
+
+        private void HideSpawnMarkerRenderers()
+        {
+            HideMarkerRenderers(_spawn_points);
+            HideMarkerRenderers(_red_spawn_points);
+            HideMarkerRenderers(_blue_spawn_points);
+        }
+
+        private static void HideMarkerRenderers(List<Transform> markers)
+        {
+            if (markers == null)
+                return;
+
+            for (int i = 0; i < markers.Count; i++)
+            {
+                Transform marker = markers[i];
+                if (marker == null)
+                    continue;
+
+                Renderer[] renderers = marker.GetComponentsInChildren<Renderer>(true);
+                for (int j = 0; j < renderers.Length; j++)
+                    if (renderers[j] != null)
+                        renderers[j].enabled = false;
             }
         }
     }

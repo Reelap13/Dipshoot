@@ -14,6 +14,7 @@ namespace Game.MatchMode
         [SerializeField] private MatchStatsController _stats_controller;
         [SerializeField] private int _rounds_count = 3;
         [SerializeField] private float _map_intro_duration = 10f;
+        [SerializeField] private float _tutorial_map_intro_duration = 30f;
         [SerializeField] private float _round_results_duration = 4f;
         [SerializeField] private float _round_duration = 180f;
         [SerializeField] private float _score_limit = 100f;
@@ -161,7 +162,7 @@ namespace Game.MatchMode
             _spawn_controller.SpawnRoundPlayers();
             _capture_point_controller.ResetRound();
 
-            yield return RunTimedPhase(RoundPhase.Intro, _map_intro_duration);
+            yield return RunTimedPhase(RoundPhase.Intro, GetIntroDuration());
 
             SetPhase(RoundPhase.Playing, _round_duration);
             _spawn_controller.IsRespawnEnabled = true;
@@ -190,6 +191,13 @@ namespace Game.MatchMode
                 _phase_time_remaining = Mathf.Max(0f, _phase_time_remaining - Time.deltaTime);
                 yield return null;
             }
+        }
+
+        private float GetIntroDuration()
+        {
+            return _game_controller.MatchController.MatchData.LobbyData.IsTutorialMode
+                ? _tutorial_map_intro_duration
+                : _map_intro_duration;
         }
 
         private void RegisterRoundWinner()

@@ -64,7 +64,12 @@ namespace Core.ClientPresentation
         public static void PlayLocalHitMarker(bool is_kill = false)
         {
             if (_active_instance != null)
+            {
                 _active_instance.PlayHitMarker(is_kill);
+                return;
+            }
+
+            ClientMatchHudV2Layer.PlayLocalHitMarker(is_kill);
         }
 
         private void Awake()

@@ -77,13 +77,23 @@ namespace Core.ClientPresentation
             CreatePersistentPrefabLayer<ClientMainMenuLayer>("ClientUI/ClientMainMenuLayer", "ClientMainMenuLayer");
             CreatePersistentPrefabLayer<ClientLobbyLayer>("ClientUI/ClientLobbyLayer", "ClientLobbyLayer");
             CreatePersistentPrefabLayer<ClientErrorLayer>("ClientUI/ClientErrorLayer", "ClientErrorLayer");
-            CreatePersistentPrefabLayer<ClientMatchHudLayer>("ClientUI/ClientMatchHudLayer", "ClientMatchHudLayer");
+            CreateMatchHudLayer();
             CreatePersistentPrefabLayer<ClientMatchPauseLayer>("ClientUI/ClientMatchPauseLayer", "ClientMatchPauseLayer");
             CreatePersistentPrefabLayer<ClientMatchEndLayer>("ClientUI/ClientMatchEndLayer", "ClientMatchEndLayer");
-            CreatePersistentPrefabLayer<ClientLoadingLayer>("ClientUI/ClientLoadingLayer", "ClientLoadingLayer");
             CreatePersistentPrefabLayer<ClientDebugOverlayLayer>("ClientUI/ClientDebugOverlayLayer", "ClientDebugOverlayLayer");
 
             PresentationRoot.SetState(ClientPresentationState.MainMenu);
+        }
+
+        private void CreateMatchHudLayer()
+        {
+            if (Resources.Load<GameObject>("ClientUI/ClientMatchHudV2Layer") != null)
+            {
+                CreatePersistentPrefabLayer<ClientMatchHudV2Layer>("ClientUI/ClientMatchHudV2Layer", "ClientMatchHudV2Layer");
+                return;
+            }
+
+            CreatePersistentPrefabLayer<ClientMatchHudLayer>("ClientUI/ClientMatchHudLayer", "ClientMatchHudLayer");
         }
 
         private T GetOrAddComponent<T>() where T : Component

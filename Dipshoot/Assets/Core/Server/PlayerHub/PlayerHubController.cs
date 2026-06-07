@@ -94,6 +94,17 @@ namespace Server.PlayerHub
             LobbiesController.Instance.SelectPreset(this, Lobby.Id, preset_id);
         }
 
+        public void SetTutorialMode(bool enabled)
+        {
+            if (Lobby == null)
+            {
+                RegisterError("Error 07: Attempt to set tutorial mode without being a member of the lobby");
+                return;
+            }
+
+            LobbiesController.Instance.SetTutorialMode(this, Lobby.Id, enabled);
+        }
+
         private const string _chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         private string ParceLobbyCode(string lobby_code)
         {

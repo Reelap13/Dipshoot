@@ -165,6 +165,25 @@ namespace Server.Lobby
             UpdateClientsData(lobby.Id);
         }
 
+        public void SetTutorialMode(PlayerHubController player, int lobby_id, bool enabled)
+        {
+            if (!_lobbies_data.TryGetValue(lobby_id, out var lobby))
+            {
+                player.RegisterError("Lobby doesn't exist");
+                return;
+            }
+
+            LobbyPlayerData player_data = lobby.GetPlayer(player.Player.PlayerId);
+            if (player_data == null || player_data.Type != LobbyPlayerType.HOST)
+            {
+                player.RegisterError("Error 13: Attempt to set tutorial mode without host role");
+                return;
+            }
+
+            lobby.IsTutorialMode = enabled;
+            UpdateClientsData(lobby.Id);
+        }
+
         private void DestroyLobby(int lobby_id)
         {
             if (!_lobbies_data.TryGetValue(lobby_id, out var lobby))

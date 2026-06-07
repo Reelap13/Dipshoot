@@ -1,5 +1,7 @@
 using Game.MatchMode;
+using Game.Level;
 using TMPro;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.InputSystem;
@@ -16,6 +18,10 @@ namespace Core.ClientPresentation
         [SerializeField] private TextMeshProUGUI _master_volume_value_text;
         [SerializeField] private RawImage _map_image;
         [SerializeField] private Camera _map_camera;
+        [SerializeField] private GameObject _intro_timer_panel;
+        [SerializeField] private TextMeshProUGUI _intro_timer_text;
+        [SerializeField] private Image _red_spawn_flag;
+        [SerializeField] private Image _blue_spawn_flag;
         [SerializeField] private AudioMixer _audio_mixer;
         [SerializeField] private string _master_volume_parameter = "MasterVolume";
         [SerializeField] private float _map_padding = 1.12f;
@@ -31,6 +37,7 @@ namespace Core.ClientPresentation
             _layer = GetOrAddLayer();
             _layer.Initialize(ClientUiLayerKind.MatchPause);
 
+            CachePrefabReferences();
             InitializeSliders();
             InitializeMapCamera();
             ApplyMasterVolume(ClientGameplaySettings.MasterVolume);
@@ -54,10 +61,13 @@ namespace Core.ClientPresentation
         {
             HandleEscape();
             HandleIntroAutoOpen();
+            UpdateIntroTimer();
 
             bool is_visible = ClientAppRoot.Instance.PresentationRoot.State == ClientPresentationState.MatchPause;
             if (_map_camera != null)
                 _map_camera.enabled = is_visible;
+            if (is_visible)
+                UpdateSpawnFlags();
         }
 
         private void HandleEscape()
@@ -137,6 +147,38 @@ namespace Core.ClientPresentation
             UpdateValueTexts();
         }
 
+        private void CachePrefabReferences()
+        {
+            if (_intro_timer_panel == null)
+                _intro_timer_panel = FindChild("IntroTimerPanel")?.gameObject;
+            if (_intro_timer_text == null)
+                _intro_timer_text = FindChildComponent<TextMeshProUGUI>("IntroTimerText");
+            if (_red_spawn_flag == null)
+                _red_spawn_flag = FindChildComponent<Image>("RedSpawnFlag");
+            if (_blue_spawn_flag == null)
+                _blue_spawn_flag = FindChildComponent<Image>("BlueSpawnFlag");
+        }
+
+        private Transform FindChild(string child_name)
+        {
+            Transform[] children = GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < children.Length; i++)
+            {
+                Transform child = children[i];
+                if (child != null && child.name == child_name)
+                    return child;
+            }
+
+            return null;
+        }
+
+        private T FindChildComponent<T>(string child_name)
+            where T : Component
+        {
+            Transform child = FindChild(child_name);
+            return child != null && child.TryGetComponent(out T component) ? component : null;
+        }
+
         private void SetMouseSensitivity(float value)
         {
             ClientGameplaySettings.SetMouseSensitivity(value);
@@ -184,9 +226,8 @@ namespace Core.ClientPresentation
 
             if (_map_camera == null)
             {
-                GameObject target = new("PauseMapCamera");
-                target.transform.SetParent(transform, false);
-                _map_camera = target.AddComponent<Camera>();
+                Debug.LogError($"{nameof(ClientMatchPauseLayer)} map camera is not assigned.", this);
+                return;
             }
 
             _map_camera.enabled = false;
@@ -195,6 +236,76 @@ namespace Core.ClientPresentation
             _map_camera.backgroundColor = new Color(0.04f, 0.045f, 0.05f, 1f);
             _map_camera.cullingMask = CreateMapCullingMask();
             _map_camera.targetTexture = _map_texture;
+        }
+
+        private void UpdateIntroTimer()
+        {
+            TeamControlModeController mode = ClientAppRoot.Instance.MatchStore.ModeController;
+            bool show = mode != null && mode.Phase == RoundPhase.Intro;
+            if (_intro_timer_panel != null)
+                _intro_timer_panel.SetActive(show);
+
+            if (!show || _intro_timer_text == null)
+                return;
+
+            _intro_timer_text.text = FormatTime(mode.PhaseTimeRemaining);
+        }
+
+        private void UpdateSpawnFlags()
+        {
+            LevelController level = FindFirstObjectByType<LevelController>();
+            if (level == null || _map_camera == null || _map_image == null)
+                return;
+
+            UpdateSpawnFlag(_red_spawn_flag, GetAveragePosition(level.RedSpawnPoints));
+            UpdateSpawnFlag(_blue_spawn_flag, GetAveragePosition(level.BlueSpawnPoints));
+        }
+
+        private void UpdateSpawnFlag(Image flag, Vector3? world_position)
+        {
+            if (flag == null)
+                return;
+
+            if (!world_position.HasValue)
+            {
+                flag.gameObject.SetActive(false);
+                return;
+            }
+
+            Vector3 viewport = _map_camera.WorldToViewportPoint(world_position.Value);
+            bool visible = viewport.z > 0f &&
+                viewport.x >= 0f && viewport.x <= 1f &&
+                viewport.y >= 0f && viewport.y <= 1f;
+            flag.gameObject.SetActive(visible);
+            if (!visible)
+                return;
+
+            RectTransform map_rect = _map_image.rectTransform;
+            RectTransform flag_rect = flag.rectTransform;
+            Rect rect = map_rect.rect;
+            flag_rect.anchoredPosition = new Vector2(
+                (viewport.x - 0.5f) * rect.width,
+                (viewport.y - 0.5f) * rect.height);
+        }
+
+        private static Vector3? GetAveragePosition(IReadOnlyList<Transform> points)
+        {
+            if (points == null || points.Count == 0)
+                return null;
+
+            Vector3 sum = Vector3.zero;
+            int count = 0;
+            for (int i = 0; i < points.Count; i++)
+            {
+                Transform point = points[i];
+                if (point == null)
+                    continue;
+
+                sum += point.position;
+                count++;
+            }
+
+            return count == 0 ? null : sum / count;
         }
 
         private void FrameMapCamera()
@@ -284,6 +395,14 @@ namespace Core.ClientPresentation
             int layer = LayerMask.NameToLayer(layer_name);
             if (layer >= 0)
                 mask &= ~(1 << layer);
+        }
+
+        private static string FormatTime(float seconds)
+        {
+            int whole_seconds = Mathf.CeilToInt(seconds);
+            int minutes = whole_seconds / 60;
+            int seconds_part = whole_seconds % 60;
+            return $"{minutes:00}:{seconds_part:00}";
         }
 
         private ClientUiLayer GetOrAddLayer()

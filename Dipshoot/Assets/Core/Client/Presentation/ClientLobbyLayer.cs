@@ -19,6 +19,7 @@ namespace Core.ClientPresentation
         [SerializeField] private TextMeshProUGUI _selected_preset_text;
         [SerializeField] private TMP_Dropdown _preset_dropdown;
         [SerializeField] private Button _preset_cycle_button;
+        [SerializeField] private Toggle _tutorial_mode_toggle;
         [SerializeField] private Button _switch_team_button;
         [SerializeField] private Button _leave_button;
         [SerializeField] private Button _start_game_button;
@@ -40,6 +41,8 @@ namespace Core.ClientPresentation
                 _preset_dropdown.onValueChanged.AddListener(SelectPreset);
             if (_preset_cycle_button != null)
                 _preset_cycle_button.onClick.AddListener(SelectNextPreset);
+            if (_tutorial_mode_toggle != null)
+                _tutorial_mode_toggle.onValueChanged.AddListener(SetTutorialMode);
 
             ClientAppRoot app_root = ClientAppRoot.Instance;
             app_root.LobbyStore.OnLobbyUpdated += UpdateView;
@@ -57,6 +60,8 @@ namespace Core.ClientPresentation
                 _preset_dropdown.onValueChanged.RemoveListener(SelectPreset);
             if (_preset_cycle_button != null)
                 _preset_cycle_button.onClick.RemoveListener(SelectNextPreset);
+            if (_tutorial_mode_toggle != null)
+                _tutorial_mode_toggle.onValueChanged.RemoveListener(SetTutorialMode);
 
             if (!ClientAppRoot.HasInstance)
                 return;
@@ -91,6 +96,7 @@ namespace Core.ClientPresentation
             bool is_host = local_player != null && local_player.Type == LobbyPlayerType.HOST;
             _start_game_button.gameObject.SetActive(is_host);
             UpdatePresetView(lobby, is_host);
+            UpdateTutorialModeView(lobby, is_host);
         }
 
         private void ClearView()
@@ -102,6 +108,8 @@ namespace Core.ClientPresentation
             ClearRows(_spectator_player_rows);
             if (_selected_preset_text != null)
                 _selected_preset_text.text = "Preset: -";
+            if (_tutorial_mode_toggle != null)
+                _tutorial_mode_toggle.SetIsOnWithoutNotify(false);
 
             _start_game_button.gameObject.SetActive(false);
         }
@@ -151,6 +159,16 @@ namespace Core.ClientPresentation
 
             if (_preset_cycle_button != null)
                 _preset_cycle_button.gameObject.SetActive(is_host);
+        }
+
+        private void UpdateTutorialModeView(LobbyData lobby, bool is_host)
+        {
+            if (_tutorial_mode_toggle == null)
+                return;
+
+            _tutorial_mode_toggle.gameObject.SetActive(is_host);
+            _tutorial_mode_toggle.interactable = is_host;
+            _tutorial_mode_toggle.SetIsOnWithoutNotify(lobby.IsTutorialMode);
         }
 
         private void PopulatePresetOptions()
@@ -230,6 +248,11 @@ namespace Core.ClientPresentation
             ClientAppRoot.Instance.LobbyActions.SelectPreset(_preset_ids[next]);
         }
 
+        private void SetTutorialMode(bool enabled)
+        {
+            ClientAppRoot.Instance.LobbyActions.SetTutorialMode(enabled);
+        }
+
         private ClientUiLayer GetOrAddLayer()
         {
             ClientUiLayer layer = gameObject.GetComponent<ClientUiLayer>();
@@ -261,6 +284,8 @@ namespace Core.ClientPresentation
                 _selected_preset_text = CreateRuntimeText("SelectedPresetText", new Vector2(0f, -92f), new Vector2(420f, 30f), 18, TextAlignmentOptions.Center);
             if (_preset_dropdown == null && _preset_cycle_button == null)
                 _preset_cycle_button = CreateRuntimeButton("PresetCycleButton", new Vector2(0f, -130f), new Vector2(230f, 34f), "Change Preset");
+            if (_tutorial_mode_toggle == null)
+                Debug.LogWarning($"{nameof(ClientLobbyLayer)} tutorial mode toggle is not assigned.", this);
             if (_switch_team_button == null)
                 _switch_team_button = CreateRuntimeButton("SwitchTeamButton", new Vector2(0f, -370f), new Vector2(230f, 42f), "Switch Team");
 

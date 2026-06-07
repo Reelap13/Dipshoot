@@ -65,6 +65,14 @@ namespace Core.ClientPresentation
             _connector.CommandSelectPreset(preset_id);
         }
 
+        public void SetTutorialMode(bool enabled)
+        {
+            if (_connector == null)
+                return;
+
+            _connector.CommandSetTutorialMode(enabled);
+        }
+
         public void OpenMatchMenu()
         {
             ClientAppRoot app_root = ClientAppRoot.Instance;

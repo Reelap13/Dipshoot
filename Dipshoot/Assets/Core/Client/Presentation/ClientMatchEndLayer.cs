@@ -54,15 +54,21 @@ namespace Core.ClientPresentation
         private void UpdateView(TeamControlModeController mode_controller)
         {
             if (_title_text != null)
-                _title_text.text = "Match Finished";
+            {
+                TeamId winner = mode_controller.MatchWinner;
+                _title_text.text = winner == TeamId.None ? "Draw" : "Win";
+                _title_text.color = winner == TeamId.None ? Color.gray : GetTeamColor(winner);
+            }
 
             if (_winner_text != null)
-                _winner_text.text = $"Winner: {FormatTeam(mode_controller.MatchWinner)}";
+                _winner_text.gameObject.SetActive(false);
 
             if (_score_text != null)
-                _score_text.text =
-                    $"Rounds {mode_controller.RedRoundWins} - {mode_controller.BlueRoundWins}\n" +
-                    $"Score {mode_controller.RedScore} - {mode_controller.BlueScore}";
+            {
+                string blue = ColorUtility.ToHtmlStringRGB(GetTeamColor(TeamId.Blue));
+                string red = ColorUtility.ToHtmlStringRGB(GetTeamColor(TeamId.Red));
+                _score_text.text = $"<color=#{blue}>{mode_controller.BlueScore}</color> - <color=#{red}>{mode_controller.RedScore}</color>";
+            }
 
             if (_survey_button != null)
                 _survey_button.gameObject.SetActive(!string.IsNullOrWhiteSpace(ClientMatchPresetState.ResultUrl));
@@ -79,13 +85,13 @@ namespace Core.ClientPresentation
                 Application.OpenURL(ClientMatchPresetState.ResultUrl);
         }
 
-        private static string FormatTeam(TeamId team_id)
+        private static Color GetTeamColor(TeamId team_id)
         {
             return team_id switch
             {
-                TeamId.Red => "Red",
-                TeamId.Blue => "Blue",
-                _ => "Draw",
+                TeamId.Red => new Color(0.95f, 0.18f, 0.14f, 1f),
+                TeamId.Blue => new Color(0.16f, 0.45f, 1f, 1f),
+                _ => Color.gray,
             };
         }
 
