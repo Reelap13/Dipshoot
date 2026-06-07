@@ -118,11 +118,11 @@ namespace Server.Match
             _players.Remove(player.PlayerId);
             _readiness?.Remove(player.PlayerId);
             RemovePlayerFromLobby(player);
-            player.RemoveNetworkObject(match_player.netIdentity);
 
             if (return_to_menu && match_player != null)
                 match_player.TargetReturnToMenu();
 
+            player.RemoveNetworkObject(match_player.netIdentity);
             DestroyPlayerMatchObjects(player, match_player);
 
             if (match_player != null)

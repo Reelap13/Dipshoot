@@ -33,6 +33,7 @@ namespace Server.PlayerHub
 
         public void CreateLobby(string lobby_code)
         {
+            ClearStaleLobby();
             if (Lobby != null)
             {
                 RegisterError("Error 01: Attempt to create a lobby from another lobby");
@@ -43,6 +44,7 @@ namespace Server.PlayerHub
 
         public void EnterToLobby(string lobby_code)
         {
+            ClearStaleLobby();
             if (Lobby != null)
             {
                 RegisterError("Error 02: Attempt to enter the lobby from another lobby");
@@ -103,6 +105,12 @@ namespace Server.PlayerHub
             }
 
             LobbiesController.Instance.SetTutorialMode(this, Lobby.Id, enabled);
+        }
+
+        private void ClearStaleLobby()
+        {
+            if (Lobby != null && !LobbiesController.Instance.IsPlayerInLobby(this, Lobby))
+                UpdateLobbyData(null);
         }
 
         private const string _chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";

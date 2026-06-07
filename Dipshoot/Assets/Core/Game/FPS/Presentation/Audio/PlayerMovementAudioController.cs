@@ -17,6 +17,8 @@ namespace Game.Players
         private PlayerState _last_state;
         private bool _has_last_state;
         private float _step_distance;
+        private Vector3 _last_transform_position;
+        private bool _has_last_transform_position;
 
         private void Awake()
         {
@@ -29,10 +31,20 @@ namespace Game.Players
 
             if (_character == null ||
                 !_character.isClient ||
-                !_character.IsClientSimulationInitialized ||
                 !_character.IsGameplayActive ||
                 _character.Health != null && !_character.Health.IsAlive ||
-                _footsteps == null ||
+                _footsteps == null)
+            {
+                return;
+            }
+
+            if (!_character.isOwned)
+            {
+                UpdateRemoteSteps();
+                return;
+            }
+
+            if (!_character.IsClientSimulationInitialized ||
                 !TryGetCurrentState(out PlayerState state))
             {
                 return;
@@ -48,6 +60,7 @@ namespace Game.Players
         public void ResetSimulation()
         {
             _has_last_state = false;
+            _has_last_transform_position = false;
             _step_distance = 0f;
         }
 
@@ -126,6 +139,39 @@ namespace Game.Players
             return speed >= _run_speed_threshold
                 ? _footsteps.RunSteps
                 : _footsteps.WalkSteps;
+        }
+
+        private void UpdateRemoteSteps()
+        {
+            Vector3 position = transform.position;
+            if (!_has_last_transform_position)
+            {
+                _last_transform_position = position;
+                _has_last_transform_position = true;
+                return;
+            }
+
+            Vector3 delta = position - _last_transform_position;
+            delta.y = 0f;
+            _last_transform_position = position;
+
+            float delta_time = Mathf.Max(Time.deltaTime, 0.0001f);
+            float speed = delta.magnitude / delta_time;
+            if (speed < _min_step_speed)
+            {
+                _step_distance = 0f;
+                return;
+            }
+
+            _step_distance += delta.magnitude;
+            float target_distance = speed >= _run_speed_threshold
+                ? _run_step_distance
+                : _walk_step_distance;
+            if (_step_distance < target_distance)
+                return;
+
+            _step_distance %= target_distance;
+            Play(speed >= _run_speed_threshold ? _footsteps.RunSteps : _footsteps.WalkSteps);
         }
 
         private void Play(AudioCue cue)

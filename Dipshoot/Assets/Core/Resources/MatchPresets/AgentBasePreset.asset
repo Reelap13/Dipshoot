@@ -17,6 +17,6 @@ MonoBehaviour:
   Recipe: {fileID: 11400000, guid: f982c5c3d4702584fa9c79636aac837f, type: 2}
   Seed: 444
   RoundsCount: 1
-  RoundDurationSeconds: 180
-  MaxCaptureScore: 30
+  RoundDurationSeconds: 300
+  MaxCaptureScore: 100
   ResultUrl: https://sketchfab.com/search?q=Bicon+Container&type=models

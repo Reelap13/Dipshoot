@@ -18,6 +18,17 @@ namespace Server.Lobby
         private Dictionary<int, LobbyData> _lobbies_data = new();
         private Dictionary<int, List<PlayerHubController>> _lobbies_players = new();
 
+        public bool IsPlayerInLobby(PlayerHubController player, LobbyData lobby)
+        {
+            if (player == null || lobby == null || player.Player == null)
+                return false;
+
+            return _lobbies_data.TryGetValue(lobby.Id, out LobbyData active_lobby) &&
+                active_lobby.GetPlayer(player.Player.PlayerId) != null &&
+                _lobbies_players.TryGetValue(lobby.Id, out List<PlayerHubController> players) &&
+                players.Contains(player);
+        }
+
         public void CreateLobby(PlayerHubController player, string lobby_code)
         {
             if (_lobbies_codes.ContainsKey(lobby_code))
@@ -75,7 +86,7 @@ namespace Server.Lobby
             _lobbies_players[lobby.Id].Remove(player);
 
             player.UpdateLobbyData(null);
-            if (player_data.Type == LobbyPlayerType.HOST)
+            if (player_data != null && player_data.Type == LobbyPlayerType.HOST)
                 DestroyLobby(lobby_id);
             else UpdateClientsData(lobby.Id);
         }
