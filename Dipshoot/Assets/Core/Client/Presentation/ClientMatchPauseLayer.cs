@@ -1,5 +1,6 @@
 using Game.MatchMode;
 using Game.Level;
+using Game.Players;
 using TMPro;
 using System.Collections.Generic;
 using UnityEngine;
@@ -20,6 +21,7 @@ namespace Core.ClientPresentation
         [SerializeField] private Camera _map_camera;
         [SerializeField] private GameObject _intro_timer_panel;
         [SerializeField] private TextMeshProUGUI _intro_timer_text;
+        [SerializeField] private TextMeshProUGUI _player_team_text;
         [SerializeField] private Image _red_spawn_flag;
         [SerializeField] private Image _blue_spawn_flag;
         [SerializeField] private AudioMixer _audio_mixer;
@@ -62,6 +64,7 @@ namespace Core.ClientPresentation
             HandleEscape();
             HandleIntroAutoOpen();
             UpdateIntroTimer();
+            UpdatePlayerTeamText();
 
             bool is_visible = ClientAppRoot.Instance.PresentationRoot.State == ClientPresentationState.MatchPause;
             if (_map_camera != null)
@@ -153,10 +156,16 @@ namespace Core.ClientPresentation
                 _intro_timer_panel = FindChild("IntroTimerPanel")?.gameObject;
             if (_intro_timer_text == null)
                 _intro_timer_text = FindChildComponent<TextMeshProUGUI>("IntroTimerText");
+            if (_player_team_text == null)
+                _player_team_text = FindChildComponent<TextMeshProUGUI>("PlayerTeamText") ??
+                    FindChildComponent<TextMeshProUGUI>("YourTeamText");
             if (_red_spawn_flag == null)
                 _red_spawn_flag = FindChildComponent<Image>("RedSpawnFlag");
             if (_blue_spawn_flag == null)
                 _blue_spawn_flag = FindChildComponent<Image>("BlueSpawnFlag");
+
+            if (_player_team_text != null)
+                _player_team_text.richText = true;
         }
 
         private Transform FindChild(string child_name)
@@ -251,6 +260,17 @@ namespace Core.ClientPresentation
             _intro_timer_text.text = FormatTime(mode.PhaseTimeRemaining);
         }
 
+        private void UpdatePlayerTeamText()
+        {
+            if (_player_team_text == null)
+                return;
+
+            TeamId team_id = GetLocalTeam();
+            string team_name = FormatTeamName(team_id);
+            string color = ColorUtility.ToHtmlStringRGB(GetTeamColor(team_id));
+            _player_team_text.text = $"Your team: <color=#{color}>{team_name}</color>";
+        }
+
         private void UpdateSpawnFlags()
         {
             LevelController level = FindFirstObjectByType<LevelController>();
@@ -313,6 +333,53 @@ namespace Core.ClientPresentation
             }
 
             return count == 0 ? null : sum / count;
+        }
+
+        private static TeamId GetLocalTeam()
+        {
+            PlayerMatchIdentity[] identities = FindObjectsByType<PlayerMatchIdentity>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < identities.Length; i++)
+            {
+                PlayerMatchIdentity identity = identities[i];
+                if (identity != null && identity.isOwned)
+                    return identity.TeamId;
+            }
+
+            SpectatorPawn[] spectators = FindObjectsByType<SpectatorPawn>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < spectators.Length; i++)
+            {
+                SpectatorPawn spectator = spectators[i];
+                if (spectator != null && spectator.isOwned)
+                    return spectator.TeamId;
+            }
+
+            return TeamId.None;
+        }
+
+        private static string FormatTeamName(TeamId team_id)
+        {
+            return team_id switch
+            {
+                TeamId.Red => "Red Team",
+                TeamId.Blue => "Blue Team",
+                TeamId.Spectator => "Spectators",
+                _ => "None"
+            };
+        }
+
+        private static Color GetTeamColor(TeamId team_id)
+        {
+            return team_id switch
+            {
+                TeamId.Red => new Color(0.95f, 0.18f, 0.14f, 1f),
+                TeamId.Blue => new Color(0.16f, 0.45f, 1f, 1f),
+                TeamId.Spectator => new Color(1f, 0.82f, 0.18f, 1f),
+                _ => Color.gray
+            };
         }
 
         private void FrameMapCamera()

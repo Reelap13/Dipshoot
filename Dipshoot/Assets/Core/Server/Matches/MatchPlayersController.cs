@@ -102,18 +102,18 @@ namespace Server.Match
             RemovePlayer(player, false);
         }
 
-        public void ProcessPlayerLeave(Player player)
+        public bool ProcessPlayerLeave(Player player)
         {
-            RemovePlayer(player, true);
+            return RemovePlayer(player, true);
         }
 
-        private void RemovePlayer(Player player, bool return_to_menu)
+        private bool RemovePlayer(Player player, bool return_to_menu)
         {
             if (player == null || _players == null)
-                return;
+                return false;
 
             if (!_players.TryGetValue(player.PlayerId, out MatchPlayer match_player))
-                return;
+                return false;
 
             _players.Remove(player.PlayerId);
             _readiness?.Remove(player.PlayerId);
@@ -130,6 +130,8 @@ namespace Server.Match
 
             if (_players.Count == 0)
                 MatchController.FinishMatch();
+
+            return true;
         }
 
         private void DestroyPlayerMatchObjects(Player player, MatchPlayer match_player)

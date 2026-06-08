@@ -108,12 +108,17 @@ namespace Core.ClientPresentation
                 return;
             }
 
+            if (_connector != null)
+                _connector.CommandRequestLeaveMatch();
+
             LeaveMatchView();
         }
 
         private System.Collections.IEnumerator LeaveMatchViewRoutine()
         {
-            yield return ClientAppRoot.Instance.SceneFlow.ReturnToMenuFromMatch();
+            ClientAppRoot app_root = ClientAppRoot.Instance;
+            app_root.LobbyStore.Clear();
+            yield return app_root.SceneFlow.ReturnToMenuFromMatch();
             ClientMatchPresetState.Clear();
             _is_leaving_match = false;
         }

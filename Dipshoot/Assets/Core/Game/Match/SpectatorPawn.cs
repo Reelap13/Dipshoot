@@ -26,6 +26,8 @@ namespace Game.MatchMode
         private float _pitch;
         private float _next_sync_time;
 
+        public TeamId TeamId => _team_id;
+
         public void InitializeServer(int player_id, TeamId team_id)
         {
             if (!isServer)

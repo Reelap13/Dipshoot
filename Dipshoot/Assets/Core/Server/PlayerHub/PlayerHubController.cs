@@ -1,6 +1,7 @@
 using Mirror;
 using Server.Data;
 using Server.Lobby;
+using Server.Match;
 using UnityEngine;
 
 namespace Server.PlayerHub
@@ -61,6 +62,22 @@ namespace Server.PlayerHub
                 return;
             }
             LobbiesController.Instance.LeaveFromLobby(this, Lobby.Id);
+        }
+
+        public void RequestLeaveMatch()
+        {
+            ClearStaleLobby();
+            if (Lobby == null)
+            {
+                UpdateLobbyData(null);
+                return;
+            }
+
+            int lobby_id = Lobby.Id;
+            bool left_match = MatchesContoller.Instance != null &&
+                MatchesContoller.Instance.TryProcessPlayerLeave(Player, lobby_id);
+            if (!left_match)
+                LobbiesController.Instance.LeaveStartedLobby(this, lobby_id);
         }
 
         public void StartGame()

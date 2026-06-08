@@ -67,6 +67,8 @@ namespace Server.PlayerHub
         [Command]
         public void CommandLeaveFromLobby() => _controller.LeaveFromLobby();
         [Command]
+        public void CommandRequestLeaveMatch() => _controller.RequestLeaveMatch();
+        [Command]
         public void CommandStartGame() => _controller.StartGame();
         [Command]
         public void CommandSwitchTeam() => _controller.SwitchTeam();

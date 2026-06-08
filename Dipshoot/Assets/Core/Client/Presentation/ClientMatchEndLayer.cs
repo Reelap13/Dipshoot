@@ -1,5 +1,6 @@
 using Game.MatchConfig;
 using Game.MatchMode;
+using Game.Players;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -53,15 +54,21 @@ namespace Core.ClientPresentation
 
         private void UpdateView(TeamControlModeController mode_controller)
         {
+            TeamId winner = mode_controller.MatchWinner;
+            TeamId local_team = GetLocalTeam();
+
             if (_title_text != null)
             {
-                TeamId winner = mode_controller.MatchWinner;
-                _title_text.text = winner == TeamId.None ? "Draw" : "Win";
-                _title_text.color = winner == TeamId.None ? Color.gray : GetTeamColor(winner);
+                _title_text.text = FormatResultTitle(winner, local_team);
+                _title_text.color = winner == TeamId.None ? Color.gray : Color.white;
             }
 
             if (_winner_text != null)
-                _winner_text.gameObject.SetActive(false);
+            {
+                _winner_text.gameObject.SetActive(true);
+                _winner_text.richText = true;
+                _winner_text.text = FormatWinnerText(winner);
+            }
 
             if (_score_text != null)
             {
@@ -93,6 +100,62 @@ namespace Core.ClientPresentation
                 TeamId.Blue => new Color(0.16f, 0.45f, 1f, 1f),
                 _ => Color.gray,
             };
+        }
+
+        private static string FormatResultTitle(TeamId winner, TeamId local_team)
+        {
+            if (winner == TeamId.None)
+                return "Draw!";
+
+            if (local_team == TeamId.Spectator || local_team == TeamId.None)
+                return "Match Ended!";
+
+            return winner == local_team ? "Victory!" : "Defeat!";
+        }
+
+        private static string FormatWinnerText(TeamId winner)
+        {
+            if (winner == TeamId.None)
+                return "No Team Wins!";
+
+            string color = ColorUtility.ToHtmlStringRGB(GetTeamColor(winner));
+            return $"<color=#{color}>{FormatTeamName(winner)}</color> Wins!";
+        }
+
+        private static string FormatTeamName(TeamId team_id)
+        {
+            return team_id switch
+            {
+                TeamId.Red => "Red Team",
+                TeamId.Blue => "Blue Team",
+                TeamId.Spectator => "Spectators",
+                _ => "No Team",
+            };
+        }
+
+        private static TeamId GetLocalTeam()
+        {
+            PlayerMatchIdentity[] identities = FindObjectsByType<PlayerMatchIdentity>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < identities.Length; i++)
+            {
+                PlayerMatchIdentity identity = identities[i];
+                if (identity != null && identity.isOwned)
+                    return identity.TeamId;
+            }
+
+            SpectatorPawn[] spectators = FindObjectsByType<SpectatorPawn>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < spectators.Length; i++)
+            {
+                SpectatorPawn spectator = spectators[i];
+                if (spectator != null && spectator.isOwned)
+                    return spectator.TeamId;
+            }
+
+            return TeamId.None;
         }
 
         private void DisablePassiveRaycasts()

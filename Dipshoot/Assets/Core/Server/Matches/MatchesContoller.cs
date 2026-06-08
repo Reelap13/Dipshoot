@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Mirror;
+using Server.Data;
 using Server.Lobby;
 using UnityEngine;
 
@@ -24,5 +25,22 @@ namespace Server.Match
         public MatchController CreateMatchController() => Instantiate(_match_controller_pref, transform);
         public MatchController GetMatchController(int match_id) => _matches[match_id];
         public void RemoveMatch(int match_id) => _matches.Remove(match_id);
+
+        public bool TryProcessPlayerLeave(Player player, int lobby_id)
+        {
+            foreach (MatchController match_controller in _matches.Values)
+            {
+                if (match_controller == null ||
+                    match_controller.MatchData == null ||
+                    match_controller.MatchData.LobbyData == null ||
+                    match_controller.MatchData.LobbyData.Id != lobby_id)
+                    continue;
+
+                return match_controller.PlayersController != null &&
+                    match_controller.PlayersController.ProcessPlayerLeave(player);
+            }
+
+            return false;
+        }
     }
 }
