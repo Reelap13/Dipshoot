@@ -42,6 +42,7 @@ namespace Server.Match
         [TargetRpc]
         public void TargetLoadGameScene(string scene_name, string preset_id, int seed, string result_url)
         {
+            Debug.Log($"[MatchLoad][Client] Load scene={scene_name} preset={preset_id} seed={seed}");
             _preset_id = preset_id;
             _seed = seed;
             _result_url = result_url;
@@ -56,6 +57,7 @@ namespace Server.Match
             if (!ClientMatchMapGenerator.GenerateSelectedPreset(_preset_id, _seed, _result_url))
                 return;
 
+            Debug.Log($"[MatchLoad][Client] Ready preset={_preset_id} seed={_seed}");
             CommandMarkPlayerReadiness();
         }
 
@@ -77,6 +79,7 @@ namespace Server.Match
         [Command]
         private void CommandMarkPlayerReadiness()
         {
+            Debug.Log($"[MatchLoad][Server] Ready player={_player?.PlayerId ?? -1}");
             _controller.MarkReadiness(_player);
         }
 

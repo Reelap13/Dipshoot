@@ -4,6 +4,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace Core.ClientPresentation
 {
@@ -37,6 +40,7 @@ namespace Core.ClientPresentation
                     continue;
                 }
 
+                ClearEditorSelection();
                 AsyncOperation unload_operation = SceneManager.UnloadSceneAsync(scene);
                 if (unload_operation != null)
                     yield return unload_operation;
@@ -147,6 +151,13 @@ namespace Core.ClientPresentation
             target.transform.SetParent(ClientAppRoot.Instance.transform, false);
             _preserved_objects_root = target.transform;
             return _preserved_objects_root;
+        }
+
+        private static void ClearEditorSelection()
+        {
+#if UNITY_EDITOR
+            Selection.activeObject = null;
+#endif
         }
     }
 }

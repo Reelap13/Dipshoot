@@ -13,8 +13,16 @@ namespace Game.MatchConfig
             MatchPreset preset = MatchPresetRegistry.GetPreset(presetId);
             if (preset == null)
             {
-                Debug.LogError($"Match preset not found: {presetId}");
-                return false;
+                MatchPresetRegistry registry = MatchPresetRegistry.LoadDefault();
+                preset = registry == null ? null : registry.GetDefault();
+                if (preset == null)
+                {
+                    Debug.LogError($"Match preset not found: {presetId}. No local fallback preset.");
+                    ClientMatchPresetState.Set(presetId, seed, resultUrl, false);
+                    return true;
+                }
+
+                Debug.LogWarning($"Match preset not found: {presetId}. Fallback to {preset.Id}.");
             }
 
             WarehouseRecipe recipe = preset.Recipe;
@@ -30,7 +38,15 @@ namespace Game.MatchConfig
             if (activeScene.IsValid())
                 SceneManager.MoveGameObjectToScene(root, activeScene);
 
-            WarehouseLevelGenerator.GenerateInto(root.transform, recipe, seed, "GeneratedWarehouse", true);
+            try
+            {
+                WarehouseLevelGenerator.GenerateInto(root.transform, recipe, seed, "GeneratedWarehouse", true);
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogError($"Failed to generate client warehouse preset '{preset.Id}': {exception}");
+            }
+
             return true;
         }
     }

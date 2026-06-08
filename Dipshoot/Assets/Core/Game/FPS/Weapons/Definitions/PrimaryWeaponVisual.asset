@@ -36,6 +36,6 @@ MonoBehaviour:
   _first_person_local_position: {x: 0, y: -0.04, z: -0.05}
   _first_person_local_euler_angles: {x: 0, y: 0, z: 0}
   _first_person_local_scale: {x: 1, y: 1, z: 1}
-  _third_person_local_position: {x: 0, y: 0, z: 0}
-  _third_person_local_euler_angles: {x: 0, y: 0, z: 0}
-  _third_person_local_scale: {x: 1, y: 1, z: 1}
+  _third_person_local_position: {x: -0.01, y: 0.129, z: 0.032}
+  _third_person_local_euler_angles: {x: -91.989, y: 25.31599, z: 90.304}
+  _third_person_local_scale: {x: 0.8, y: 0.8, z: 0.8}

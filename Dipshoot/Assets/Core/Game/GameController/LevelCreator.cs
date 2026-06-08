@@ -16,7 +16,15 @@ namespace Game
         public void CreateLevel()
         {
             Level = NetworkUtils.NetworkMatchInstantiate(_level_prefab, GameController.Scene, GameController.MatchId, transform, transform);
-            MatchPreset preset = MatchPresetRegistry.GetPreset(GameController.MatchController.MatchData.LobbyData.SelectedPresetId);
+            string preset_id = GameController.MatchController.MatchData.LobbyData.SelectedPresetId;
+            MatchPreset preset = MatchPresetRegistry.GetPreset(preset_id);
+            if (preset == null)
+            {
+                MatchPresetRegistry registry = MatchPresetRegistry.LoadDefault();
+                preset = registry == null ? null : registry.GetDefault();
+                Debug.LogWarning($"Server match preset not found: {preset_id}. Fallback to {preset?.Id ?? "none"}.");
+            }
+
             if (preset != null && preset.Recipe != null)
                 Level.GenerateWarehouseLevel(preset.Recipe, GameController.MatchController.MatchData.LobbyData.SelectedSeed);
         }

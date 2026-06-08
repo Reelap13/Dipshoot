@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d6e7d7b9c0b94e1d8c0e32bbabf7a101, type: 3}
-  m_Name: TestPreset
+  m_Name: 003Ev
   m_EditorClassIdentifier: 
-  Id: Test
-  DisplayName: Test
-  Recipe: {fileID: 11400000, guid: f982c5c3d4702584fa9c79636aac837f, type: 2}
-  Seed: 444
+  Id: 003
+  DisplayName: 003Ev
+  Recipe: {fileID: 11400000, guid: 29dc6f3a9bcdeac44be5d71e2a56c6fe, type: 2}
+  Seed: -1027009697
   RoundsCount: 1
-  RoundDurationSeconds: 30
-  MaxCaptureScore: 5
-  ResultUrl: https://ya.ru/
+  RoundDurationSeconds: 300
+  MaxCaptureScore: 150
+  ResultUrl: https://sketchfab.com/search?q=Bicon+Container&type=models

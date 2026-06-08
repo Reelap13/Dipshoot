@@ -2,6 +2,9 @@ using System.Collections;
 using Scripts.UI.SceneUI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace Core.ClientPresentation
 {
@@ -51,6 +54,7 @@ namespace Core.ClientPresentation
                 Scene match_scene = SceneManager.GetSceneByName(match_scene_name);
                 if (match_scene.IsValid() && match_scene.isLoaded)
                 {
+                    ClearEditorSelection();
                     AsyncOperation unload_operation = SceneManager.UnloadSceneAsync(match_scene);
                     if (unload_operation != null)
                         yield return unload_operation;
@@ -79,6 +83,13 @@ namespace Core.ClientPresentation
                 yield break;
 
             yield return scene_ui.Fader.FadeIn();
+        }
+
+        private static void ClearEditorSelection()
+        {
+#if UNITY_EDITOR
+            Selection.activeObject = null;
+#endif
         }
     }
 }

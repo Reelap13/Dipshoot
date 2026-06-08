@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d6e7d7b9c0b94e1d8c0e32bbabf7a101, type: 3}
-  m_Name: WfcPreset
+  m_Name: 005WFC
   m_EditorClassIdentifier: 
-  Id: WFC
-  DisplayName: WFC
+  Id: 005WFC
+  DisplayName: 005WFC
   Recipe: {fileID: 11400000, guid: 45032a8ac027483489a9e5ef7ba2e40a, type: 2}
-  Seed: 444
+  Seed: 200486709
   RoundsCount: 1
   RoundDurationSeconds: 300
   MaxCaptureScore: 150

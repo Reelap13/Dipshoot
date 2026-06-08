@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Kind: 2
   Prefab: {fileID: 8919610869823690870, guid: 31126d369afd8ee4598d9586c9f1e3e4, type: 3}
-  Weight: 0.2
+  Weight: 0
   MaxPerMap: 16
   ScaleRange: {x: 1, y: 1}
   RandomYaw: 1

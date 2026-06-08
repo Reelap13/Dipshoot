@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d6e7d7b9c0b94e1d8c0e32bbabf7a101, type: 3}
-  m_Name: AgentBasePreset
+  m_Name: 006WFC
   m_EditorClassIdentifier: 
-  Id: AgentBase
-  DisplayName: Agent Base
-  Recipe: {fileID: 11400000, guid: f982c5c3d4702584fa9c79636aac837f, type: 2}
-  Seed: 444
+  Id: 006WFC
+  DisplayName: 006WFC
+  Recipe: {fileID: 11400000, guid: 45032a8ac027483489a9e5ef7ba2e40a, type: 2}
+  Seed: 1235004356
   RoundsCount: 1
   RoundDurationSeconds: 300
   MaxCaptureScore: 150

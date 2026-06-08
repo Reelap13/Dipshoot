@@ -124,6 +124,9 @@ namespace Server.Lobby
                 return;
             }
 
+            if (MatchPresetRegistry.GetPreset(lobby.SelectedPresetId) == null)
+                ApplyDefaultPreset(lobby);
+
             lobby.IsConnectionBlocked = true;
             MatchesContoller.Instance.StartMatch(lobby);
             //Start game logic

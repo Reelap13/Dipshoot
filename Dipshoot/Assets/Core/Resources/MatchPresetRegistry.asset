@@ -11,9 +11,12 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e8a44eda1d5c4af5bb284b307b4ef7d2, type: 3}
   m_Name: MatchPresetRegistry
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   _presets:
   - {fileID: 11400000, guid: b0a00000000000000000000000000001, type: 2}
+  - {fileID: 11400000, guid: 79c87bd738ed55941ade3e19e7d2aaac, type: 2}
   - {fileID: 11400000, guid: b0a00000000000000000000000000002, type: 2}
+  - {fileID: 11400000, guid: abf9842384f719348b42a9a1a18e0b84, type: 2}
   - {fileID: 11400000, guid: b0a00000000000000000000000000003, type: 2}
+  - {fileID: 11400000, guid: 7fed99eb77ad7fb4687b9222dcc2a229, type: 2}
   - {fileID: 11400000, guid: b0a00000000000000000000000000004, type: 2}
