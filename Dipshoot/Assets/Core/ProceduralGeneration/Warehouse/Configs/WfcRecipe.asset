@@ -31,7 +31,7 @@ MonoBehaviour:
   StructurePlacementAttempts: 1200
   CoverPlacementAttempts: 700
   HighContainerChance: 0.15
-  BridgeChance: 0.25
+  BridgeChance: 0.15
   BridgePlacementAttempts: 300
   MaxBridgeCellsPerHalf: 6
   MaxBridgePairCountPerHalf: 2
@@ -71,6 +71,8 @@ MonoBehaviour:
   WallPrefab: {fileID: 702439790330653081, guid: 94ca0d15f0d608e4ba1a04fe53191ec9, type: 3}
   WallTopPrefab: {fileID: 6486063222734141199, guid: 862add5b61d31b84a8da2af2cb54a9a0, type: 3}
   SpawnMarkerPrefab: {fileID: 2817191206490059506, guid: a84f0ee1b13782f428d286e7c082e9cc, type: 3}
+  RedSpawnMarkerPrefab: {fileID: 0}
+  BlueSpawnMarkerPrefab: {fileID: 0}
   CapturePointMarkerPrefab: {fileID: 1604473248831348406, guid: 97217c1081a8ce9449755eaf0920de1f, type: 3}
   ClimbAccessVariants:
   - {fileID: 11400000, guid: 2b71de84d60bdf443b3f5197ad9c3120, type: 2}

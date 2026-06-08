@@ -272,18 +272,25 @@ namespace Core.ClientPresentation
                 return;
             }
 
-            Vector3 viewport = _map_camera.WorldToViewportPoint(world_position.Value);
+            UpdateMapMarker(flag.rectTransform, world_position.Value);
+        }
+
+        private void UpdateMapMarker(RectTransform marker, Vector3 world_position)
+        {
+            if (marker == null)
+                return;
+
+            Vector3 viewport = _map_camera.WorldToViewportPoint(world_position);
             bool visible = viewport.z > 0f &&
                 viewport.x >= 0f && viewport.x <= 1f &&
                 viewport.y >= 0f && viewport.y <= 1f;
-            flag.gameObject.SetActive(visible);
+            marker.gameObject.SetActive(visible);
             if (!visible)
                 return;
 
             RectTransform map_rect = _map_image.rectTransform;
-            RectTransform flag_rect = flag.rectTransform;
             Rect rect = map_rect.rect;
-            flag_rect.anchoredPosition = new Vector2(
+            marker.anchoredPosition = new Vector2(
                 (viewport.x - 0.5f) * rect.width,
                 (viewport.y - 0.5f) * rect.height);
         }
@@ -343,11 +350,14 @@ namespace Core.ClientPresentation
 
         private bool TryGetMapBounds(out Bounds bounds)
         {
+            if (TryGetLevelBounds(out bounds))
+                return true;
+
             bounds = default;
-            bool has_bounds = false;
             Scene active_scene = SceneManager.GetActiveScene();
             Renderer[] renderers = FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             int culling_mask = CreateMapCullingMask();
+            bool has_bounds = false;
 
             for (int i = 0; i < renderers.Length; i++)
             {
@@ -371,6 +381,59 @@ namespace Core.ClientPresentation
             }
 
             return has_bounds;
+        }
+
+        private static bool TryGetLevelBounds(out Bounds bounds)
+        {
+            bounds = default;
+            LevelController level = FindFirstObjectByType<LevelController>();
+            if (level == null)
+                return false;
+
+            bool has_bounds = false;
+            EncapsulatePoints(ref bounds, ref has_bounds, level.RedSpawnPoints);
+            EncapsulatePoints(ref bounds, ref has_bounds, level.BlueSpawnPoints);
+
+            Transform capture = level.CapturePoint;
+            if (capture != null)
+                EncapsulatePoint(ref bounds, ref has_bounds, capture.position);
+
+            if (!has_bounds)
+                return false;
+
+            Vector3 size = bounds.size;
+            size.x = Mathf.Max(size.x, 1f);
+            size.z = Mathf.Max(size.z, 1f);
+            bounds.size = size;
+            return true;
+        }
+
+        private static void EncapsulatePoints(
+            ref Bounds bounds,
+            ref bool has_bounds,
+            IReadOnlyList<Transform> points)
+        {
+            if (points == null)
+                return;
+
+            for (int i = 0; i < points.Count; i++)
+            {
+                Transform point = points[i];
+                if (point != null)
+                    EncapsulatePoint(ref bounds, ref has_bounds, point.position);
+            }
+        }
+
+        private static void EncapsulatePoint(ref Bounds bounds, ref bool has_bounds, Vector3 point)
+        {
+            if (!has_bounds)
+            {
+                bounds = new Bounds(point, Vector3.zero);
+                has_bounds = true;
+                return;
+            }
+
+            bounds.Encapsulate(point);
         }
 
         private static int CreateMapCullingMask()

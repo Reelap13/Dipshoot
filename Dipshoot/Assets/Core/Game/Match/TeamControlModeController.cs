@@ -14,7 +14,7 @@ namespace Game.MatchMode
         [SerializeField] private MatchStatsController _stats_controller;
         [SerializeField] private int _rounds_count = 3;
         [SerializeField] private float _map_intro_duration = 10f;
-        [SerializeField] private float _tutorial_map_intro_duration = 30f;
+        [SerializeField] private float _tutorial_map_intro_duration = 45f;
         [SerializeField] private float _round_results_duration = 4f;
         [SerializeField] private float _round_duration = 180f;
         [SerializeField] private float _score_limit = 100f;
