@@ -18,5 +18,5 @@ MonoBehaviour:
   Seed: 444
   RoundsCount: 1
   RoundDurationSeconds: 300
-  MaxCaptureScore: 100
+  MaxCaptureScore: 150
   ResultUrl: https://sketchfab.com/search?q=Bicon+Container&type=models
