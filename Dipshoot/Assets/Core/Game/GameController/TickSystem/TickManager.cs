@@ -95,6 +95,17 @@ namespace Game.TickSystem
             }
         }
 
+        public int SkipTicks(int ticks)
+        {
+            int skipped_ticks = Mathf.Max(0, ticks);
+            if (skipped_ticks == 0)
+                return 0;
+
+            CurrentTick += skipped_ticks;
+            _accumulator = 0f;
+            return skipped_ticks;
+        }
+
         private void RunTick()
         {
             CurrentTick++;

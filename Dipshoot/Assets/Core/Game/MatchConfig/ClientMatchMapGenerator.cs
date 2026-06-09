@@ -41,6 +41,7 @@ namespace Game.MatchConfig
             try
             {
                 WarehouseLevelGenerator.GenerateInto(root.transform, recipe, seed, "GeneratedWarehouse", true);
+                HideSpawnMarkerRenderers(root.transform);
             }
             catch (System.Exception exception)
             {
@@ -67,6 +68,29 @@ namespace Game.MatchConfig
 
                     Object.Destroy(root);
                 }
+            }
+        }
+
+        private static void HideSpawnMarkerRenderers(Transform root)
+        {
+            if (root == null)
+                return;
+
+            Transform[] children = root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < children.Length; i++)
+            {
+                Transform child = children[i];
+                if (child == null ||
+                    child.name != "SpawnA" &&
+                    child.name != "SpawnB")
+                {
+                    continue;
+                }
+
+                Renderer[] renderers = child.GetComponentsInChildren<Renderer>(true);
+                for (int j = 0; j < renderers.Length; j++)
+                    if (renderers[j] != null)
+                        renderers[j].enabled = false;
             }
         }
     }

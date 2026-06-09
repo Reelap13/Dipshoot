@@ -16,6 +16,7 @@ namespace Game.Players.Input
         public event Action<PlayerInputData> OnInputCaptured;
 
         private InputOverrideProvider _input_override_provider;
+        private PlayerHealth _health;
         private bool _was_shoot_pressed;
         private bool _was_reload_pressed;
         private bool _was_primary_weapon_pressed;
@@ -60,6 +61,30 @@ namespace Game.Players.Input
             Character.InputBuffet.Add(input);
 
             OnInputCaptured?.Invoke(input);
+        }
+
+        private void Update()
+        {
+            if (Character == null ||
+                !IsClient ||
+                !IsOwned ||
+                !IsAlive ||
+                !ClientAppRoot.Instance.InputRouter.IsGameplayInputAllowed)
+            {
+                return;
+            }
+
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard == null || !keyboard.zKey.wasPressedThisFrame)
+                return;
+
+            if (!keyboard.leftCtrlKey.isPressed && !keyboard.rightCtrlKey.isPressed)
+                return;
+
+            if (_health == null)
+                _health = Character.Health;
+
+            _health?.RequestSuicide();
         }
 
         public void SetInputOverrideProvider(InputOverrideProvider provider)

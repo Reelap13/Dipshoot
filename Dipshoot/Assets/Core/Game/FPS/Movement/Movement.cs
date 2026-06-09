@@ -8,6 +8,7 @@ namespace Game.Players
 {
     public class Movement : PlayerCharacterComponent
     {
+        private const string ReplayDebugPrefix = "[NetTick][MovementReplay]";
         private const int MaxCollisionCastIterations = 3;
         private const int MaxOverlapHits = 32;
         private const float MinMoveDistance = 0.0001f;
@@ -20,6 +21,10 @@ namespace Game.Players
         [SerializeField] private Transform _camera_point;
         [SerializeField] private LayerMask _collision_mask = Physics.DefaultRaycastLayers;
         [SerializeField] private QueryTriggerInteraction _trigger_interaction = QueryTriggerInteraction.Ignore;
+        [SerializeField] private float _max_server_replay_ms = 150f;
+        [SerializeField] private float _max_server_hold_input_ms = 150f;
+        [SerializeField] private bool _server_replay_debug_enabled = true;
+        [SerializeField] private int _server_replay_debug_max_logs_per_second = 4;
 
         private readonly RaycastHit[] _cast_hits = new RaycastHit[MaxOverlapHits];
         private readonly Collider[] _overlap_hits = new Collider[MaxOverlapHits];
@@ -28,6 +33,12 @@ namespace Game.Players
         private int _last_server_simulated_tick = -1;
         private bool _has_last_server_input;
         private PlayerInputData _last_server_input;
+        private int _replay_debug_dropped_stale_inputs;
+        private int _replay_debug_max_held_input_ticks;
+        private int _replay_debug_neutralized_inputs;
+        private float _replay_debug_window_started_at;
+        private int _replay_debug_logged_in_window;
+        private int _replay_debug_suppressed;
 
         public int LastServerProcessedInputTick => _last_server_processed_input_tick;
 
@@ -89,10 +100,15 @@ namespace Game.Players
 
         public bool SimulateServerTick(int server_tick, float delta_time)
         {
+            _replay_debug_dropped_stale_inputs = 0;
+            _replay_debug_max_held_input_ticks = 0;
+            _replay_debug_neutralized_inputs = 0;
+
             if (!TryGetServerReplayStartTick(server_tick, out int replay_from_tick))
                 return false;
 
             bool simulated = false;
+            int simulated_ticks = 0;
             for (int tick = replay_from_tick; tick <= server_tick; tick++)
             {
                 PlayerInputData input = GetServerReplayInput(tick);
@@ -117,8 +133,10 @@ namespace Game.Players
                 _hitbox_lag_compensation?.CaptureCurrentFrame(tick);
                 _last_server_simulated_tick = tick;
                 simulated = true;
+                simulated_ticks++;
             }
 
+            LogServerReplayDebug(server_tick, replay_from_tick, simulated_ticks);
             return simulated;
         }
 
@@ -759,6 +777,10 @@ namespace Game.Players
 
         private bool TryGetServerReplayStartTick(int server_tick, out int replay_from_tick)
         {
+            int max_replay_ticks = GetTicksFromMs(_max_server_replay_ms);
+            int earliest_allowed_tick = server_tick - max_replay_ticks;
+            DropStaleServerInputs(earliest_allowed_tick - 1);
+
             replay_from_tick = _last_server_simulated_tick >= 0
                 ? _last_server_simulated_tick + 1
                 : server_tick;
@@ -771,6 +793,7 @@ namespace Game.Players
                 replay_from_tick = Mathf.Min(replay_from_tick, input.Tick);
             }
 
+            replay_from_tick = Mathf.Max(replay_from_tick, earliest_allowed_tick);
             return replay_from_tick <= server_tick;
         }
 
@@ -788,6 +811,19 @@ namespace Game.Players
 
             if (_has_last_server_input)
             {
+                int held_input_ticks = Mathf.Max(0, tick - _last_server_input.Tick);
+                _replay_debug_max_held_input_ticks = Mathf.Max(
+                    _replay_debug_max_held_input_ticks,
+                    held_input_ticks);
+
+                if (held_input_ticks > GetTicksFromMs(_max_server_hold_input_ms))
+                {
+                    _replay_debug_neutralized_inputs++;
+                    input = default;
+                    input.Tick = tick;
+                    return input;
+                }
+
                 input = _last_server_input;
                 input.Tick = tick;
                 return input;
@@ -798,12 +834,92 @@ namespace Game.Players
             return input;
         }
 
+        private void DropStaleServerInputs(int stale_until_tick)
+        {
+            if (Character == null || stale_until_tick <= _last_server_processed_input_tick)
+                return;
+
+            if (!Character.InputBuffet.TryGetFirstAfter(
+                    _last_server_processed_input_tick,
+                    out PlayerInputData first_stale_input) ||
+                first_stale_input.Tick > stale_until_tick)
+            {
+                return;
+            }
+
+            var stale_inputs = Character.InputBuffet.GetRange(
+                _last_server_processed_input_tick + 1,
+                stale_until_tick);
+            if (stale_inputs.Count == 0)
+                return;
+
+            Character.InputBuffet.RemoveUpTo(stale_until_tick);
+            _replay_debug_dropped_stale_inputs += stale_inputs.Count;
+
+            for (int i = 0; i < stale_inputs.Count; i++)
+                _last_server_processed_input_tick = Mathf.Max(
+                    _last_server_processed_input_tick,
+                    stale_inputs[i].Tick);
+        }
+
+        private int GetTicksFromMs(float milliseconds)
+        {
+            if (Character == null || Character.TickManager == null)
+                return 0;
+
+            return Mathf.Max(
+                0,
+                Mathf.RoundToInt(Mathf.Max(0f, milliseconds) * 0.001f * Character.TickManager.TickRate));
+        }
+
+        private void LogServerReplayDebug(int server_tick, int replay_from_tick, int simulated_ticks)
+        {
+            if (!_server_replay_debug_enabled || !ShouldLogServerReplayDebug())
+                return;
+
+            int suppressed = _replay_debug_suppressed;
+            _replay_debug_suppressed = 0;
+            int server_minus_input = _last_server_processed_input_tick < 0
+                ? -1
+                : server_tick - _last_server_processed_input_tick;
+
+            Debug.Log(
+                $"{ReplayDebugPrefix} netId={Character.netId} serverTick={server_tick} " +
+                $"replayFromTick={replay_from_tick} replayTicks={simulated_ticks} " +
+                $"lastInputTick={_last_server_processed_input_tick} serverMinusInput={server_minus_input} " +
+                $"maxReplayTicks={GetTicksFromMs(_max_server_replay_ms)} maxHoldTicks={GetTicksFromMs(_max_server_hold_input_ms)} " +
+                $"heldInputTicks={_replay_debug_max_held_input_ticks} neutralizedInputs={_replay_debug_neutralized_inputs} " +
+                $"droppedStaleInputs={_replay_debug_dropped_stale_inputs} suppressed={suppressed}");
+        }
+
+        private bool ShouldLogServerReplayDebug()
+        {
+            int max_logs = Mathf.Max(1, _server_replay_debug_max_logs_per_second);
+            if (Time.unscaledTime - _replay_debug_window_started_at >= 1f)
+            {
+                _replay_debug_window_started_at = Time.unscaledTime;
+                _replay_debug_logged_in_window = 0;
+            }
+
+            if (_replay_debug_logged_in_window >= max_logs)
+            {
+                _replay_debug_suppressed++;
+                return false;
+            }
+
+            _replay_debug_logged_in_window++;
+            return true;
+        }
+
         public override void ResetSimulation()
         {
             _last_server_processed_input_tick = -1;
             _last_server_simulated_tick = -1;
             _has_last_server_input = false;
             _last_server_input = default;
+            _replay_debug_dropped_stale_inputs = 0;
+            _replay_debug_max_held_input_ticks = 0;
+            _replay_debug_neutralized_inputs = 0;
         }
     }
 }

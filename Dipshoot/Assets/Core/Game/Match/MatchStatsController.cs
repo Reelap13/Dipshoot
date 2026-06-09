@@ -75,8 +75,11 @@ namespace Game.MatchMode
 
         public void RegisterDeath(int killer_player_id, int victim_player_id)
         {
-            if (_player_stats.TryGetValue(killer_player_id, out PlayerRoundStats killer_stats))
+            if (killer_player_id != victim_player_id &&
+                _player_stats.TryGetValue(killer_player_id, out PlayerRoundStats killer_stats))
+            {
                 killer_stats.Kills++;
+            }
 
             if (_player_stats.TryGetValue(victim_player_id, out PlayerRoundStats victim_stats))
                 victim_stats.Deaths++;

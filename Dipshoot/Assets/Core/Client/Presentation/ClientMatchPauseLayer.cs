@@ -28,11 +28,17 @@ namespace Core.ClientPresentation
         [SerializeField] private string _master_volume_parameter = "MasterVolume";
         [SerializeField] private float _map_padding = 1.12f;
         [SerializeField] private float _map_rotation_degrees = 90f;
+        [SerializeField] private float _map_camera_pitch_degrees = 58f;
+        [SerializeField] private float _map_camera_fov = 35f;
+        [SerializeField] private float _map_camera_distance_multiplier = 1.25f;
+        [SerializeField] private float _map_texture_resolution_scale = 1.5f;
+        [SerializeField] private int _map_texture_max_size = 2048;
 
         private ClientUiLayer _layer;
         private RenderTexture _map_texture;
         private bool _is_intro_auto_open;
         private int _last_intro_round = -1;
+        private Vector2 _last_map_rect_size;
 
         private void Awake()
         {
@@ -69,8 +75,9 @@ namespace Core.ClientPresentation
             bool is_visible = ClientAppRoot.Instance.PresentationRoot.State == ClientPresentationState.MatchPause;
             if (_map_camera != null)
                 _map_camera.enabled = is_visible;
+
             if (is_visible)
-                UpdateSpawnFlags();
+                RefreshMapFrameIfNeeded();
         }
 
         private void HandleEscape()
@@ -171,6 +178,8 @@ namespace Core.ClientPresentation
             if (_blue_spawn_flag == null)
                 _blue_spawn_flag = FindChildComponent<Image>("BlueSpawnFlag");
 
+            SetSpawnFlagsVisible(false);
+
             if (_player_team_text != null)
                 _player_team_text.richText = true;
         }
@@ -228,17 +237,7 @@ namespace Core.ClientPresentation
 
         private void InitializeMapCamera()
         {
-            if (_map_texture == null)
-            {
-                _map_texture = new RenderTexture(768, 512, 16, RenderTextureFormat.ARGB32)
-                {
-                    name = "ClientPauseMap"
-                };
-                _map_texture.Create();
-            }
-
-            if (_map_image != null)
-                _map_image.texture = _map_texture;
+            EnsureMapTexture();
 
             if (_map_camera == null)
             {
@@ -247,11 +246,13 @@ namespace Core.ClientPresentation
             }
 
             _map_camera.enabled = false;
-            _map_camera.orthographic = true;
+            _map_camera.orthographic = false;
+            _map_camera.fieldOfView = _map_camera_fov;
             _map_camera.clearFlags = CameraClearFlags.SolidColor;
             _map_camera.backgroundColor = new Color(0.04f, 0.045f, 0.05f, 1f);
             _map_camera.cullingMask = CreateMapCullingMask();
             _map_camera.targetTexture = _map_texture;
+            _last_map_rect_size = Vector2.zero;
         }
 
         private void UpdateIntroTimer()
@@ -276,6 +277,14 @@ namespace Core.ClientPresentation
             string team_name = FormatTeamName(team_id);
             string color = ColorUtility.ToHtmlStringRGB(GetTeamColor(team_id));
             _player_team_text.text = $"Your team: <color=#{color}>{team_name}</color>";
+        }
+
+        private void SetSpawnFlagsVisible(bool visible)
+        {
+            if (_red_spawn_flag != null)
+                _red_spawn_flag.gameObject.SetActive(visible);
+            if (_blue_spawn_flag != null)
+                _blue_spawn_flag.gameObject.SetActive(visible);
         }
 
         private void UpdateSpawnFlags()
@@ -394,39 +403,120 @@ namespace Core.ClientPresentation
             if (_map_camera == null)
                 return;
 
+            EnsureMapTexture();
+            _last_map_rect_size = GetMapRectSize();
+
             if (!TryGetMapBounds(out Bounds bounds))
             {
                 _map_camera.transform.SetPositionAndRotation(
-                    new Vector3(0f, 100f, 0f),
-                    Quaternion.Euler(90f, 0f, _map_rotation_degrees));
-                _map_camera.orthographicSize = 60f;
+                    new Vector3(0f, 90f, -90f),
+                    Quaternion.Euler(_map_camera_pitch_degrees, _map_rotation_degrees, 0f));
+                _map_camera.fieldOfView = _map_camera_fov;
                 return;
             }
 
-            float aspect = _map_texture != null && _map_texture.height > 0
-                ? (float)_map_texture.width / _map_texture.height
-                : 1.5f;
-            bool quarter_turn = Mathf.Abs(Mathf.DeltaAngle(_map_rotation_degrees, 90f)) < 1f ||
-                Mathf.Abs(Mathf.DeltaAngle(_map_rotation_degrees, 270f)) < 1f;
-            float size = quarter_turn
-                ? Mathf.Max(bounds.extents.x, bounds.extents.z / aspect) * _map_padding
-                : Mathf.Max(bounds.extents.z, bounds.extents.x / aspect) * _map_padding;
-            float height = Mathf.Max(80f, bounds.size.y + size);
+            float aspect = GetMapRectAspect();
             Vector3 center = bounds.center;
+            center.y = bounds.center.y + bounds.extents.y * 0.25f;
+            float vertical_fov = Mathf.Clamp(_map_camera_fov, 10f, 90f) * Mathf.Deg2Rad;
+            float frame_size = Mathf.Max(bounds.size.z, bounds.size.x / Mathf.Max(0.1f, aspect));
+            float distance = frame_size * 0.5f / Mathf.Tan(vertical_fov * 0.5f);
+            distance *= Mathf.Max(0.1f, _map_padding * _map_camera_distance_multiplier);
+            Quaternion rotation = Quaternion.Euler(_map_camera_pitch_degrees, _map_rotation_degrees, 0f);
 
             _map_camera.transform.SetPositionAndRotation(
-                new Vector3(center.x, bounds.max.y + height, center.z),
-                Quaternion.Euler(90f, 0f, _map_rotation_degrees));
-            _map_camera.orthographicSize = Mathf.Max(20f, size);
+                center - rotation * Vector3.forward * distance,
+                rotation);
+            _map_camera.orthographic = false;
+            _map_camera.aspect = aspect;
+            _map_camera.fieldOfView = _map_camera_fov;
             _map_camera.nearClipPlane = 0.1f;
-            _map_camera.farClipPlane = height + bounds.size.y + 50f;
+            _map_camera.farClipPlane = distance + bounds.size.magnitude + 50f;
+        }
+
+        private void RefreshMapFrameIfNeeded()
+        {
+            if (EnsureMapTexture())
+            {
+                FrameMapCamera();
+                return;
+            }
+
+            Vector2 map_rect_size = GetMapRectSize();
+            if (Mathf.Abs(map_rect_size.x - _last_map_rect_size.x) < 0.5f &&
+                Mathf.Abs(map_rect_size.y - _last_map_rect_size.y) < 0.5f)
+            {
+                return;
+            }
+
+            FrameMapCamera();
+        }
+
+        private float GetMapRectAspect()
+        {
+            Vector2 size = GetMapRectSize();
+            if (size.x > 1f && size.y > 1f)
+                return size.x / size.y;
+
+            return _map_texture != null && _map_texture.height > 0
+                ? (float)_map_texture.width / _map_texture.height
+                : 1.5f;
+        }
+
+        private Vector2 GetMapRectSize()
+        {
+            if (_map_image == null)
+                return Vector2.zero;
+
+            Rect rect = _map_image.rectTransform.rect;
+            return new Vector2(Mathf.Abs(rect.width), Mathf.Abs(rect.height));
+        }
+
+        private bool EnsureMapTexture()
+        {
+            Vector2 size = GetMapRectSize();
+            Canvas canvas = _map_image != null ? _map_image.canvas : null;
+            float canvas_scale = canvas != null ? canvas.scaleFactor : 1f;
+            int max_size = Mathf.Max(256, _map_texture_max_size);
+            int width = Mathf.Clamp(
+                Mathf.CeilToInt(Mathf.Max(768f, size.x * canvas_scale * _map_texture_resolution_scale)),
+                256,
+                max_size);
+            int height = Mathf.Clamp(
+                Mathf.CeilToInt(Mathf.Max(512f, size.y * canvas_scale * _map_texture_resolution_scale)),
+                256,
+                max_size);
+
+            if (_map_texture != null &&
+                _map_texture.width == width &&
+                _map_texture.height == height)
+            {
+                return false;
+            }
+
+            if (_map_texture != null)
+            {
+                _map_texture.Release();
+                Destroy(_map_texture);
+            }
+
+            _map_texture = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32)
+            {
+                name = "ClientPauseMap",
+                antiAliasing = 2
+            };
+            _map_texture.Create();
+
+            if (_map_image != null)
+                _map_image.texture = _map_texture;
+            if (_map_camera != null)
+                _map_camera.targetTexture = _map_texture;
+
+            return true;
         }
 
         private bool TryGetMapBounds(out Bounds bounds)
         {
-            if (TryGetLevelBounds(out bounds))
-                return true;
-
             bounds = default;
             Scene active_scene = SceneManager.GetActiveScene();
             Renderer[] renderers = FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
@@ -439,7 +529,8 @@ namespace Core.ClientPresentation
                 if (renderer == null ||
                     renderer.gameObject.scene != active_scene ||
                     !renderer.enabled ||
-                    (culling_mask & (1 << renderer.gameObject.layer)) == 0)
+                    (culling_mask & (1 << renderer.gameObject.layer)) == 0 ||
+                    !IsMapRenderer(renderer))
                 {
                     continue;
                 }
@@ -454,7 +545,17 @@ namespace Core.ClientPresentation
                 bounds.Encapsulate(renderer.bounds);
             }
 
-            return has_bounds;
+            if (has_bounds)
+                return true;
+
+            return TryGetLevelBounds(out bounds);
+        }
+
+        private static bool IsMapRenderer(Renderer renderer)
+        {
+            return renderer.GetComponentInParent<PlayerCharacter>() == null &&
+                renderer.GetComponentInParent<SpectatorPawn>() == null &&
+                renderer.GetComponentInParent<Camera>() == null;
         }
 
         private static bool TryGetLevelBounds(out Bounds bounds)

@@ -34,6 +34,20 @@ namespace Game.Players
         public event Action<PlayerHealth, DamageInfo> OnDamageApplied;
         public event Action<PlayerHealth, DamageInfo> OnDied;
 
+        public void RequestSuicide()
+        {
+            if (!isClient || !isOwned || !_is_alive)
+                return;
+
+            if (isServer)
+            {
+                CommitSuicide();
+                return;
+            }
+
+            CommandRequestSuicide();
+        }
+
         private void Awake()
         {
             CacheReferences();
@@ -272,6 +286,24 @@ namespace Game.Players
             ApplyAlive(false);
             Debug.Log($"{LogPrefix} Died. netId={netId} source={damage_info.SourceNetId}");
             OnDied?.Invoke(this, damage_info);
+        }
+
+        [Command]
+        private void CommandRequestSuicide()
+        {
+            CommitSuicide();
+        }
+
+        private void CommitSuicide()
+        {
+            if (!isServer || !_is_alive)
+                return;
+
+            int damage = Mathf.Max(1, _current_health);
+            _current_health = 0;
+            DamageInfo damage_info = new(netId, damage, PlayerHitboxType.None, 1f);
+            Debug.Log($"{LogPrefix} Suicide. netId={netId}");
+            Die(damage_info);
         }
     }
 }

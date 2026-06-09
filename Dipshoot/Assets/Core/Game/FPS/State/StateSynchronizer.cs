@@ -11,6 +11,7 @@ namespace Game.Players
     {
         private const string LogPrefix = "[NetTick][StateSync]";
         private const string TickSyncDebugPrefix = "[TickSync][Client]";
+        private const string TickCatchUpDebugPrefix = "[TickCatchUp][Client]";
 
         [SerializeField] private PlayerCharacter _character;
         [SerializeField] private AimController _aim_controller;
@@ -28,6 +29,9 @@ namespace Game.Players
         [SerializeField] private float _tick_correction_proportional = 0.015f;
         [SerializeField] private float _tick_correction_max_scale_delta = 0.05f;
         [SerializeField] private float _tick_correction_lerp = 0.1f;
+        [SerializeField] private bool _hard_tick_catch_up_enabled = true;
+        [SerializeField] private float _hard_tick_catch_up_threshold_ticks = 20f;
+        [SerializeField] private int _hard_tick_catch_up_max_skip_ticks = 60;
 
         public int LastReceivedStateTick { get; private set; } = -1;
         public int LastAppliedStateTick { get; private set; } = -1;
@@ -363,6 +367,8 @@ namespace Game.Players
                 tick_manager.CurrentTick -
                 _target_server_lead_ticks);
 
+            ApplyHardTickCatchUp(tick_manager);
+
             float target_scale = 1f;
             if (Mathf.Abs(_last_tick_correction_error) > _tick_correction_deadzone)
             {
@@ -377,6 +383,31 @@ namespace Game.Players
                 tick_manager.TickRateScale,
                 target_scale,
                 _tick_correction_lerp);
+        }
+
+        private void ApplyHardTickCatchUp(TickManager tick_manager)
+        {
+            if (!_hard_tick_catch_up_enabled ||
+                _last_tick_correction_error <= _hard_tick_catch_up_threshold_ticks)
+            {
+                return;
+            }
+
+            int requested_skip_ticks = Mathf.Min(
+                Mathf.FloorToInt(_last_tick_correction_error),
+                Mathf.Max(1, _hard_tick_catch_up_max_skip_ticks));
+            int skipped_ticks = tick_manager.SkipTicks(requested_skip_ticks);
+            if (skipped_ticks <= 0)
+                return;
+
+            _last_tick_correction_error = (float)(GetEstimatedServerTick() -
+                tick_manager.CurrentTick -
+                _target_server_lead_ticks);
+
+            Debug.Log(
+                $"{TickCatchUpDebugPrefix} netId={netId} skippedTicks={skipped_ticks} " +
+                $"clientTick={tick_manager.CurrentTick} estimatedServerTick={GetEstimatedServerTick():0.##} " +
+                $"targetLeadTicks={_target_server_lead_ticks:0.##} remainingError={_last_tick_correction_error:0.##}");
         }
 
         private void ResetClientTickCorrection()
