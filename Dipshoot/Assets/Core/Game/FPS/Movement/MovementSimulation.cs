@@ -82,9 +82,11 @@ namespace Game.Players
         {
             PlayerState state = previous_state;
             state.Tick = tick;
-            state.Stance = input.IsCrouchHeld
-                ? MovementStance.Crouching
-                : MovementStance.Standing;
+            state.Stance = previous_state.IsGrounded
+                ? input.IsCrouchHeld
+                    ? MovementStance.Crouching
+                    : MovementStance.Standing
+                : previous_state.Stance;
 
             state.TimeSinceGrounded = previous_state.IsGrounded
                 ? 0f
@@ -95,7 +97,9 @@ namespace Game.Players
                 : previous_state.TimeSinceJumpPressed + delta_time;
 
             Vector3 horizontal_velocity = new(previous_state.Velocity.x, 0f, previous_state.Velocity.z);
-            Vector3 target_velocity = GetTargetVelocity(previous_state.Rotation, input, state.Stance, settings);
+            Vector3 target_velocity = previous_state.IsGrounded
+                ? GetTargetVelocity(previous_state.Rotation, input, state.Stance, settings)
+                : GetAirTargetVelocity(previous_state.Rotation, input, state.Stance, horizontal_velocity, settings);
 
             if (previous_state.IsGrounded)
             {
@@ -114,7 +118,9 @@ namespace Game.Players
             }
 
             float vertical_velocity = previous_state.Velocity.y;
-            bool can_jump = state.TimeSinceJumpPressed <= settings.JumpBufferTime &&
+            bool can_jump = previous_state.Stance == MovementStance.Standing &&
+                            state.Stance == MovementStance.Standing &&
+                            state.TimeSinceJumpPressed <= settings.JumpBufferTime &&
                             state.TimeSinceGrounded <= settings.CoyoteTime;
 
             if (can_jump)
@@ -168,6 +174,28 @@ namespace Game.Players
                 wish_dir.Normalize();
 
             return wish_dir * ResolveTargetSpeed(local_move, input, stance, settings);
+        }
+
+        private static Vector3 GetAirTargetVelocity(
+            Quaternion rotation,
+            PlayerInputData input,
+            MovementStance stance,
+            Vector3 horizontal_velocity,
+            MovementSettings settings)
+        {
+            Vector2 local_move = Vector2.ClampMagnitude(input.Move, 1f);
+            if (local_move.sqrMagnitude <= 0f)
+                return horizontal_velocity;
+
+            Vector3 wish_dir = rotation * new Vector3(local_move.x, 0f, local_move.y);
+            if (wish_dir.sqrMagnitude > 0f)
+                wish_dir.Normalize();
+
+            float base_speed = stance == MovementStance.Crouching
+                ? settings.CrouchSpeed
+                : settings.WalkSpeed;
+            float target_speed = Mathf.Max(base_speed, horizontal_velocity.magnitude);
+            return wish_dir * target_speed;
         }
 
         private static Vector3 MoveGroundVelocity(

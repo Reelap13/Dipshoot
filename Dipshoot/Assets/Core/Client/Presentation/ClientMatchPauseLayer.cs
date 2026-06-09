@@ -92,9 +92,16 @@ namespace Core.ClientPresentation
 
         private void HandleIntroAutoOpen()
         {
-            TeamControlModeController mode = ClientAppRoot.Instance.MatchStore.ModeController;
+            ClientMatchStore match_store = ClientAppRoot.Instance.MatchStore;
+            TeamControlModeController mode = match_store.ModeController;
             if (mode == null)
+            {
+                if (!match_store.HasActiveMatch)
+                    _is_intro_auto_open = false;
+
+                _last_intro_round = -1;
                 return;
+            }
 
             if (mode.Phase == RoundPhase.Intro && mode.CurrentRound != _last_intro_round)
             {

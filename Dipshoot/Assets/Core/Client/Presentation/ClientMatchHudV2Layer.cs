@@ -68,6 +68,7 @@ namespace Core.ClientPresentation
         private Renderer[] _capture_marker_renderers = Array.Empty<Renderer>();
         private TeamId _last_capture_marker_owner = TeamId.None;
         private bool _last_capture_marker_contested;
+        private bool _is_match_state_reset;
 
         public static void PlayLocalHitMarker(bool is_kill = false)
         {
@@ -87,6 +88,7 @@ namespace Core.ClientPresentation
             if (_damage_overlay != null)
                 _damage_overlay.gameObject.SetActive(false);
             SetDamageEdgesActive(false);
+            ResetMatchState();
         }
 
         private void OnEnable()
@@ -105,16 +107,68 @@ namespace Core.ClientPresentation
             UpdateCrosshairSpread();
             UpdateHitMarker();
             UpdateDamageOverlay();
-            UpdateWeaponPanel();
-            UpdateHealth();
 
             _mode_controller = ClientAppRoot.Instance.MatchStore.ModeController;
             if (_mode_controller == null)
+            {
+                ResetMatchState();
                 return;
+            }
 
+            _is_match_state_reset = false;
+            UpdateWeaponPanel();
+            UpdateHealth();
             UpdateScorePanel();
             UpdateCaptureProgress();
             UpdateCapturePointMarker();
+        }
+
+        private void ResetMatchState()
+        {
+            if (_is_match_state_reset)
+                return;
+
+            _is_match_state_reset = true;
+            _mode_controller = null;
+            _local_weapon_controller = null;
+            _last_health_current = -1;
+            _last_capture_marker_owner = TeamId.None;
+            _last_capture_marker_contested = false;
+            _capture_marker_renderers = Array.Empty<Renderer>();
+
+            if (_timer_text != null)
+                _timer_text.text = "00:00";
+            if (_blue_score_text != null)
+                _blue_score_text.text = "0";
+            if (_red_score_text != null)
+                _red_score_text.text = "0";
+            if (_blue_score_background != null)
+                _blue_score_background.color = new Color(0f, 0f, 0f, 0.58f);
+            if (_red_score_background != null)
+                _red_score_background.color = new Color(0f, 0f, 0f, 0.58f);
+            if (_blue_score_text != null)
+                _blue_score_text.color = _blue_color;
+            if (_red_score_text != null)
+                _red_score_text.color = _red_color;
+            if (_capture_progress_fill != null)
+            {
+                _capture_progress_fill.color = _neutral_color;
+                _capture_progress_fill.rectTransform.anchorMax = new Vector2(0f, 1f);
+            }
+            if (_weapon_panel != null)
+                _weapon_panel.SetActive(false);
+            if (_weapon_name_text != null)
+                _weapon_name_text.text = string.Empty;
+            if (_weapon_ammo_text != null)
+                _weapon_ammo_text.text = "0";
+            if (_weapon_reserve_text != null)
+                _weapon_reserve_text.text = "/ 0";
+            if (_weapon_reload_text != null)
+                _weapon_reload_text.text = string.Empty;
+            if (_weapon_reload_progress_fill != null)
+                _weapon_reload_progress_fill.rectTransform.anchorMax = new Vector2(0f, 1f);
+            if (_health_text != null)
+                _health_text.text = string.Empty;
         }
 
         private void UpdateWeaponPanel()

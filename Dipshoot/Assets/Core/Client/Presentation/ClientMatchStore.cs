@@ -18,6 +18,7 @@ namespace Core.ClientPresentation
             HasActiveMatch = true;
             IsMatchSceneLoaded = false;
             MatchSceneName = scene_name;
+            ModeController = null;
             OnUpdated?.Invoke();
         }
 

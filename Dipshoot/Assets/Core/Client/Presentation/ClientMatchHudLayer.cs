@@ -60,6 +60,7 @@ namespace Core.ClientPresentation
         private float _current_crosshair_gap;
         private float _hit_marker_started_at = -1f;
         private Color _active_hit_marker_color;
+        private bool _is_match_state_reset;
 
         public static void PlayLocalHitMarker(bool is_kill = false)
         {
@@ -78,6 +79,7 @@ namespace Core.ClientPresentation
             _layer.Initialize(ClientUiLayerKind.MatchHud);
             EnsureCrosshair();
             EnsureHitMarker();
+            ResetMatchState();
         }
 
         private void OnEnable()
@@ -95,17 +97,69 @@ namespace Core.ClientPresentation
         {
             UpdateCrosshairSpread();
             UpdateHitMarker();
-            UpdateWeaponPanel();
-            UpdateHealth();
 
             _mode_controller = ClientAppRoot.Instance.MatchStore.ModeController;
             if (_mode_controller == null || _score_text == null)
+            {
+                ResetMatchState();
                 return;
+            }
 
+            _is_match_state_reset = false;
+            UpdateWeaponPanel();
+            UpdateHealth();
             UpdateScorePanel();
             UpdatePhaseBanner();
             UpdateResultPanel();
             UpdatePointPanel();
+        }
+
+        private void ResetMatchState()
+        {
+            if (_is_match_state_reset)
+                return;
+
+            _is_match_state_reset = true;
+            _mode_controller = null;
+            _local_weapon_controller = null;
+
+            if (_phase_banner != null)
+                _phase_banner.SetActive(false);
+            if (_result_panel != null)
+                _result_panel.SetActive(false);
+            if (_score_text != null)
+                _score_text.text = string.Empty;
+            if (_round_text != null)
+                _round_text.text = string.Empty;
+            if (_phase_text != null)
+                _phase_text.text = string.Empty;
+            if (_result_text != null)
+                _result_text.text = string.Empty;
+            if (_point_text != null)
+                _point_text.text = string.Empty;
+            if (_inside_text != null)
+                _inside_text.text = string.Empty;
+            if (_point_owner_strip != null)
+                _point_owner_strip.color = _neutral_color;
+            if (_point_progress_fill != null)
+            {
+                _point_progress_fill.color = _neutral_color;
+                _point_progress_fill.rectTransform.anchorMax = new Vector2(0f, 1f);
+            }
+            if (_weapon_panel != null)
+                _weapon_panel.SetActive(false);
+            if (_weapon_name_text != null)
+                _weapon_name_text.text = string.Empty;
+            if (_weapon_ammo_text != null)
+                _weapon_ammo_text.text = "0";
+            if (_weapon_reserve_text != null)
+                _weapon_reserve_text.text = "/ 0";
+            if (_weapon_reload_text != null)
+                _weapon_reload_text.text = string.Empty;
+            if (_weapon_reload_progress_fill != null)
+                _weapon_reload_progress_fill.rectTransform.anchorMax = new Vector2(0f, 1f);
+            if (_health_text != null)
+                _health_text.text = string.Empty;
         }
 
         private void UpdateWeaponPanel()
