@@ -15,8 +15,13 @@ namespace Core.ClientPresentation
         [SerializeField] private ClientSceneRetentionPolicy _retention_policy =
             ClientSceneRetentionPolicy.UnloadPreviousScenes;
 
-        private readonly HashSet<string> _processed_scene_names = new();
+        private readonly HashSet<int> _processed_scene_handles = new();
         private Transform _preserved_objects_root;
+
+        public void ResetProcessedScenes()
+        {
+            _processed_scene_handles.Clear();
+        }
 
         public void SuspendPresentationInPreviousScenes(Scene active_scene)
         {
@@ -68,7 +73,7 @@ namespace Core.ClientPresentation
             if (scene == active_scene)
                 return false;
 
-            if (_processed_scene_names.Contains(scene.name))
+            if (_processed_scene_handles.Contains(scene.handle))
                 return false;
 
             return true;
@@ -87,7 +92,7 @@ namespace Core.ClientPresentation
                 root_object.transform.SetParent(GetPreservedObjectsRoot(), true);
             }
 
-            _processed_scene_names.Add(scene.name);
+            _processed_scene_handles.Add(scene.handle);
         }
 
         private void DisablePresentationObjects(Scene scene)
@@ -113,7 +118,7 @@ namespace Core.ClientPresentation
                 root_object.SetActive(false);
             }
 
-            _processed_scene_names.Add(scene.name);
+            _processed_scene_handles.Add(scene.handle);
         }
 
         private bool IsCriticalRoot(GameObject root_object)

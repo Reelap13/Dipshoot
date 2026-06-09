@@ -10,6 +10,8 @@ namespace Game.MatchConfig
 
         public static bool GenerateSelectedPreset(string presetId, int seed, string resultUrl)
         {
+            ClearGeneratedLevelRoots();
+
             MatchPreset preset = MatchPresetRegistry.GetPreset(presetId);
             if (preset == null)
             {
@@ -30,9 +32,7 @@ namespace Game.MatchConfig
             if (recipe == null)
                 return true;
 
-            GameObject root = GameObject.Find(ClientRootName);
-            if (root == null)
-                root = new GameObject(ClientRootName);
+            GameObject root = new(ClientRootName);
 
             Scene activeScene = SceneManager.GetActiveScene();
             if (activeScene.IsValid())
@@ -48,6 +48,26 @@ namespace Game.MatchConfig
             }
 
             return true;
+        }
+
+        public static void ClearGeneratedLevelRoots()
+        {
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                Scene scene = SceneManager.GetSceneAt(i);
+                if (!scene.IsValid() || !scene.isLoaded)
+                    continue;
+
+                GameObject[] roots = scene.GetRootGameObjects();
+                for (int j = 0; j < roots.Length; j++)
+                {
+                    GameObject root = roots[j];
+                    if (root == null || root.name != ClientRootName)
+                        continue;
+
+                    Object.Destroy(root);
+                }
+            }
         }
     }
 }

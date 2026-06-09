@@ -15,6 +15,7 @@ namespace Server.Match
     {
         private const string LogPrefix = "[MatchStatsLog]";
         private const string LogsDirectoryName = "Logs";
+        private const string MatchLogsDirectoryName = "Matches";
 
         public static void Write(MatchController match_controller)
         {
@@ -30,7 +31,10 @@ namespace Server.Match
                     return;
                 }
 
-                string directory = Path.Combine(Directory.GetCurrentDirectory(), LogsDirectoryName);
+                string directory = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    LogsDirectoryName,
+                    MatchLogsDirectoryName);
                 Directory.CreateDirectory(directory);
 
                 string preset_name = GetPresetName(match_controller.MatchData.LobbyData);

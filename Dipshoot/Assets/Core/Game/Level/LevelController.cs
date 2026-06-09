@@ -9,6 +9,8 @@ namespace Game.Level
 {
     public class LevelController : MonoBehaviour
     {
+        private const string LogPrefix = "[LevelController]";
+
         [SerializeField] private List<Transform> _spawn_points;
         [SerializeField] private List<Transform> _red_spawn_points;
         [SerializeField] private List<Transform> _blue_spawn_points;
@@ -17,23 +19,30 @@ namespace Game.Level
         [SerializeField] private float _capture_marker_radius = 4f;
         private bool _terrainGenerated;
         private bool _staticLayoutDisabled;
+        private bool _missing_spawn_points_logged;
 
         public Transform CapturePoint => _capture_point == null ? transform : _capture_point;
         public IReadOnlyList<Transform> RedSpawnPoints => _red_spawn_points;
         public IReadOnlyList<Transform> BlueSpawnPoints => _blue_spawn_points;
         public float SpawnMarkerRadius => Mathf.Max(0.1f, _spawn_marker_radius);
 
-        public Transform GetRandomSpawnPoint() =>
-            _spawn_points != null && _spawn_points.Count != 0
-                ? _spawn_points[Random.Range(0, _spawn_points.Count)]
-                : transform;
+        public Transform GetRandomSpawnPoint()
+        {
+            if (_spawn_points != null && _spawn_points.Count != 0)
+                return _spawn_points[Random.Range(0, _spawn_points.Count)];
+
+            LogMissingSpawnPoints(TeamId.None);
+            return transform;
+        }
 
         public Transform GetRandomSpawnPoint(TeamId team_id)
         {
             List<Transform> team_spawn_points = GetSpawnPoints(team_id);
-            return team_spawn_points != null && team_spawn_points.Count != 0
-                ? team_spawn_points[Random.Range(0, team_spawn_points.Count)]
-                : GetRandomSpawnPoint();
+            if (team_spawn_points != null && team_spawn_points.Count != 0)
+                return team_spawn_points[Random.Range(0, team_spawn_points.Count)];
+
+            LogMissingSpawnPoints(team_id);
+            return GetRandomSpawnPoint();
         }
 
         public void ConfigureGeneratedLevel(
@@ -119,6 +128,15 @@ namespace Game.Level
                 return _blue_spawn_points;
 
             return _spawn_points;
+        }
+
+        private void LogMissingSpawnPoints(TeamId team_id)
+        {
+            if (_missing_spawn_points_logged)
+                return;
+
+            _missing_spawn_points_logged = true;
+            Debug.LogError($"{LogPrefix} Missing spawn points. team={team_id} level={name}");
         }
 
         private void SetStaticLayoutActive(bool active)

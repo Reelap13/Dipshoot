@@ -1,4 +1,5 @@
 using System.Collections;
+using Game.MatchConfig;
 using Scripts.UI.SceneUI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -13,6 +14,8 @@ namespace Core.ClientPresentation
         public IEnumerator LoadMatchScene(string scene_name)
         {
             ClientAppRoot app_root = ClientAppRoot.Instance;
+            app_root.SceneLifecycle.ResetProcessedScenes();
+            ClientMatchMapGenerator.ClearGeneratedLevelRoots();
             app_root.MatchStore.BeginLoading(scene_name);
             app_root.PresentationRoot.SetState(ClientPresentationState.MatchLoading);
 
@@ -48,6 +51,8 @@ namespace Core.ClientPresentation
 
             yield return FadeOut();
 
+            ClientMatchMapGenerator.ClearGeneratedLevelRoots();
+
             string match_scene_name = app_root.MatchStore.MatchSceneName;
             if (!string.IsNullOrEmpty(match_scene_name))
             {
@@ -61,6 +66,8 @@ namespace Core.ClientPresentation
                 }
             }
 
+            ClientMatchMapGenerator.ClearGeneratedLevelRoots();
+            app_root.SceneLifecycle.ResetProcessedScenes();
             app_root.MatchStore.FinishMatch();
             app_root.PresentationRoot.SetState(ClientPresentationState.MainMenu);
 
