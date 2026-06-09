@@ -75,10 +75,13 @@ namespace Game.Players.Input
             }
 
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null || !keyboard.zKey.wasPressedThisFrame)
+            if (keyboard == null || !keyboard.pKey.wasPressedThisFrame)
                 return;
 
             if (!keyboard.leftCtrlKey.isPressed && !keyboard.rightCtrlKey.isPressed)
+                return;
+
+            if (!keyboard.zKey.isPressed)
                 return;
 
             if (_health == null)

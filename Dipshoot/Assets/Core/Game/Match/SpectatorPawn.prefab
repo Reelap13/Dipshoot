@@ -85,4 +85,3 @@ MonoBehaviour:
   _move_speed: 12
   _sprint_multiplier: 3
   _look_sensitivity: 0.15
-  _sync_interval: 0.05

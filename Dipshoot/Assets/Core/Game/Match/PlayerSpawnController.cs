@@ -15,15 +15,25 @@ namespace Game.MatchMode
         [SerializeField] private PlayerCharacter _character_prefab;
         [SerializeField] private SpectatorPawn _spectator_prefab;
         [SerializeField] private float _respawn_delay = 2f;
-        [SerializeField] private float _spawn_occupied_radius = 0.9f;
-        [SerializeField] private int _spawn_position_attempts = 24;
+        [SerializeField] private float _spawn_occupied_radius = 1.25f;
+        [SerializeField] private float _spawn_slot_spacing = 3f;
+        [SerializeField] private float _spawn_height_offset = 1f;
 
         private readonly Dictionary<int, PlayerCharacter> _characters = new();
         private readonly Dictionary<int, SpectatorPawn> _spectators = new();
         private readonly Dictionary<PlayerHealth, int> _health_owners = new();
         private readonly Dictionary<uint, int> _net_id_owners = new();
         private readonly Dictionary<int, Coroutine> _respawn_coroutines = new();
+        private readonly Dictionary<int, Coroutine> _spawn_wait_coroutines = new();
         private readonly List<Vector3> _reserved_spawn_positions = new();
+        private static readonly Vector2[] SpawnSlotOffsets =
+        {
+            Vector2.zero,
+            new(-1f, -1f),
+            new(1f, -1f),
+            new(-1f, 1f),
+            new(1f, 1f)
+        };
 
         private TeamRoster _team_roster;
         private MatchStatsController _stats_controller;
@@ -94,15 +104,22 @@ namespace Game.MatchMode
 
             foreach (Coroutine coroutine in _respawn_coroutines.Values)
                 StopCoroutine(coroutine);
+            foreach (Coroutine coroutine in _spawn_wait_coroutines.Values)
+                StopCoroutine(coroutine);
 
             _respawn_coroutines.Clear();
+            _spawn_wait_coroutines.Clear();
         }
 
         private void SpawnOrRespawnPlayer(int player_id, TeamId team_id)
         {
             Transform spawn_point = GameController.LevelCreator.Level.GetRandomSpawnPoint(team_id);
-            Vector3 spawn_position = GetFreeSpawnPosition(player_id, spawn_point);
             Quaternion spawn_rotation = spawn_point == null ? Quaternion.identity : spawn_point.rotation;
+            if (!TryGetFreeSpawnPosition(player_id, spawn_point, out Vector3 spawn_position))
+            {
+                QueueSpawn(player_id, team_id);
+                return;
+            }
 
             if (_characters.TryGetValue(player_id, out PlayerCharacter character) && character != null)
             {
@@ -214,36 +231,96 @@ namespace Game.MatchMode
 
             TeamId team_id = _team_roster.GetTeam(player_id);
             Transform spawn_point = GameController.LevelCreator.Level.GetRandomSpawnPoint(team_id);
-            character.Health.Respawn(
-                GetFreeSpawnPosition(player_id, spawn_point),
-                spawn_point == null ? Quaternion.identity : spawn_point.rotation);
-        }
-
-        private Vector3 GetFreeSpawnPosition(int player_id, Transform spawn_point)
-        {
-            if (spawn_point == null || GameController?.LevelCreator?.Level == null)
-                return spawn_point == null ? transform.position : spawn_point.position;
-
-            Vector3 center = spawn_point.position;
-            float radius = GameController.LevelCreator.Level.SpawnMarkerRadius;
-            int attempts = Mathf.Max(1, _spawn_position_attempts);
-            float golden_angle = Mathf.PI * (3f - Mathf.Sqrt(5f));
-
-            if (!IsSpawnPositionOccupied(player_id, center))
-                return center;
-
-            for (int i = 0; i < attempts; i++)
+            if (TryGetFreeSpawnPosition(player_id, spawn_point, out Vector3 spawn_position))
             {
-                float t = (i + 1f) / attempts;
-                float distance = Mathf.Sqrt(t) * radius;
-                float angle = i * golden_angle;
-                Vector3 candidate = center + new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
-
-                if (!IsSpawnPositionOccupied(player_id, candidate))
-                    return candidate;
+                character.Health.Respawn(
+                    spawn_position,
+                    spawn_point == null ? Quaternion.identity : spawn_point.rotation);
+                ReserveSpawnPosition(spawn_position);
+                yield break;
             }
 
-            return center;
+            QueueSpawn(player_id, team_id);
+        }
+
+        private void QueueSpawn(int player_id, TeamId team_id)
+        {
+            if (_spawn_wait_coroutines.ContainsKey(player_id))
+                return;
+
+            _spawn_wait_coroutines[player_id] = StartCoroutine(WaitAndSpawnPlayer(player_id, team_id));
+        }
+
+        private IEnumerator WaitAndSpawnPlayer(int player_id, TeamId team_id)
+        {
+            while (true)
+            {
+                Transform spawn_point = GameController.LevelCreator.Level.GetRandomSpawnPoint(team_id);
+                if (TryGetFreeSpawnPosition(player_id, spawn_point, out Vector3 spawn_position))
+                {
+                    _spawn_wait_coroutines.Remove(player_id);
+                    SpawnOrRespawnPlayerAt(player_id, team_id, spawn_point, spawn_position);
+                    yield break;
+                }
+
+                yield return null;
+            }
+        }
+
+        private void SpawnOrRespawnPlayerAt(
+            int player_id,
+            TeamId team_id,
+            Transform spawn_point,
+            Vector3 spawn_position)
+        {
+            Quaternion spawn_rotation = spawn_point == null ? Quaternion.identity : spawn_point.rotation;
+            if (_characters.TryGetValue(player_id, out PlayerCharacter character) && character != null)
+            {
+                character.GetComponent<PlayerMatchIdentity>()?.InitializeServer(player_id, team_id);
+                character.Health.Respawn(spawn_position, spawn_rotation);
+                RegisterCharacter(player_id, character);
+                ReserveSpawnPosition(spawn_position);
+                return;
+            }
+
+            Player player = PlayersController.Instance.GetPlayer(player_id);
+            character = NetworkUtils.NetworkMatchInstantiate(
+                _character_prefab,
+                GameController.Scene,
+                GameController.MatchId,
+                spawn_position,
+                spawn_rotation,
+                transform);
+
+            player.AddNetworkObject(character.netIdentity);
+            character.GetComponent<PlayerMatchIdentity>()?.InitializeServer(player_id, team_id);
+            character.InitializeServerSimulation(GameController.TickManager);
+            RegisterCharacter(player_id, character);
+            ReserveSpawnPosition(spawn_position);
+        }
+
+        private bool TryGetFreeSpawnPosition(int player_id, Transform spawn_point, out Vector3 spawn_position)
+        {
+            spawn_position = spawn_point == null ? transform.position : spawn_point.position;
+            spawn_position.y += _spawn_height_offset;
+            if (spawn_point == null || GameController?.LevelCreator?.Level == null)
+                return !IsSpawnPositionOccupied(player_id, spawn_position);
+
+            for (int i = 0; i < SpawnSlotOffsets.Length; i++)
+            {
+                Vector2 offset = SpawnSlotOffsets[i] * _spawn_slot_spacing;
+                Vector3 local_offset = new(offset.x, 0f, offset.y);
+                Vector3 candidate = spawn_point.position + spawn_point.TransformDirection(local_offset);
+                candidate.y = spawn_point.position.y + _spawn_height_offset;
+
+                if (IsSpawnPositionOccupied(player_id, candidate))
+                    continue;
+
+                spawn_position = candidate;
+                return true;
+            }
+
+            return false;
         }
 
         private bool IsSpawnPositionOccupied(int player_id, Vector3 position)
@@ -271,6 +348,13 @@ namespace Game.MatchMode
         private void ReserveSpawnPosition(Vector3 position)
         {
             _reserved_spawn_positions.Add(position);
+            StartCoroutine(ReleaseReservedSpawnPosition(position));
+        }
+
+        private IEnumerator ReleaseReservedSpawnPosition(Vector3 position)
+        {
+            yield return null;
+            _reserved_spawn_positions.Remove(position);
         }
 
         private Vector3 GetSpectatorSpawnPosition()

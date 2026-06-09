@@ -11,20 +11,17 @@ namespace Game.MatchMode
         [SerializeField] private float _move_speed = 12f;
         [SerializeField] private float _sprint_multiplier = 3f;
         [SerializeField] private float _look_sensitivity = 0.15f;
-        [SerializeField] private float _sync_interval = 0.05f;
 
         [SyncVar] private int _player_id = -1;
         [SyncVar] private TeamId _team_id = TeamId.Spectator;
-        [SyncVar(hook = nameof(HandlePositionSynced))] private Vector3 _synced_position;
-        [SyncVar(hook = nameof(HandleRotationSynced))] private Quaternion _synced_rotation;
 
         private Camera _attached_camera;
         private Transform _initial_parent;
         private Vector3 _initial_local_position;
         private Quaternion _initial_local_rotation;
         private bool _is_camera_attached;
+        private bool _created_camera;
         private float _pitch;
-        private float _next_sync_time;
 
         public TeamId TeamId => _team_id;
 
@@ -35,8 +32,6 @@ namespace Game.MatchMode
 
             _player_id = player_id;
             _team_id = team_id;
-            _synced_position = transform.position;
-            _synced_rotation = transform.rotation;
         }
 
         public override void OnStartAuthority()
@@ -60,7 +55,6 @@ namespace Game.MatchMode
 
             TryAttachCamera();
             UpdateLocalControl();
-            TrySyncTransform();
         }
 
         private void OnDisable()
@@ -84,6 +78,7 @@ namespace Game.MatchMode
                 return;
 
             Vector2 look = mouse.delta.ReadValue() * _look_sensitivity;
+            look *= ClientGameplaySettings.MouseSensitivity;
             _pitch = Mathf.Clamp(_pitch - look.y, -89f, 89f);
             float yaw = transform.eulerAngles.y + look.x;
             transform.rotation = Quaternion.Euler(_pitch, yaw, 0f);
@@ -110,39 +105,6 @@ namespace Game.MatchMode
                 speed *= _sprint_multiplier;
 
             transform.position += move * speed * Time.deltaTime;
-        }
-
-        private void TrySyncTransform()
-        {
-            if (Time.time < _next_sync_time)
-                return;
-
-            _next_sync_time = Time.time + Mathf.Max(0.02f, _sync_interval);
-            CmdSyncTransform(transform.position, transform.rotation);
-        }
-
-        [Command(channel = Channels.Unreliable)]
-        private void CmdSyncTransform(Vector3 position, Quaternion rotation)
-        {
-            transform.SetPositionAndRotation(position, rotation);
-            _synced_position = position;
-            _synced_rotation = rotation;
-        }
-
-        private void HandlePositionSynced(Vector3 old_position, Vector3 new_position)
-        {
-            if (isOwned)
-                return;
-
-            transform.position = new_position;
-        }
-
-        private void HandleRotationSynced(Quaternion old_rotation, Quaternion new_rotation)
-        {
-            if (isOwned)
-                return;
-
-            transform.rotation = new_rotation;
         }
 
         private void TryAttachCamera()
@@ -172,6 +134,15 @@ namespace Game.MatchMode
         {
             if (!_is_camera_attached || _attached_camera == null)
                 return;
+
+            if (_created_camera)
+            {
+                Destroy(_attached_camera.gameObject);
+                _attached_camera = null;
+                _is_camera_attached = false;
+                _created_camera = false;
+                return;
+            }
 
             Transform camera_transform = _attached_camera.transform;
             camera_transform.SetParent(_initial_parent, false);
@@ -214,7 +185,20 @@ namespace Game.MatchMode
             }
 
             camera ??= fallback_camera;
+            if (camera == null)
+                camera = CreateLocalCamera();
             return camera != null;
+        }
+
+        private Camera CreateLocalCamera()
+        {
+            GameObject camera_object = new("SpectatorCamera");
+            SceneManager.MoveGameObjectToScene(camera_object, gameObject.scene);
+            Camera camera = camera_object.AddComponent<Camera>();
+            camera.tag = "MainCamera";
+            camera_object.AddComponent<AudioListener>();
+            _created_camera = true;
+            return camera;
         }
 
         private static float NormalizePitch(float pitch)

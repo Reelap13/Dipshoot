@@ -151,6 +151,9 @@ MonoBehaviour:
   _character_prefab: {fileID: 7358710916428720345, guid: 363305e3a1e267743a300945317c7a73, type: 3}
   _spectator_prefab: {fileID: 7000000000000000005, guid: f2d9db58fe074313a40d2c54a79714dd, type: 3}
   _respawn_delay: 2
+  _spawn_occupied_radius: 1.25
+  _spawn_slot_spacing: 3
+  _spawn_height_offset: 1
 --- !u!114 &9101000000000000002
 MonoBehaviour:
   m_ObjectHideFlags: 0
