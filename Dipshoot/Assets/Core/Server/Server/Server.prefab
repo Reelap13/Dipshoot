@@ -279,4 +279,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _default_lobby_map: 0
-  _default_lobby_capacity: 4
+  _default_lobby_capacity: 16

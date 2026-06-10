@@ -10,6 +10,7 @@ namespace Game.Players
         public int ReloadEndTick;
         public int ConsecutiveShots;
         public int LastShotTick;
+        public int BufferedFireTick;
         public float SpreadDegrees;
         public bool IsReloading;
 
@@ -27,6 +28,7 @@ namespace Game.Players
             ReloadEndTick = -1;
             ConsecutiveShots = 0;
             LastShotTick = -1;
+            BufferedFireTick = -1;
             SpreadDegrees = 0f;
             IsReloading = false;
         }

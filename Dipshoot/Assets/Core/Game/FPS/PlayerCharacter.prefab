@@ -220,6 +220,10 @@ MonoBehaviour:
   syncInterval: 0
   _character: {fileID: 7358710916428720345}
   _inputController: {fileID: 563671470526942404}
+  _redundant_input_ticks: 24
+  _server_input_warning_age_ticks: 20
+  _server_input_warning_gap_ticks: 3
+  _server_input_warning_batch_size: 32
 --- !u!114 &4619937518296402501
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -250,12 +254,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _stats: {fileID: 2560981488615711837}
+  _aim_controller: {fileID: 0}
+  _hitbox_lag_compensation: {fileID: 0}
   _capsule: {fileID: 7762007011951829866}
   _camera_point: {fileID: 2030584166189090006}
   _collision_mask:
     serializedVersion: 2
     m_Bits: 134217523
   _trigger_interaction: 1
+  _max_server_replay_ms: 300
+  _max_server_hold_input_ms: 300
+  _server_replay_debug_enabled: 1
+  _server_replay_debug_max_logs_per_second: 4
 --- !u!114 &6332809675569614723
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -317,6 +327,10 @@ MonoBehaviour:
   _tick_correction_proportional: 0.015
   _tick_correction_max_scale_delta: 0.05
   _tick_correction_lerp: 0.1
+  _hard_tick_catch_up_enabled: 1
+  _hard_tick_catch_up_threshold_ticks: 20
+  _hard_tick_catch_up_max_skip_ticks: 60
+  _server_state_warning_input_delay_ticks: 20
 --- !u!114 &3177800008363529745
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -461,7 +475,7 @@ MonoBehaviour:
   _footsteps: {fileID: 11400000, guid: 98663dda5bd855e418044d297517f2fa, type: 2}
   _crouch_step_distance: 1.55
   _walk_step_distance: 1.35
-  _run_step_distance: 1.05
+  _run_step_distance: 1.7
   _min_step_speed: 0.25
   _run_speed_threshold: 5.8
   _hard_land_velocity: 8

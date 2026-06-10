@@ -38,6 +38,8 @@ namespace Game.Players
 
     public static class WeaponSimulation
     {
+        private const float SemiAutomaticFireBufferFraction = 0.15f;
+
         public static WeaponRuntimeState CreateInitialState(
             WeaponDefinition primary_weapon,
             WeaponDefinition pistol_weapon,
@@ -76,6 +78,8 @@ namespace Game.Players
                     GetWeapon(requested_slot, primary_weapon, pistol_weapon) != null)
                 {
                     state.ActiveSlot = requested_slot;
+                    state.Primary.BufferedFireTick = -1;
+                    state.Pistol.BufferedFireTick = -1;
                     did_switch_slot = true;
                 }
             }
@@ -91,7 +95,12 @@ namespace Game.Players
             if (has_input && input.IsReloadPressed)
                 TryStartReload(ref active_slot_state, active_stats, tick, tick_rate);
 
-            bool wants_fire = has_input && !did_switch_slot && WantsFire(input, active_weapon);
+            int fire_interval_ticks = SecondsToTicks(active_stats.FireInterval, tick_rate);
+            if (has_input && !did_switch_slot)
+                TryBufferFireIntent(ref active_slot_state, input, active_weapon, fire_interval_ticks, tick);
+
+            bool wants_fire = has_input && !did_switch_slot && WantsFire(input, active_weapon) ||
+                ShouldConsumeBufferedFire(active_slot_state, active_weapon, tick);
             bool did_fire = false;
             float fired_spread = active_slot_state.SpreadDegrees;
             float recoil_pitch = 0f;
@@ -111,7 +120,8 @@ namespace Game.Players
                     tick >= active_slot_state.NextFireTick)
                 {
                     active_slot_state.AmmoInMagazine--;
-                    active_slot_state.NextFireTick = tick + SecondsToTicks(active_stats.FireInterval, tick_rate);
+                    active_slot_state.NextFireTick = tick + fire_interval_ticks;
+                    active_slot_state.BufferedFireTick = -1;
                     active_slot_state.ConsecutiveShots = IsSprayReset(active_slot_state, active_stats, tick, tick_rate)
                         ? 1
                         : active_slot_state.ConsecutiveShots + 1;
@@ -171,6 +181,31 @@ namespace Game.Players
             return weapon.FireMode == WeaponFireMode.Automatic
                 ? input.IsShootHeld
                 : input.IsShootPressed;
+        }
+
+        private static void TryBufferFireIntent(
+            ref WeaponSlotState state,
+            PlayerInputData input,
+            WeaponDefinition weapon,
+            int fire_interval_ticks,
+            int tick)
+        {
+            if (weapon.FireMode == WeaponFireMode.Automatic || !input.IsShootPressed || tick >= state.NextFireTick)
+                return;
+
+            int buffer_ticks = Mathf.Max(1, Mathf.CeilToInt(fire_interval_ticks * SemiAutomaticFireBufferFraction));
+            if (state.NextFireTick - tick <= buffer_ticks)
+                state.BufferedFireTick = tick;
+        }
+
+        private static bool ShouldConsumeBufferedFire(
+            WeaponSlotState state,
+            WeaponDefinition weapon,
+            int tick)
+        {
+            return weapon.FireMode != WeaponFireMode.Automatic &&
+                state.BufferedFireTick >= 0 &&
+                tick >= state.NextFireTick;
         }
 
         public static float GetEffectiveSpread(
@@ -332,6 +367,7 @@ namespace Game.Players
             }
 
             state.IsReloading = true;
+            state.BufferedFireTick = -1;
             state.ReloadStartTick = tick;
             state.ReloadEndTick = tick + SecondsToTicks(stats.ReloadTime, tick_rate);
             return true;

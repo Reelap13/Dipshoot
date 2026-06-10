@@ -39,6 +39,8 @@ namespace Game.Players
         [SyncVar(hook = nameof(HandlePrimaryReserveAmmoSynced))] private int _primary_reserve_ammo;
         [SyncVar(hook = nameof(HandlePistolAmmoSynced))] private int _pistol_ammo;
         [SyncVar(hook = nameof(HandlePistolReserveAmmoSynced))] private int _pistol_reserve_ammo;
+        [SyncVar(hook = nameof(HandlePrimaryNextFireTickSynced))] private int _primary_next_fire_tick;
+        [SyncVar(hook = nameof(HandlePistolNextFireTickSynced))] private int _pistol_next_fire_tick;
         [SyncVar(hook = nameof(HandlePrimaryReloadingSynced))] private bool _primary_is_reloading;
         [SyncVar(hook = nameof(HandlePrimaryReloadStartSynced))] private int _primary_reload_start_tick = -1;
         [SyncVar(hook = nameof(HandlePrimaryReloadEndSynced))] private int _primary_reload_end_tick = -1;
@@ -352,6 +354,8 @@ namespace Game.Players
             _primary_reserve_ammo = _weapon_state.Primary.ReserveAmmo;
             _pistol_ammo = _weapon_state.Pistol.AmmoInMagazine;
             _pistol_reserve_ammo = _weapon_state.Pistol.ReserveAmmo;
+            _primary_next_fire_tick = _weapon_state.Primary.NextFireTick;
+            _pistol_next_fire_tick = _weapon_state.Pistol.NextFireTick;
             _primary_is_reloading = _weapon_state.Primary.IsReloading;
             _primary_reload_start_tick = _weapon_state.Primary.ReloadStartTick;
             _primary_reload_end_tick = _weapon_state.Primary.ReloadEndTick;
@@ -451,9 +455,11 @@ namespace Game.Players
                 Pistol = new WeaponSlotState(WeaponSlot.Pistol, _pistol_ammo, _pistol_reserve_ammo, GetCurrentTick()),
             };
             _predicted_weapon_state.Primary.IsReloading = _primary_is_reloading;
+            _predicted_weapon_state.Primary.NextFireTick = _primary_next_fire_tick;
             _predicted_weapon_state.Primary.ReloadStartTick = _primary_reload_start_tick;
             _predicted_weapon_state.Primary.ReloadEndTick = _primary_reload_end_tick;
             _predicted_weapon_state.Pistol.IsReloading = _pistol_is_reloading;
+            _predicted_weapon_state.Pistol.NextFireTick = _pistol_next_fire_tick;
             _predicted_weapon_state.Pistol.ReloadStartTick = _pistol_reload_start_tick;
             _predicted_weapon_state.Pistol.ReloadEndTick = _pistol_reload_end_tick;
             _has_predicted_weapon_state = true;
@@ -489,6 +495,8 @@ namespace Game.Players
         private void HandlePrimaryReserveAmmoSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
         private void HandlePistolAmmoSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
         private void HandlePistolReserveAmmoSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
+        private void HandlePrimaryNextFireTickSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
+        private void HandlePistolNextFireTickSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
         private void HandlePrimaryReloadingSynced(bool old_value, bool new_value) => RefreshPredictedStateFromAuthoritativeSync();
         private void HandlePrimaryReloadStartSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();
         private void HandlePrimaryReloadEndSynced(int old_value, int new_value) => RefreshPredictedStateFromAuthoritativeSync();

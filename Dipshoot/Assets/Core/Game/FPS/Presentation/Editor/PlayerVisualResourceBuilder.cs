@@ -834,7 +834,7 @@ namespace Game.Players.Editor
             serialized_object.FindProperty("_pitch_range").vector2Value = pitch_range;
             serialized_object.FindProperty("_spatial_blend").floatValue = spatial_blend;
             serialized_object.FindProperty("_min_distance").floatValue = 1f;
-            serialized_object.FindProperty("_max_distance").floatValue = 28f;
+            serialized_object.FindProperty("_max_distance").floatValue = 112f;
             serialized_object.FindProperty("_cooldown").floatValue = cooldown;
             serialized_object.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(cue);
@@ -1206,7 +1206,7 @@ namespace Game.Players.Editor
             Set(serialized_object, "_footsteps", footstep_audio);
             serialized_object.FindProperty("_crouch_step_distance").floatValue = 1.55f;
             serialized_object.FindProperty("_walk_step_distance").floatValue = 1.35f;
-            serialized_object.FindProperty("_run_step_distance").floatValue = 1.05f;
+            serialized_object.FindProperty("_run_step_distance").floatValue = 1.11f;
             serialized_object.FindProperty("_min_step_speed").floatValue = 0.25f;
             serialized_object.FindProperty("_run_speed_threshold").floatValue = 5.8f;
             serialized_object.FindProperty("_hard_land_velocity").floatValue = 8f;

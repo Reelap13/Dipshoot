@@ -11,7 +11,7 @@ namespace Server.Lobby
     public class LobbiesController : Singleton<LobbiesController>
     {
         [SerializeField] private int _default_lobby_map = 0;
-        [SerializeField] private int _default_lobby_capacity = 4;
+        [SerializeField] private int _default_lobby_capacity = 16;
 
         private int _id = 0;
         private Dictionary<string, int> _lobbies_codes = new();
