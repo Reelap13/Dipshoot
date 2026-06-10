@@ -2,6 +2,7 @@ using Game.Players.Input;
 using Game.Players.State;
 using Game.TickSystem;
 using Mirror;
+using Server.Match;
 using UnityEngine;
 
 namespace Game.Players
@@ -32,6 +33,7 @@ namespace Game.Players
         [SerializeField] private bool _hard_tick_catch_up_enabled = true;
         [SerializeField] private float _hard_tick_catch_up_threshold_ticks = 20f;
         [SerializeField] private int _hard_tick_catch_up_max_skip_ticks = 60;
+        [SerializeField] private int _server_state_warning_input_delay_ticks = 20;
 
         public int LastReceivedStateTick { get; private set; } = -1;
         public int LastAppliedStateTick { get; private set; } = -1;
@@ -134,6 +136,8 @@ namespace Game.Players
             int last_processed_input_tick = _movement.LastServerProcessedInputTick;
             if (last_processed_input_tick < 0)
                 return;
+
+            LogServerStateWarning(server_tick, last_processed_input_tick);
 
             if (connectionToClient != null &&
                 TryGetState(last_processed_input_tick, out PlayerState owner_state))
@@ -414,6 +418,23 @@ namespace Game.Players
         {
             if (isOwned && _character != null && _character.TickManager != null)
                 _character.TickManager.TickRateScale = 1f;
+        }
+
+        private void LogServerStateWarning(int server_tick, int last_processed_input_tick)
+        {
+            if (!isServer)
+                return;
+
+            int server_minus_input = server_tick - last_processed_input_tick;
+            if (server_minus_input <= _server_state_warning_input_delay_ticks)
+                return;
+
+            double rtt_ms = connectionToClient == null ? -1d : connectionToClient.rtt * 1000d;
+            MatchLogContext.Get(gameObject.scene)?.Write(
+                "network",
+                $"[StateDelayWarning][Server] netId={netId} serverTick={server_tick} " +
+                $"lastProcessedInputTick={last_processed_input_tick} serverMinusInput={server_minus_input} " +
+                $"rttMs={rtt_ms:0.#}");
         }
 
         public void ResetSimulation()

@@ -41,6 +41,7 @@ namespace Server.Match
 
         public void StartMatch()
         {
+            MatchLogContext.Get(SceneManager.Scene)?.Write("match", "start");
             OnStartingMatch.Invoke();
         }
 
@@ -50,6 +51,7 @@ namespace Server.Match
                 return;
 
             _is_finishing = true;
+            MatchLogContext.Get(SceneManager.Scene)?.Write("match", "finish requested");
             LogMatchStatsOnce();
             StartCoroutine(FinishMatchRoutine());
         }
@@ -83,6 +85,7 @@ namespace Server.Match
                 return;
 
             _is_destroyed = true;
+            MatchLogContext.Get(SceneManager.Scene)?.Write("match", "destroy");
             OnDestroingMatch.Invoke();
             MatchesContoller.Instance.RemoveMatch(MatchData.MatchId);
             Destroy(gameObject);

@@ -1,6 +1,7 @@
 using System;
 using Game.TickSystem;
 using Mirror;
+using Server.Match;
 using UnityEngine;
 
 namespace Game.Players.Input
@@ -28,6 +29,10 @@ namespace Game.Players.Input
 
         [SerializeField] private PlayerCharacter _character;
         [SerializeField] private PlayerInputController _inputController;
+        [SerializeField] private int _redundant_input_ticks = 24;
+        [SerializeField] private int _server_input_warning_age_ticks = 20;
+        [SerializeField] private int _server_input_warning_gap_ticks = 3;
+        [SerializeField] private int _server_input_warning_batch_size = 32;
 
         public int LastCapturedTick { get; private set; } = -1;
         public int LastSentTick { get; private set; } = -1;
@@ -95,10 +100,12 @@ namespace Game.Players.Input
         {
             batch = default;
 
-            if (_character == null || LastCapturedTick <= LastSentTick)
+            if (_character == null || LastCapturedTick <= LastAcknowledgedTick)
                 return false;
 
-            int from_tick = Mathf.Max(LastAcknowledgedTick + 1, LastSentTick + 1);
+            int from_tick = Mathf.Max(
+                LastAcknowledgedTick + 1,
+                LastCapturedTick - Mathf.Max(1, _redundant_input_ticks) + 1);
             int to_tick = LastCapturedTick;
             var inputs = _character.InputBuffet.GetRange(from_tick, to_tick);
             if (inputs.Count == 0)
@@ -218,6 +225,8 @@ namespace Game.Players.Input
                 return;
             }
 
+            LogServerInputWarnings(inputs);
+
             int last_received_tick = LastReceivedByServerTick;
             foreach (PlayerInputData input in inputs)
             {
@@ -227,6 +236,34 @@ namespace Game.Players.Input
             }
 
             TargetRegisterInputsReceived(last_received_tick);
+        }
+
+        private void LogServerInputWarnings(PlayerInputData[] inputs)
+        {
+            if (_character == null || _character.TickManager == null)
+                return;
+
+            int server_tick = _character.TickManager.CurrentTick;
+            int first_tick = inputs[0].Tick;
+            int last_tick = inputs[^1].Tick;
+            int age_ticks = server_tick - first_tick;
+            int gap_ticks = LastReceivedByServerTick < 0 ? 0 : first_tick - LastReceivedByServerTick;
+            bool is_stale = last_tick <= LastReceivedByServerTick;
+            bool should_log =
+                age_ticks > _server_input_warning_age_ticks ||
+                gap_ticks > _server_input_warning_gap_ticks ||
+                inputs.Length > _server_input_warning_batch_size ||
+                is_stale;
+
+            if (!should_log)
+                return;
+
+            double rtt_ms = connectionToClient == null ? -1d : connectionToClient.rtt * 1000d;
+            MatchLogContext.Get(gameObject.scene)?.Write(
+                "input",
+                $"[InputWarning][Server] netId={netId} serverTick={server_tick} batch={first_tick}-{last_tick} " +
+                $"count={inputs.Length} ageTicks={age_ticks} gapTicks={gap_ticks} stale={is_stale} " +
+                $"lastReceived={LastReceivedByServerTick} rttMs={rtt_ms:0.#}");
         }
 
         [TargetRpc]

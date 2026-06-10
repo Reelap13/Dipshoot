@@ -1,6 +1,7 @@
 using Game.Players.Input;
 using Game.TickSystem;
 using Scripts.Stats;
+using Server.Match;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -21,8 +22,8 @@ namespace Game.Players
         [SerializeField] private Transform _camera_point;
         [SerializeField] private LayerMask _collision_mask = Physics.DefaultRaycastLayers;
         [SerializeField] private QueryTriggerInteraction _trigger_interaction = QueryTriggerInteraction.Ignore;
-        [SerializeField] private float _max_server_replay_ms = 150f;
-        [SerializeField] private float _max_server_hold_input_ms = 150f;
+        [SerializeField] private float _max_server_replay_ms = 300f;
+        [SerializeField] private float _max_server_hold_input_ms = 300f;
         [SerializeField] private bool _server_replay_debug_enabled = true;
         [SerializeField] private int _server_replay_debug_max_logs_per_second = 4;
 
@@ -874,14 +875,20 @@ namespace Game.Players
 
         private void LogServerReplayDebug(int server_tick, int replay_from_tick, int simulated_ticks)
         {
+            int server_minus_input = _last_server_processed_input_tick < 0
+                ? -1
+                : server_tick - _last_server_processed_input_tick;
+            LogServerReplayWarning(
+                server_tick,
+                replay_from_tick,
+                simulated_ticks,
+                server_minus_input);
+
             if (!_server_replay_debug_enabled || !ShouldLogServerReplayDebug())
                 return;
 
             int suppressed = _replay_debug_suppressed;
             _replay_debug_suppressed = 0;
-            int server_minus_input = _last_server_processed_input_tick < 0
-                ? -1
-                : server_tick - _last_server_processed_input_tick;
 
             Debug.Log(
                 $"{ReplayDebugPrefix} netId={Character.netId} serverTick={server_tick} " +
@@ -890,6 +897,32 @@ namespace Game.Players
                 $"maxReplayTicks={GetTicksFromMs(_max_server_replay_ms)} maxHoldTicks={GetTicksFromMs(_max_server_hold_input_ms)} " +
                 $"heldInputTicks={_replay_debug_max_held_input_ticks} neutralizedInputs={_replay_debug_neutralized_inputs} " +
                 $"droppedStaleInputs={_replay_debug_dropped_stale_inputs} suppressed={suppressed}");
+        }
+
+        private void LogServerReplayWarning(
+            int server_tick,
+            int replay_from_tick,
+            int simulated_ticks,
+            int server_minus_input)
+        {
+            int max_hold_ticks = GetTicksFromMs(_max_server_hold_input_ms);
+            bool should_log =
+                server_minus_input > max_hold_ticks ||
+                _replay_debug_max_held_input_ticks > max_hold_ticks ||
+                _replay_debug_neutralized_inputs > 0 ||
+                _replay_debug_dropped_stale_inputs > 0;
+
+            if (!should_log)
+                return;
+
+            MatchLogContext.Get(gameObject.scene)?.Write(
+                "simulation",
+                $"[MovementReplayWarning][Server] netId={Character.netId} serverTick={server_tick} " +
+                $"replayFromTick={replay_from_tick} replayTicks={simulated_ticks} " +
+                $"lastInputTick={_last_server_processed_input_tick} serverMinusInput={server_minus_input} " +
+                $"maxReplayTicks={GetTicksFromMs(_max_server_replay_ms)} maxHoldTicks={max_hold_ticks} " +
+                $"heldInputTicks={_replay_debug_max_held_input_ticks} neutralizedInputs={_replay_debug_neutralized_inputs} " +
+                $"droppedStaleInputs={_replay_debug_dropped_stale_inputs}");
         }
 
         private bool ShouldLogServerReplayDebug()

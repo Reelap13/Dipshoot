@@ -22,6 +22,8 @@ namespace Server.Match
         public virtual void LoadGame(MatchController match_controller)
         {
             MatchController = match_controller;
+            MatchLogContext log_context = gameObject.AddComponent<MatchLogContext>();
+            log_context.Initialize(match_controller);
             match_controller.OnDestroingMatch.AddListener(DestoryGame);
         }
 
