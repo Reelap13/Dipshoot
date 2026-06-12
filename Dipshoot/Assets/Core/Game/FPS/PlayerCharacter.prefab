@@ -221,6 +221,8 @@ MonoBehaviour:
   _character: {fileID: 7358710916428720345}
   _inputController: {fileID: 563671470526942404}
   _redundant_input_ticks: 48
+  _max_buffered_input_age_ms: 1000
+  _server_max_input_age_ms: 1000
   _server_input_warning_age_ticks: 20
   _server_input_warning_gap_ticks: 3
   _server_input_warning_batch_size: 32
@@ -322,7 +324,7 @@ MonoBehaviour:
   _tick_sync_debug_enabled: 1
   _tick_sync_debug_max_logs_per_second: 3
   _client_tick_correction_enabled: 1
-  _target_server_lead_ticks: 2
+  _target_server_lead_ticks: 3
   _tick_correction_deadzone: 1
   _tick_correction_proportional: 0.015
   _tick_correction_max_scale_delta: 0.05

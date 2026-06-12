@@ -848,6 +848,7 @@ namespace Game.Players
                     out PlayerInputData first_stale_input) ||
                 first_stale_input.Tick > stale_until_tick)
             {
+                _last_server_processed_input_tick = stale_until_tick;
                 return;
             }
 
@@ -864,6 +865,10 @@ namespace Game.Players
                 _last_server_processed_input_tick = Mathf.Max(
                     _last_server_processed_input_tick,
                     stale_inputs[i].Tick);
+
+            _last_server_processed_input_tick = Mathf.Max(
+                _last_server_processed_input_tick,
+                stale_until_tick);
         }
 
         private int GetTicksFromMs(float milliseconds)

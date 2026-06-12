@@ -30,6 +30,8 @@ namespace Game.Players.Input
         [SerializeField] private PlayerCharacter _character;
         [SerializeField] private PlayerInputController _inputController;
         [SerializeField] private int _redundant_input_ticks = 48;
+        [SerializeField] private float _max_buffered_input_age_ms = 1000f;
+        [SerializeField] private float _server_max_input_age_ms = 1000f;
         [SerializeField] private int _server_input_warning_age_ticks = 20;
         [SerializeField] private int _server_input_warning_gap_ticks = 3;
         [SerializeField] private int _server_input_warning_batch_size = 32;
@@ -104,7 +106,7 @@ namespace Game.Players.Input
                 return false;
 
             int from_tick = Mathf.Max(
-                LastAcknowledgedTick + 1,
+                Mathf.Max(LastAcknowledgedTick, LastReceivedByServerTick) + 1,
                 LastCapturedTick - Mathf.Max(1, _redundant_input_ticks) + 1);
             int to_tick = LastCapturedTick;
             var inputs = _character.InputBuffet.GetRange(from_tick, to_tick);
@@ -131,6 +133,22 @@ namespace Game.Players.Input
             LastAcknowledgedTick = tick;
             if (LastSentTick < LastAcknowledgedTick)
                 LastSentTick = LastAcknowledgedTick;
+
+            _character.InputBuffet.RemoveUpTo(tick);
+            OnInputsAcknowledged?.Invoke(tick);
+        }
+
+        public void DiscardInputsUpTo(int tick)
+        {
+            if (_character == null || tick <= LastAcknowledgedTick)
+                return;
+
+            LastAcknowledgedTick = tick;
+            if (LastSentTick < LastAcknowledgedTick)
+                LastSentTick = LastAcknowledgedTick;
+
+            if (LastReceivedByServerTick < LastAcknowledgedTick)
+                LastReceivedByServerTick = LastAcknowledgedTick;
 
             _character.InputBuffet.RemoveUpTo(tick);
             OnInputsAcknowledged?.Invoke(tick);
@@ -172,6 +190,7 @@ namespace Game.Players.Input
 
         public void Tick(GameTickContext context)
         {
+            DiscardStaleClientInputs(context.Tick);
             TrySendUnsentInputs();
         }
 
@@ -217,7 +236,7 @@ namespace Game.Players.Input
             return true;
         }
 
-        [Command]
+        [Command(channel = Channels.Unreliable)]
         private void CmdSendInputs(PlayerInputData[] inputs)
         {
             if (_character == null || inputs == null || inputs.Length == 0)
@@ -227,15 +246,30 @@ namespace Game.Players.Input
 
             LogServerInputWarnings(inputs);
 
+            int server_tick = _character.TickManager == null ? 0 : _character.TickManager.CurrentTick;
+            int earliest_allowed_tick = server_tick - GetTicksFromMs(_server_max_input_age_ms);
+            int newest_received_tick = LastReceivedByServerTick;
             int last_received_tick = LastReceivedByServerTick;
             foreach (PlayerInputData input in inputs)
             {
+                if (input.Tick <= LastReceivedByServerTick)
+                    continue;
+
+                if (input.Tick > newest_received_tick)
+                    newest_received_tick = input.Tick;
+
+                if (_character.TickManager != null && input.Tick < earliest_allowed_tick)
+                    continue;
+
                 _character.InputBuffet.Add(input);
                 if (input.Tick > last_received_tick)
                     last_received_tick = input.Tick;
             }
 
-            TargetRegisterInputsReceived(last_received_tick);
+            if (newest_received_tick > LastReceivedByServerTick)
+                LastReceivedByServerTick = newest_received_tick;
+
+            TargetRegisterInputsReceived(newest_received_tick);
         }
 
         private void LogServerInputWarnings(PlayerInputData[] inputs)
@@ -274,6 +308,26 @@ namespace Game.Players.Input
 
             LastReceivedByServerTick = tick;
             OnInputsReceivedByServer?.Invoke(tick);
+        }
+
+        private void DiscardStaleClientInputs(int current_tick)
+        {
+            int max_age_ticks = GetTicksFromMs(_max_buffered_input_age_ms);
+            if (max_age_ticks <= 0)
+                return;
+
+            int discard_until_tick = current_tick - max_age_ticks;
+            DiscardInputsUpTo(discard_until_tick);
+        }
+
+        private int GetTicksFromMs(float milliseconds)
+        {
+            if (_character == null || _character.TickManager == null)
+                return 0;
+
+            return Mathf.Max(
+                0,
+                Mathf.RoundToInt(Mathf.Max(0f, milliseconds) * 0.001f * _character.TickManager.TickRate));
         }
     }
 }
