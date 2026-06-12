@@ -16,7 +16,7 @@ namespace Game.MatchMode
         [SerializeField] private SpectatorPawn _spectator_prefab;
         [SerializeField] private float _respawn_delay = 2f;
         [SerializeField] private float _spawn_occupied_radius = 1.25f;
-        [SerializeField] private float _spawn_slot_spacing = 3f;
+        [SerializeField] private float _spawn_slot_spacing = 1f;
         [SerializeField] private float _spawn_height_offset = 1f;
 
         private readonly Dictionary<int, PlayerCharacter> _characters = new();

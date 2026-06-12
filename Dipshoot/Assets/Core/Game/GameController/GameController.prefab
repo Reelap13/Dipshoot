@@ -152,7 +152,7 @@ MonoBehaviour:
   _spectator_prefab: {fileID: 7000000000000000005, guid: f2d9db58fe074313a40d2c54a79714dd, type: 3}
   _respawn_delay: 2
   _spawn_occupied_radius: 1.25
-  _spawn_slot_spacing: 3
+  _spawn_slot_spacing: 1
   _spawn_height_offset: 1
 --- !u!114 &9101000000000000002
 MonoBehaviour:

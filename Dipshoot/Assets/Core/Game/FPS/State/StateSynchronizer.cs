@@ -25,7 +25,7 @@ namespace Game.Players
         [SerializeField] private bool _tick_sync_debug_enabled = true;
         [SerializeField] private int _tick_sync_debug_max_logs_per_second = 3;
         [SerializeField] private bool _client_tick_correction_enabled = true;
-        [SerializeField] private float _target_server_lead_ticks = 3f;
+        [SerializeField] private float _target_server_lead_ticks = 2f;
         [SerializeField] private float _tick_correction_deadzone = 1f;
         [SerializeField] private float _tick_correction_proportional = 0.015f;
         [SerializeField] private float _tick_correction_max_scale_delta = 0.05f;

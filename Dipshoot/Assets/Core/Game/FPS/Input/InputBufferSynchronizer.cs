@@ -29,7 +29,7 @@ namespace Game.Players.Input
 
         [SerializeField] private PlayerCharacter _character;
         [SerializeField] private PlayerInputController _inputController;
-        [SerializeField] private int _redundant_input_ticks = 24;
+        [SerializeField] private int _redundant_input_ticks = 48;
         [SerializeField] private int _server_input_warning_age_ticks = 20;
         [SerializeField] private int _server_input_warning_gap_ticks = 3;
         [SerializeField] private int _server_input_warning_batch_size = 32;

@@ -220,7 +220,7 @@ MonoBehaviour:
   syncInterval: 0
   _character: {fileID: 7358710916428720345}
   _inputController: {fileID: 563671470526942404}
-  _redundant_input_ticks: 24
+  _redundant_input_ticks: 48
   _server_input_warning_age_ticks: 20
   _server_input_warning_gap_ticks: 3
   _server_input_warning_batch_size: 32
@@ -262,8 +262,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 134217523
   _trigger_interaction: 1
-  _max_server_replay_ms: 300
-  _max_server_hold_input_ms: 300
+  _max_server_replay_ms: 600
+  _max_server_hold_input_ms: 600
   _server_replay_debug_enabled: 1
   _server_replay_debug_max_logs_per_second: 4
 --- !u!114 &6332809675569614723
@@ -322,7 +322,7 @@ MonoBehaviour:
   _tick_sync_debug_enabled: 1
   _tick_sync_debug_max_logs_per_second: 3
   _client_tick_correction_enabled: 1
-  _target_server_lead_ticks: 3
+  _target_server_lead_ticks: 2
   _tick_correction_deadzone: 1
   _tick_correction_proportional: 0.015
   _tick_correction_max_scale_delta: 0.05

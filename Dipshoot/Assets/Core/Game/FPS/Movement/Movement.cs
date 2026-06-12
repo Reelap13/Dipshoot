@@ -22,8 +22,8 @@ namespace Game.Players
         [SerializeField] private Transform _camera_point;
         [SerializeField] private LayerMask _collision_mask = Physics.DefaultRaycastLayers;
         [SerializeField] private QueryTriggerInteraction _trigger_interaction = QueryTriggerInteraction.Ignore;
-        [SerializeField] private float _max_server_replay_ms = 300f;
-        [SerializeField] private float _max_server_hold_input_ms = 300f;
+        [SerializeField] private float _max_server_replay_ms = 600f;
+        [SerializeField] private float _max_server_hold_input_ms = 600f;
         [SerializeField] private bool _server_replay_debug_enabled = true;
         [SerializeField] private int _server_replay_debug_max_logs_per_second = 4;
 
@@ -602,6 +602,9 @@ namespace Game.Players
         private bool IsValidCollisionHit(Collider hit_collider)
         {
             if (hit_collider == null || hit_collider.isTrigger)
+                return false;
+
+            if (hit_collider.GetComponentInParent<PlayerCharacter>() != null)
                 return false;
 
             for (int i = 0; i < _own_colliders.Length; i++)
