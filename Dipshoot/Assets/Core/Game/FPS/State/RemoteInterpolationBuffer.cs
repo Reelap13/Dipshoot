@@ -8,6 +8,8 @@ namespace Game.Players.State
         private readonly List<PlayerState> _states = new();
 
         public int Count => _states.Count;
+        public int OldestTick => _states.Count == 0 ? -1 : _states[0].Tick;
+        public int NewestTick => _states.Count == 0 ? -1 : _states[^1].Tick;
 
         public void Clear()
         {

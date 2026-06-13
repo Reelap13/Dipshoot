@@ -220,7 +220,7 @@ MonoBehaviour:
   syncInterval: 0
   _character: {fileID: 7358710916428720345}
   _inputController: {fileID: 563671470526942404}
-  _redundant_input_ticks: 48
+  _max_input_batch_ticks: 24
   _max_buffered_input_age_ms: 1000
   _server_max_input_age_ms: 1000
   _server_input_warning_age_ticks: 20
@@ -294,7 +294,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   _trigger_interaction: 2
-  _lag_compensation_hit_reg_bias_ms: 33
+  _lag_compensation_hit_reg_bias_ms: 0
   _lag_compensation_max_rewind_ms: 200
   _shot_compare_debug_enabled: 1
   _shot_compare_debug_max_logs_per_second: 20
@@ -319,7 +319,7 @@ MonoBehaviour:
   _input_buffer_synchronizer: {fileID: 1508822084912371000}
   _position_error_threshold: 0.001
   _rotation_error_threshold: 0.1
-  _remote_interpolation_back_ms: 50
+  _remote_interpolation_back_ms: 150
   _server_tick_offset_lerp_factor: 0.1
   _tick_sync_debug_enabled: 1
   _tick_sync_debug_max_logs_per_second: 3
@@ -333,6 +333,9 @@ MonoBehaviour:
   _hard_tick_catch_up_threshold_ticks: 20
   _hard_tick_catch_up_max_skip_ticks: 60
   _server_state_warning_input_delay_ticks: 20
+  _remote_snapshot_gap_warning_ticks: 4
+  _remote_position_delta_warning_meters: 1.5
+  _remote_interpolation_warning_interval_seconds: 1
 --- !u!114 &3177800008363529745
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -408,6 +411,7 @@ MonoBehaviour:
   _hitbox_rig: {fileID: 1886247321901107337}
   _history_seconds: 0.35
   _max_history_ticks: 64
+  _hitbox_retry_interval_seconds: 0.25
 --- !u!114 &2466316326035865716
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -488,7 +492,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1239777248742655304}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5d13a3fdc90a1eb409b4657e81f4e0ec, type: 3}
   m_Name: 

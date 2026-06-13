@@ -1,3 +1,4 @@
+using System;
 using Mirror;
 using Scripts.Stats;
 using UnityEngine;
@@ -25,6 +26,7 @@ namespace Game.Players
         private GameObject _first_person_arms_instance;
         private GameObject _third_person_character_instance;
         private GameObject _last_third_person_prefab;
+        private GameObject _notified_third_person_character_instance;
         private PlayerMatchIdentity _match_identity;
         private Game.MatchMode.TeamId _last_team_id;
         private Renderer[] _third_person_renderers;
@@ -33,11 +35,14 @@ namespace Game.Players
         private bool _last_third_person_visible;
         private bool _has_applied_visual_layers;
 
+        public event Action<PlayerVisualController> ThirdPersonCharacterCreated;
+
         public PlayerVisualDefinition Definition => _definition;
         public Transform FirstPersonRoot => _first_person_root;
         public Transform ThirdPersonRoot => _third_person_root;
         public GameObject FirstPersonArmsInstance => _first_person_arms_instance;
         public GameObject ThirdPersonCharacterInstance => _third_person_character_instance;
+        public bool HasThirdPersonCharacter => _third_person_character_instance != null;
         public bool IsFirstPersonVisible => isClient && isOwned;
         public bool IsThirdPersonVisible => isClient && !isOwned;
         private bool ShouldSpawnThirdPersonCharacter => !(isClient && isOwned && !isServer);
@@ -179,7 +184,6 @@ namespace Game.Players
                 PlayerVisualLayerUtility.SetLayerRecursive(_third_person_character_instance, _definition.ThirdPersonCharacterLayer);
                 AssignThirdPersonAnimatorController();
                 CacheThirdPersonRenderers();
-                RebuildHitboxRig();
             }
             else
             {
@@ -196,6 +200,7 @@ namespace Game.Players
             if (_third_person_renderers == null)
                 CacheThirdPersonRenderers();
 
+            NotifyThirdPersonCharacterCreatedIfNeeded();
             ApplyLegacyRendererVisibility(!HasRenderableVisuals());
         }
 
@@ -215,11 +220,16 @@ namespace Game.Players
             gameObject.AddComponent<PlayerAnimationController>();
         }
 
-        private void RebuildHitboxRig()
+        private void NotifyThirdPersonCharacterCreatedIfNeeded()
         {
-            PlayerHitboxRigController hitbox_rig = GetComponent<PlayerHitboxRigController>();
-            if (hitbox_rig != null)
-                hitbox_rig.RequestRebuild();
+            if (_third_person_character_instance == null ||
+                _notified_third_person_character_instance == _third_person_character_instance)
+            {
+                return;
+            }
+
+            _notified_third_person_character_instance = _third_person_character_instance;
+            ThirdPersonCharacterCreated?.Invoke(this);
         }
 
         private void AssignThirdPersonAnimatorController()
@@ -329,6 +339,7 @@ namespace Game.Players
             Destroy(_third_person_character_instance);
             _third_person_character_instance = null;
             _last_third_person_prefab = null;
+            _notified_third_person_character_instance = null;
             _third_person_renderers = null;
             _has_visibility_state = false;
         }

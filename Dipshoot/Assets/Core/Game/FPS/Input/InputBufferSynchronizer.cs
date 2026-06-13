@@ -3,6 +3,7 @@ using Game.TickSystem;
 using Mirror;
 using Server.Match;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Players.Input
 {
@@ -29,7 +30,8 @@ namespace Game.Players.Input
 
         [SerializeField] private PlayerCharacter _character;
         [SerializeField] private PlayerInputController _inputController;
-        [SerializeField] private int _redundant_input_ticks = 48;
+        [FormerlySerializedAs("_redundant_input_ticks")]
+        [SerializeField] private int _max_input_batch_ticks = 24;
         [SerializeField] private float _max_buffered_input_age_ms = 1000f;
         [SerializeField] private float _server_max_input_age_ms = 1000f;
         [SerializeField] private int _server_input_warning_age_ticks = 20;
@@ -88,7 +90,9 @@ namespace Game.Players.Input
             if (_character == null || !HasPendingInputs)
                 return false;
 
-            int from_tick = LastAcknowledgedTick + 1;
+            int from_tick = Mathf.Max(
+                LastAcknowledgedTick + 1,
+                LastCapturedTick - Mathf.Max(1, _max_input_batch_ticks) + 1);
             int to_tick = LastCapturedTick;
             var inputs = _character.InputBuffet.GetRange(from_tick, to_tick);
             if (inputs.Count == 0)
@@ -106,8 +110,8 @@ namespace Game.Players.Input
                 return false;
 
             int from_tick = Mathf.Max(
-                Mathf.Max(LastAcknowledgedTick, LastReceivedByServerTick) + 1,
-                LastCapturedTick - Mathf.Max(1, _redundant_input_ticks) + 1);
+                LastAcknowledgedTick + 1,
+                LastCapturedTick - Mathf.Max(1, _max_input_batch_ticks) + 1);
             int to_tick = LastCapturedTick;
             var inputs = _character.InputBuffet.GetRange(from_tick, to_tick);
             if (inputs.Count == 0)
@@ -244,24 +248,33 @@ namespace Game.Players.Input
                 return;
             }
 
-            LogServerInputWarnings(inputs);
-
             int server_tick = _character.TickManager == null ? 0 : _character.TickManager.CurrentTick;
             int earliest_allowed_tick = server_tick - GetTicksFromMs(_server_max_input_age_ms);
+            int previous_received_tick = LastReceivedByServerTick;
             int newest_received_tick = LastReceivedByServerTick;
             int last_received_tick = LastReceivedByServerTick;
+            int accepted_count = 0;
+            int duplicate_count = 0;
+            int too_old_count = 0;
             foreach (PlayerInputData input in inputs)
             {
                 if (input.Tick <= LastReceivedByServerTick)
+                {
+                    duplicate_count++;
                     continue;
+                }
 
                 if (input.Tick > newest_received_tick)
                     newest_received_tick = input.Tick;
 
                 if (_character.TickManager != null && input.Tick < earliest_allowed_tick)
+                {
+                    too_old_count++;
                     continue;
+                }
 
                 _character.InputBuffet.Add(input);
+                accepted_count++;
                 if (input.Tick > last_received_tick)
                     last_received_tick = input.Tick;
             }
@@ -269,10 +282,26 @@ namespace Game.Players.Input
             if (newest_received_tick > LastReceivedByServerTick)
                 LastReceivedByServerTick = newest_received_tick;
 
+            LogServerInputWarnings(
+                inputs,
+                previous_received_tick,
+                newest_received_tick,
+                last_received_tick,
+                accepted_count,
+                duplicate_count,
+                too_old_count);
+
             TargetRegisterInputsReceived(newest_received_tick);
         }
 
-        private void LogServerInputWarnings(PlayerInputData[] inputs)
+        private void LogServerInputWarnings(
+            PlayerInputData[] inputs,
+            int previous_received_tick,
+            int newest_received_tick,
+            int last_accepted_tick,
+            int accepted_count,
+            int duplicate_count,
+            int too_old_count)
         {
             if (_character == null || _character.TickManager == null)
                 return;
@@ -281,13 +310,14 @@ namespace Game.Players.Input
             int first_tick = inputs[0].Tick;
             int last_tick = inputs[^1].Tick;
             int age_ticks = server_tick - first_tick;
-            int gap_ticks = LastReceivedByServerTick < 0 ? 0 : first_tick - LastReceivedByServerTick;
-            bool is_stale = last_tick <= LastReceivedByServerTick;
+            int gap_ticks = previous_received_tick < 0 ? 0 : first_tick - previous_received_tick;
+            bool is_stale = last_tick <= previous_received_tick;
             bool should_log =
                 age_ticks > _server_input_warning_age_ticks ||
                 gap_ticks > _server_input_warning_gap_ticks ||
                 inputs.Length > _server_input_warning_batch_size ||
-                is_stale;
+                is_stale ||
+                accepted_count == 0;
 
             if (!should_log)
                 return;
@@ -297,7 +327,10 @@ namespace Game.Players.Input
                 "input",
                 $"[InputWarning][Server] netId={netId} serverTick={server_tick} batch={first_tick}-{last_tick} " +
                 $"count={inputs.Length} ageTicks={age_ticks} gapTicks={gap_ticks} stale={is_stale} " +
-                $"lastReceived={LastReceivedByServerTick} rttMs={rtt_ms:0.#}");
+                $"previousReceived={previous_received_tick} newestReceived={newest_received_tick} " +
+                $"lastAccepted={last_accepted_tick} accepted={accepted_count} duplicates={duplicate_count} tooOld={too_old_count} " +
+                $"bufferOldest={_character.InputBuffet.OldestTick} bufferNewest={_character.InputBuffet.NewestTick} " +
+                $"bufferCount={_character.InputBuffet.Count} rttMs={rtt_ms:0.#}");
         }
 
         [TargetRpc]

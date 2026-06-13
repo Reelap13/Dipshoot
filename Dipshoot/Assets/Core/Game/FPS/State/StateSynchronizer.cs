@@ -20,7 +20,7 @@ namespace Game.Players
         [SerializeField] private InputBufferSynchronizer _input_buffer_synchronizer;
         [SerializeField] private float _position_error_threshold = 0.001f;
         [SerializeField] private float _rotation_error_threshold = 0.1f;
-        [SerializeField] private float _remote_interpolation_back_ms = 50f;
+        [SerializeField] private float _remote_interpolation_back_ms = 150f;
         [SerializeField] private float _server_tick_offset_lerp_factor = 0.1f;
         [SerializeField] private bool _tick_sync_debug_enabled = true;
         [SerializeField] private int _tick_sync_debug_max_logs_per_second = 3;
@@ -34,6 +34,9 @@ namespace Game.Players
         [SerializeField] private float _hard_tick_catch_up_threshold_ticks = 20f;
         [SerializeField] private int _hard_tick_catch_up_max_skip_ticks = 60;
         [SerializeField] private int _server_state_warning_input_delay_ticks = 20;
+        [SerializeField] private int _remote_snapshot_gap_warning_ticks = 4;
+        [SerializeField] private float _remote_position_delta_warning_meters = 1.5f;
+        [SerializeField] private float _remote_interpolation_warning_interval_seconds = 1f;
 
         public int LastReceivedStateTick { get; private set; } = -1;
         public int LastAppliedStateTick { get; private set; } = -1;
@@ -53,6 +56,10 @@ namespace Game.Players
         private float _tick_sync_debug_window_started_at;
         private int _tick_sync_debug_logged_in_window;
         private int _tick_sync_debug_suppressed;
+        private bool _has_last_remote_snapshot;
+        private int _last_remote_snapshot_tick = -1;
+        private Vector3 _last_remote_snapshot_position;
+        private float _last_remote_interpolation_warning_at = -1000f;
         private readonly RemoteInterpolationBuffer _remote_interpolation_buffer = new();
 
         public TickLayer TickLayer => TickLayer.StateSnapshot;
@@ -166,7 +173,7 @@ namespace Game.Players
             ReceiveOwnerAuthoritativeState(snapshot);
         }
 
-        [ClientRpc]
+        [ClientRpc(channel = Channels.Unreliable)]
         private void RpcReceiveRemoteAuthoritativeState(PlayerStateSnapshot snapshot)
         {
             if (isOwned)
@@ -255,6 +262,7 @@ namespace Game.Players
             UpdateServerTickEstimate(snapshot.ServerTick);
             LogTickSyncSnapshot(snapshot, false);
             PlayerState state = snapshot.ToState(snapshot.ServerTick);
+            LogRemoteSnapshotAnomalies(state);
             _remote_interpolation_buffer.Add(state);
         }
 
@@ -311,9 +319,9 @@ namespace Game.Players
                 return;
             }
 
-            double estimated_server_tick = GetEstimatedServerTick();
-            float render_tick = (float)(estimated_server_tick - GetRemoteInterpolationBackTicks());
+            float render_tick = _character.TickManager.CurrentTick - GetRemoteInterpolationBackTicks();
             LastRemoteRenderTick = render_tick;
+            LogRemoteBufferAnomalies(render_tick);
 
             if (!_remote_interpolation_buffer.TryGetInterpolatedState(render_tick, out PlayerState interpolated_state))
                 return;
@@ -430,11 +438,79 @@ namespace Game.Players
                 return;
 
             double rtt_ms = connectionToClient == null ? -1d : connectionToClient.rtt * 1000d;
+            int latest_received_tick = _input_buffer_synchronizer == null
+                ? -1
+                : _input_buffer_synchronizer.LastReceivedByServerTick;
+            int received_minus_processed = latest_received_tick < 0
+                ? -1
+                : latest_received_tick - last_processed_input_tick;
             MatchLogContext.Get(gameObject.scene)?.Write(
                 "network",
                 $"[StateDelayWarning][Server] netId={netId} serverTick={server_tick} " +
                 $"lastProcessedInputTick={last_processed_input_tick} serverMinusInput={server_minus_input} " +
+                $"latestReceivedInputTick={latest_received_tick} receivedMinusProcessed={received_minus_processed} " +
                 $"rttMs={rtt_ms:0.#}");
+        }
+
+        private void LogRemoteSnapshotAnomalies(PlayerState state)
+        {
+            if (!isClient || isOwned)
+                return;
+
+            if (!_has_last_remote_snapshot)
+            {
+                _has_last_remote_snapshot = true;
+                _last_remote_snapshot_tick = state.Tick;
+                _last_remote_snapshot_position = state.Position;
+                return;
+            }
+
+            int gap_ticks = state.Tick - _last_remote_snapshot_tick;
+            float position_delta = Vector3.Distance(state.Position, _last_remote_snapshot_position);
+            bool large_gap = gap_ticks > _remote_snapshot_gap_warning_ticks;
+            bool large_delta = position_delta > _remote_position_delta_warning_meters;
+
+            if ((large_gap || large_delta) && CanLogRemoteInterpolationWarning())
+            {
+                Debug.LogWarning(
+                    $"[RemoteState][Client] netId={netId} snapshotTick={state.Tick} previousTick={_last_remote_snapshot_tick} " +
+                    $"gapTicks={gap_ticks} positionDelta={position_delta:0.###}m buffer={_remote_interpolation_buffer.Count} " +
+                    $"oldest={_remote_interpolation_buffer.OldestTick} newest={_remote_interpolation_buffer.NewestTick}");
+            }
+
+            if (state.Tick >= _last_remote_snapshot_tick)
+            {
+                _last_remote_snapshot_tick = state.Tick;
+                _last_remote_snapshot_position = state.Position;
+            }
+        }
+
+        private void LogRemoteBufferAnomalies(float render_tick)
+        {
+            if (!isClient || isOwned || _remote_interpolation_buffer.Count == 0)
+                return;
+
+            bool too_new = render_tick > _remote_interpolation_buffer.NewestTick;
+            bool too_old = render_tick < _remote_interpolation_buffer.OldestTick;
+            if (!too_new && !too_old)
+                return;
+
+            if (!CanLogRemoteInterpolationWarning())
+                return;
+
+            Debug.LogWarning(
+                $"[RemoteBuffer][Client] netId={netId} renderTick={render_tick:0.##} " +
+                $"oldest={_remote_interpolation_buffer.OldestTick} newest={_remote_interpolation_buffer.NewestTick} " +
+                $"count={_remote_interpolation_buffer.Count} type={(too_new ? "underrun" : "overflow")}");
+        }
+
+        private bool CanLogRemoteInterpolationWarning()
+        {
+            if (Time.unscaledTime - _last_remote_interpolation_warning_at < _remote_interpolation_warning_interval_seconds)
+                return false;
+
+            _last_remote_interpolation_warning_at = Time.unscaledTime;
+            return true;
         }
 
         public void ResetSimulation()
@@ -443,6 +519,8 @@ namespace Game.Players
             LastAppliedStateTick = -1;
             LastProcessedInputTick = -1;
             _has_render_state = false;
+            _has_last_remote_snapshot = false;
+            _last_remote_snapshot_tick = -1;
             ClearRemoteInterpolation();
         }
 

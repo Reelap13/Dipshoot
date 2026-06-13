@@ -18,10 +18,12 @@ namespace Game.Players
         [SerializeField] private PlayerHitboxRigController _hitbox_rig;
         [SerializeField] private float _history_seconds = 0.35f;
         [SerializeField] private int _max_history_ticks = DefaultMaxHistoryTicks;
+        [SerializeField] private float _hitbox_retry_interval_seconds = 0.25f;
 
         private PlayerHitbox[] _hitboxes = Array.Empty<PlayerHitbox>();
         private PlayerHitboxSnapshotFrame[] _frames = Array.Empty<PlayerHitboxSnapshotFrame>();
         private TickManager _registered_tick_manager;
+        private float _next_hitbox_retry_at;
 
         public TickLayer TickLayer => TickLayer.HitboxSnapshot;
         public int TickOrder => 0;
@@ -47,7 +49,6 @@ namespace Game.Players
         private void Update()
         {
             CacheReferences();
-            TryEnsureHitboxes();
             TryRegisterTickSystem();
         }
 
@@ -213,8 +214,13 @@ namespace Game.Players
             if (_hitboxes.Length > 0)
                 return;
 
+            if (Time.unscaledTime < _next_hitbox_retry_at)
+                return;
+
+            _next_hitbox_retry_at = Time.unscaledTime + Mathf.Max(0.05f, _hitbox_retry_interval_seconds);
+
             if (_hitbox_rig != null)
-                _hitbox_rig.Rebuild();
+                _hitbox_rig.RequestRebuild();
 
             RefreshHitboxes();
         }

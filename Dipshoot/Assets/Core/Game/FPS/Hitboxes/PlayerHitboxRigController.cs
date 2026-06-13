@@ -10,6 +10,7 @@ namespace Game.Players
         private const string LegacyHitboxRootName = "Hitboxes";
         private const string HitboxSuffix = "Hitbox";
         private const string HitboxLayerName = "CharacterPhysics";
+        private const int NoHitboxWarningRebuildAttempts = 120;
 
         private static readonly PlayerHitboxRigProfile.HitboxBinding[] DefaultBindings =
         {
@@ -32,8 +33,11 @@ namespace Game.Players
         [SerializeField] private bool _rebuild_on_awake = true;
         [SerializeField] private bool _remove_legacy_root = true;
 
+        private PlayerVisualController _visual_controller;
         private int _pending_rebuild_frames;
         private int _last_created_count;
+        private int _empty_rebuild_count;
+        private bool _warned_no_hitboxes;
 
         public int HitboxCount => _last_created_count;
 
@@ -41,8 +45,23 @@ namespace Game.Players
         {
             EnsureLagCompensation();
 
-            if (_rebuild_on_awake)
+            CacheReferences();
+            if (_rebuild_on_awake && IsVisualReady())
                 RequestRebuild();
+        }
+
+        private void OnEnable()
+        {
+            CacheReferences();
+            SubscribeVisualEvents();
+
+            if (_rebuild_on_awake && IsVisualReady())
+                RequestRebuild();
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeVisualEvents();
         }
 
         private void LateUpdate()
@@ -83,8 +102,20 @@ namespace Game.Players
 
             if (created_count == 0)
             {
-                Debug.LogWarning(
-                    $"[HitboxRig] No hitboxes created for {name}. Skeleton={_skeleton_root?.name}, Profile={_profile?.name}.");
+                _empty_rebuild_count++;
+                if (!_warned_no_hitboxes &&
+                    _pending_rebuild_frames <= 0 &&
+                    _empty_rebuild_count >= NoHitboxWarningRebuildAttempts)
+                {
+                    _warned_no_hitboxes = true;
+                    Debug.LogWarning(
+                        $"[HitboxRig] No hitboxes created for {name}. Skeleton={_skeleton_root?.name}, Profile={_profile?.name}.");
+                }
+            }
+            else
+            {
+                _empty_rebuild_count = 0;
+                _warned_no_hitboxes = false;
             }
 
             _last_created_count = created_count;
@@ -97,16 +128,19 @@ namespace Game.Players
             if (_health == null)
                 _health = GetComponent<PlayerHealth>();
 
+            if (_visual_controller == null)
+                _visual_controller = GetComponent<PlayerVisualController>();
+
             if (_profile == null &&
-                TryGetComponent(out PlayerVisualController visual_controller) &&
-                visual_controller.Definition != null)
+                _visual_controller != null &&
+                _visual_controller.Definition != null)
             {
-                _profile = visual_controller.Definition.HitboxRigProfile;
+                _profile = _visual_controller.Definition.HitboxRigProfile;
             }
 
             Transform skeleton_root = null;
-            if (TryGetComponent(out PlayerVisualController current_visual_controller))
-                skeleton_root = FindChildRecursive(current_visual_controller.ThirdPersonRoot, "ThirdPersonCharacter");
+            if (_visual_controller != null)
+                skeleton_root = FindChildRecursive(_visual_controller.ThirdPersonRoot, "ThirdPersonCharacter");
 
             if (skeleton_root == null)
                 skeleton_root = FindChildRecursive(transform, "ThirdPersonCharacter");
@@ -116,6 +150,34 @@ namespace Game.Players
 
             if (_skeleton_root == null)
                 _skeleton_root = transform;
+        }
+
+        private void SubscribeVisualEvents()
+        {
+            if (_visual_controller == null)
+                return;
+
+            _visual_controller.ThirdPersonCharacterCreated -= HandleThirdPersonCharacterCreated;
+            _visual_controller.ThirdPersonCharacterCreated += HandleThirdPersonCharacterCreated;
+        }
+
+        private void UnsubscribeVisualEvents()
+        {
+            if (_visual_controller == null)
+                return;
+
+            _visual_controller.ThirdPersonCharacterCreated -= HandleThirdPersonCharacterCreated;
+        }
+
+        private void HandleThirdPersonCharacterCreated(PlayerVisualController visual_controller)
+        {
+            _visual_controller = visual_controller;
+            RequestRebuild();
+        }
+
+        private bool IsVisualReady()
+        {
+            return _visual_controller != null && _visual_controller.HasThirdPersonCharacter;
         }
 
         private void EnsureLagCompensation()

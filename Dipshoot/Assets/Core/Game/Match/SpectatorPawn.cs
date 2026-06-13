@@ -2,7 +2,6 @@ using Core.ClientPresentation;
 using Mirror;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 namespace Game.MatchMode
 {
@@ -16,6 +15,12 @@ namespace Game.MatchMode
         [SyncVar] private TeamId _team_id = TeamId.Spectator;
 
         private Camera _attached_camera;
+        private Transform _initial_camera_parent;
+        private Vector3 _initial_camera_local_position;
+        private Quaternion _initial_camera_local_rotation;
+        private bool _initial_camera_enabled;
+        private AudioListener _attached_listener;
+        private bool _initial_listener_enabled;
         private bool _is_camera_attached;
         private float _pitch;
 
@@ -109,13 +114,20 @@ namespace Game.MatchMode
                 return;
 
             Transform camera_transform = _attached_camera.transform;
+            _initial_camera_parent = camera_transform.parent;
+            _initial_camera_local_position = camera_transform.localPosition;
+            _initial_camera_local_rotation = camera_transform.localRotation;
+            _initial_camera_enabled = _attached_camera.enabled;
             camera_transform.SetParent(transform, false);
             camera_transform.localPosition = Vector3.zero;
             camera_transform.localRotation = Quaternion.identity;
             _attached_camera.enabled = true;
             _attached_camera.depth = 100f;
-            if (_attached_camera.TryGetComponent(out AudioListener listener))
-                listener.enabled = true;
+            if (_attached_camera.TryGetComponent(out _attached_listener))
+            {
+                _initial_listener_enabled = _attached_listener.enabled;
+                _attached_listener.enabled = true;
+            }
 
             _is_camera_attached = true;
         }
@@ -125,25 +137,60 @@ namespace Game.MatchMode
             if (!_is_camera_attached || _attached_camera == null)
                 return;
 
-            Destroy(_attached_camera.gameObject);
+            Transform camera_transform = _attached_camera.transform;
+            camera_transform.SetParent(_initial_camera_parent, false);
+            camera_transform.localPosition = _initial_camera_local_position;
+            camera_transform.localRotation = _initial_camera_local_rotation;
+            _attached_camera.enabled = _initial_camera_enabled;
+
+            if (_attached_listener != null)
+                _attached_listener.enabled = _initial_listener_enabled;
+
             _attached_camera = null;
+            _attached_listener = null;
             _is_camera_attached = false;
         }
 
         private bool TryGetSceneCamera(out Camera camera)
         {
-            camera = CreateLocalCamera();
-            return camera != null;
-        }
+            camera = null;
+            Camera fallback_camera = null;
+            var scene = gameObject.scene;
 
-        private Camera CreateLocalCamera()
-        {
-            GameObject camera_object = new("SpectatorCamera");
-            SceneManager.MoveGameObjectToScene(camera_object, gameObject.scene);
-            Camera camera = camera_object.AddComponent<Camera>();
-            camera.tag = "MainCamera";
-            camera_object.AddComponent<AudioListener>();
-            return camera;
+            if (!scene.IsValid() || !scene.isLoaded)
+                return false;
+
+            GameObject[] root_objects = scene.GetRootGameObjects();
+            foreach (GameObject root_object in root_objects)
+            {
+                Camera[] cameras = root_object.GetComponentsInChildren<Camera>(true);
+                foreach (Camera scene_camera in cameras)
+                {
+                    if (scene_camera == null || scene_camera.GetComponentInParent<SpectatorPawn>() != null)
+                        continue;
+
+                    if (fallback_camera == null)
+                        fallback_camera = scene_camera;
+
+                    if (!scene_camera.isActiveAndEnabled)
+                        continue;
+
+                    if (camera == null)
+                        camera = scene_camera;
+
+                    if (scene_camera.CompareTag("MainCamera"))
+                    {
+                        camera = scene_camera;
+                        return true;
+                    }
+                }
+            }
+
+            if (camera != null)
+                return true;
+
+            camera = fallback_camera;
+            return camera != null;
         }
 
         private static float NormalizePitch(float pitch)

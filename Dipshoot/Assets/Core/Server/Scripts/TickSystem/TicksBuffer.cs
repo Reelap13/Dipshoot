@@ -8,6 +8,38 @@ namespace Server.Scripts.TickSystem
     {
         private Dictionary<int, T> _inputs = new();
 
+        public int Count => _inputs.Count;
+
+        public int OldestTick
+        {
+            get
+            {
+                if (_inputs.Count == 0)
+                    return -1;
+
+                int oldest_tick = int.MaxValue;
+                foreach (var pair in _inputs)
+                    oldest_tick = Mathf.Min(oldest_tick, pair.Key);
+
+                return oldest_tick;
+            }
+        }
+
+        public int NewestTick
+        {
+            get
+            {
+                if (_inputs.Count == 0)
+                    return -1;
+
+                int newest_tick = int.MinValue;
+                foreach (var pair in _inputs)
+                    newest_tick = Mathf.Max(newest_tick, pair.Key);
+
+                return newest_tick;
+            }
+        }
+
         public void Add(T input)
         {
             _inputs[input.GetTick()] = input;

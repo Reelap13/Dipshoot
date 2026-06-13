@@ -18,6 +18,7 @@ namespace Game.Players
         [SerializeField] private StatsController _stats;
         [SerializeField] private AimController _aim_controller;
         [SerializeField] private PlayerHitboxLagCompensation _hitbox_lag_compensation;
+        [SerializeField] private InputBufferSynchronizer _input_buffer_synchronizer;
         [SerializeField] private CapsuleCollider _capsule;
         [SerializeField] private Transform _camera_point;
         [SerializeField] private LayerMask _collision_mask = Physics.DefaultRaycastLayers;
@@ -191,6 +192,9 @@ namespace Game.Players
 
             if (_hitbox_lag_compensation == null)
                 _hitbox_lag_compensation = GetComponent<PlayerHitboxLagCompensation>();
+
+            if (_input_buffer_synchronizer == null)
+                _input_buffer_synchronizer = GetComponent<InputBufferSynchronizer>();
 
             if (_capsule == null)
                 _capsule = GetComponentInChildren<CapsuleCollider>(true);
@@ -886,11 +890,19 @@ namespace Game.Players
             int server_minus_input = _last_server_processed_input_tick < 0
                 ? -1
                 : server_tick - _last_server_processed_input_tick;
+            int latest_received_tick = _input_buffer_synchronizer == null
+                ? -1
+                : _input_buffer_synchronizer.LastReceivedByServerTick;
+            int received_minus_processed = latest_received_tick < 0 || _last_server_processed_input_tick < 0
+                ? -1
+                : latest_received_tick - _last_server_processed_input_tick;
             LogServerReplayWarning(
                 server_tick,
                 replay_from_tick,
                 simulated_ticks,
-                server_minus_input);
+                server_minus_input,
+                latest_received_tick,
+                received_minus_processed);
 
             if (!_server_replay_debug_enabled || !ShouldLogServerReplayDebug())
                 return;
@@ -902,6 +914,9 @@ namespace Game.Players
                 $"{ReplayDebugPrefix} netId={Character.netId} serverTick={server_tick} " +
                 $"replayFromTick={replay_from_tick} replayTicks={simulated_ticks} " +
                 $"lastInputTick={_last_server_processed_input_tick} serverMinusInput={server_minus_input} " +
+                $"latestReceivedInputTick={latest_received_tick} receivedMinusProcessed={received_minus_processed} " +
+                $"inputBufferOldest={Character.InputBuffet.OldestTick} inputBufferNewest={Character.InputBuffet.NewestTick} " +
+                $"inputBufferCount={Character.InputBuffet.Count} " +
                 $"maxReplayTicks={GetTicksFromMs(_max_server_replay_ms)} maxHoldTicks={GetTicksFromMs(_max_server_hold_input_ms)} " +
                 $"heldInputTicks={_replay_debug_max_held_input_ticks} neutralizedInputs={_replay_debug_neutralized_inputs} " +
                 $"droppedStaleInputs={_replay_debug_dropped_stale_inputs} suppressed={suppressed}");
@@ -911,11 +926,14 @@ namespace Game.Players
             int server_tick,
             int replay_from_tick,
             int simulated_ticks,
-            int server_minus_input)
+            int server_minus_input,
+            int latest_received_tick,
+            int received_minus_processed)
         {
             int max_hold_ticks = GetTicksFromMs(_max_server_hold_input_ms);
             bool should_log =
                 server_minus_input > max_hold_ticks ||
+                received_minus_processed > 3 ||
                 _replay_debug_max_held_input_ticks > max_hold_ticks ||
                 _replay_debug_neutralized_inputs > 0 ||
                 _replay_debug_dropped_stale_inputs > 0;
@@ -928,6 +946,9 @@ namespace Game.Players
                 $"[MovementReplayWarning][Server] netId={Character.netId} serverTick={server_tick} " +
                 $"replayFromTick={replay_from_tick} replayTicks={simulated_ticks} " +
                 $"lastInputTick={_last_server_processed_input_tick} serverMinusInput={server_minus_input} " +
+                $"latestReceivedInputTick={latest_received_tick} receivedMinusProcessed={received_minus_processed} " +
+                $"inputBufferOldest={Character.InputBuffet.OldestTick} inputBufferNewest={Character.InputBuffet.NewestTick} " +
+                $"inputBufferCount={Character.InputBuffet.Count} " +
                 $"maxReplayTicks={GetTicksFromMs(_max_server_replay_ms)} maxHoldTicks={max_hold_ticks} " +
                 $"heldInputTicks={_replay_debug_max_held_input_ticks} neutralizedInputs={_replay_debug_neutralized_inputs} " +
                 $"droppedStaleInputs={_replay_debug_dropped_stale_inputs}");

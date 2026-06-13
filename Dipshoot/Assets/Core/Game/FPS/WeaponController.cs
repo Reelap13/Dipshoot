@@ -29,7 +29,7 @@ namespace Game.Players
         [SerializeField] private float _camera_height_ratio = 0.745f;
         [SerializeField] private LayerMask _hit_mask = ~0;
         [SerializeField] private QueryTriggerInteraction _trigger_interaction = QueryTriggerInteraction.Collide;
-        [SerializeField] private float _lag_compensation_hit_reg_bias_ms = 33f;
+        [SerializeField] private float _lag_compensation_hit_reg_bias_ms = 0f;
         [SerializeField] private float _lag_compensation_max_rewind_ms = 200f;
         [SerializeField] private bool _shot_compare_debug_enabled = true;
         [SerializeField] private int _shot_compare_debug_max_logs_per_second = 20;
