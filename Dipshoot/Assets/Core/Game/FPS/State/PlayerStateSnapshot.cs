@@ -5,6 +5,8 @@ namespace Game.Players.State
     public struct PlayerStateSnapshot
     {
         public int ServerTick;
+        public int StateTick;
+        public int AckInputTick;
         public int LastProcessedInputTick;
 
         public Vector3 Position;
@@ -26,6 +28,8 @@ namespace Game.Players.State
             return new PlayerStateSnapshot
             {
                 ServerTick = server_tick,
+                StateTick = state.Tick,
+                AckInputTick = last_processed_input_tick,
                 LastProcessedInputTick = last_processed_input_tick,
                 Position = state.Position,
                 Velocity = state.Velocity,
@@ -38,6 +42,11 @@ namespace Game.Players.State
                 TimeSinceGrounded = state.TimeSinceGrounded,
                 TimeSinceJumpPressed = state.TimeSinceJumpPressed,
             };
+        }
+
+        public PlayerState ToState()
+        {
+            return ToState(StateTick);
         }
 
         public PlayerState ToState(int tick)

@@ -185,7 +185,9 @@ namespace Game.Players
         private void ReceiveOwnerAuthoritativeState(PlayerStateSnapshot snapshot)
         {
             LastReceivedStateTick = snapshot.ServerTick;
-            LastProcessedInputTick = snapshot.LastProcessedInputTick;
+            int ack_input_tick = GetSnapshotAckInputTick(snapshot);
+            int state_tick = GetSnapshotStateTick(snapshot);
+            LastProcessedInputTick = ack_input_tick;
             UpdateServerTickEstimate(snapshot.ServerTick);
             ApplyClientTickCorrection();
             LogTickSyncSnapshot(snapshot, true);
@@ -193,29 +195,29 @@ namespace Game.Players
             if (_character == null || _movement == null)
                 return;
 
-            if (snapshot.LastProcessedInputTick < 0)
+            if (state_tick < 0)
                 return;
 
-            PlayerState state = snapshot.ToState(snapshot.LastProcessedInputTick);
+            PlayerState state = snapshot.ToState(state_tick);
 
             if (_character.TickManager == null)
             {
                 ApplyAuthoritativeState(state);
-                AcknowledgeProcessedInputs(snapshot.LastProcessedInputTick);
+                AcknowledgeProcessedInputs(ack_input_tick);
                 return;
             }
 
-            int predicted_tick = snapshot.LastProcessedInputTick;
+            int predicted_tick = state_tick;
             if (!_character.StateBuffer.TryGet(predicted_tick, out PlayerState predicted_state))
             {
                 ApplyAuthoritativeState(state);
-                AcknowledgeProcessedInputs(snapshot.LastProcessedInputTick);
+                AcknowledgeProcessedInputs(ack_input_tick);
                 return;
             }
 
             if (!IsReconciliationRequired(predicted_state, state))
             {
-                AcknowledgeProcessedInputs(snapshot.LastProcessedInputTick);
+                AcknowledgeProcessedInputs(ack_input_tick);
                 return;
             }
 
@@ -236,7 +238,7 @@ namespace Game.Players
                 SetRenderState(state);
             }
 
-            AcknowledgeProcessedInputs(snapshot.LastProcessedInputTick);
+            AcknowledgeProcessedInputs(ack_input_tick);
         }
 
         private void ReplayFromTick(int from_tick, int to_tick)
@@ -261,7 +263,7 @@ namespace Game.Players
             LastReceivedStateTick = snapshot.ServerTick;
             UpdateServerTickEstimate(snapshot.ServerTick);
             LogTickSyncSnapshot(snapshot, false);
-            PlayerState state = snapshot.ToState(snapshot.ServerTick);
+            PlayerState state = snapshot.ToState(GetSnapshotStateTick(snapshot));
             LogRemoteSnapshotAnomalies(state);
             _remote_interpolation_buffer.Add(state);
         }
@@ -287,10 +289,26 @@ namespace Game.Players
 
         private void AcknowledgeProcessedInputs(int last_processed_input_tick)
         {
-            if (_input_buffer_synchronizer == null)
+            if (_input_buffer_synchronizer == null || last_processed_input_tick < 0)
                 return;
 
             _input_buffer_synchronizer.AcknowledgeInputsUpTo(last_processed_input_tick);
+        }
+
+        private static int GetSnapshotStateTick(PlayerStateSnapshot snapshot)
+        {
+            if (snapshot.StateTick > 0)
+                return snapshot.StateTick;
+
+            return snapshot.LastProcessedInputTick;
+        }
+
+        private static int GetSnapshotAckInputTick(PlayerStateSnapshot snapshot)
+        {
+            if (snapshot.AckInputTick > 0)
+                return snapshot.AckInputTick;
+
+            return snapshot.LastProcessedInputTick;
         }
 
         private bool IsReconciliationRequired(PlayerState predicted_state, PlayerState authoritative_state)
@@ -570,13 +588,16 @@ namespace Game.Players
             double offset = _has_server_tick_offset ? _server_tick_offset : 0d;
             double rtt_ms = NetworkTime.rtt * 1000d;
             float tick_rate_scale = _character.TickManager.CurrentTickRateScale;
+            int state_tick = GetSnapshotStateTick(snapshot);
+            int ack_input_tick = GetSnapshotAckInputTick(snapshot);
 
             Debug.Log(
                 $"{TickSyncDebugPrefix} owner={owner_snapshot} netId={netId} " +
                 $"clientTick={client_tick} serverTick={snapshot.ServerTick} " +
+                $"stateTick={state_tick} ackInputTick={ack_input_tick} " +
                 $"lastProcessedInputTick={snapshot.LastProcessedInputTick} " +
                 $"serverMinusClient={snapshot.ServerTick - client_tick} " +
-                $"serverMinusInput={snapshot.ServerTick - snapshot.LastProcessedInputTick} " +
+                $"serverMinusInput={snapshot.ServerTick - ack_input_tick} " +
                 $"networkTimeTick={network_time_tick:0.##} estimatedServerTick={estimated_server_tick:0.##} " +
                 $"offset={offset:0.##} estimatedMinusClient={estimated_server_tick - client_tick:0.##} " +
                 $"tickRateScale={tick_rate_scale:0.###} tickCorrectionError={_last_tick_correction_error:0.##} " +
