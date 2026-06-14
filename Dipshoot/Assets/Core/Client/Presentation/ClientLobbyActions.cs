@@ -57,6 +57,14 @@ namespace Core.ClientPresentation
             _connector.CommandSwitchTeam();
         }
 
+        public void SwitchPlayerTeam(int player_id)
+        {
+            if (_connector == null)
+                return;
+
+            _connector.CommandSwitchPlayerTeam(player_id);
+        }
+
         public void SelectPreset(string preset_id)
         {
             if (_connector == null)

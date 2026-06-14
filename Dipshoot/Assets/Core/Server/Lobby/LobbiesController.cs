@@ -144,12 +144,30 @@ namespace Server.Lobby
             if (player_data == null)
                 return;
 
-            player_data.Team = player_data.Team switch
+            player_data.Team = GetNextTeam(player_data.Team);
+            UpdateClientsData(lobby.Id);
+        }
+
+        public void SwitchPlayerTeam(PlayerHubController player, int lobby_id, int target_player_id)
+        {
+            if (!_lobbies_data.TryGetValue(lobby_id, out var lobby))
             {
-                TeamId.Red => TeamId.Blue,
-                TeamId.Blue => TeamId.Spectator,
-                _ => TeamId.Red,
-            };
+                player.RegisterError("Lobby doesn't exist");
+                return;
+            }
+
+            LobbyPlayerData requester = lobby.GetPlayer(player.Player.PlayerId);
+            if (requester == null || requester.Type != LobbyPlayerType.HOST)
+            {
+                player.RegisterError("Error 14: Attempt to switch player team without host role");
+                return;
+            }
+
+            LobbyPlayerData target = lobby.GetPlayer(target_player_id);
+            if (target == null || target.PlayerId == player.Player.PlayerId)
+                return;
+
+            target.Team = GetNextTeam(target.Team);
             UpdateClientsData(lobby.Id);
         }
 
@@ -272,6 +290,16 @@ namespace Server.Lobby
             }
 
             return red <= blue ? TeamId.Red : TeamId.Blue;
+        }
+
+        private static TeamId GetNextTeam(TeamId team)
+        {
+            return team switch
+            {
+                TeamId.Red => TeamId.Blue,
+                TeamId.Blue => TeamId.Spectator,
+                _ => TeamId.Red,
+            };
         }
     }
 }

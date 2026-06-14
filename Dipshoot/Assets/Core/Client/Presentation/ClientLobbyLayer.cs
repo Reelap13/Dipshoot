@@ -84,16 +84,17 @@ namespace Core.ClientPresentation
             int players_count = lobby.Players != null ? lobby.Players.Count : 0;
             _capacity_text.text = $"Players: {players_count}/{lobby.PlayersCapacity}";
 
-            ClearRows(_red_player_rows);
-            ClearRows(_blue_player_rows);
-            ClearRows(_spectator_player_rows);
-            FillTeamRows(lobby, TeamId.Red, _red_player_rows);
-            FillTeamRows(lobby, TeamId.Blue, _blue_player_rows);
-            FillTeamRows(lobby, TeamId.Spectator, _spectator_player_rows);
-
             int player_id = ClientAppRoot.Instance.SessionStore.PlayerId;
             LobbyPlayerData local_player = lobby.GetPlayer(player_id);
             bool is_host = local_player != null && local_player.Type == LobbyPlayerType.HOST;
+
+            ClearRows(_red_player_rows);
+            ClearRows(_blue_player_rows);
+            ClearRows(_spectator_player_rows);
+            FillTeamRows(lobby, TeamId.Red, _red_player_rows, is_host, player_id);
+            FillTeamRows(lobby, TeamId.Blue, _blue_player_rows, is_host, player_id);
+            FillTeamRows(lobby, TeamId.Spectator, _spectator_player_rows, is_host, player_id);
+
             _start_game_button.gameObject.SetActive(is_host);
             UpdatePresetView(lobby, is_host);
             UpdateTutorialModeView(lobby, is_host);
@@ -114,7 +115,7 @@ namespace Core.ClientPresentation
             _start_game_button.gameObject.SetActive(false);
         }
 
-        private void FillTeamRows(LobbyData lobby, TeamId team_id, List<TextMeshProUGUI> rows)
+        private void FillTeamRows(LobbyData lobby, TeamId team_id, List<TextMeshProUGUI> rows, bool is_host, int local_player_id)
         {
             if (lobby.Players == null || rows == null)
                 return;
@@ -126,18 +127,50 @@ namespace Core.ClientPresentation
                 if (player.Team != team_id)
                     continue;
 
-                rows[row_index].text = $"{player.Nickname} ({FormatPlayerType(player.Type)})";
+                ConfigurePlayerRow(rows[row_index], player, is_host && player.PlayerId != local_player_id);
                 row_index++;
             }
         }
 
-        private static void ClearRows(List<TextMeshProUGUI> rows)
+        private void ClearRows(List<TextMeshProUGUI> rows)
         {
             if (rows == null)
                 return;
 
             for (int i = 0; i < rows.Count; i++)
-                rows[i].text = string.Empty;
+                ConfigurePlayerRow(rows[i], null, false);
+        }
+
+        private void ConfigurePlayerRow(TextMeshProUGUI row, LobbyPlayerData player, bool can_switch_team)
+        {
+            if (row == null)
+                return;
+
+            row.text = player == null
+                ? string.Empty
+                : $"{player.Nickname} ({FormatPlayerType(player.Type)})";
+            row.raycastTarget = can_switch_team;
+
+            Button button = row.GetComponent<Button>();
+            if (can_switch_team)
+            {
+                if (button == null)
+                    button = row.gameObject.AddComponent<Button>();
+
+                int player_id = player.PlayerId;
+                button.targetGraphic = row;
+                button.transition = Selectable.Transition.ColorTint;
+                button.interactable = true;
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(() => SwitchPlayerTeam(player_id));
+                return;
+            }
+
+            if (button == null)
+                return;
+
+            button.onClick.RemoveAllListeners();
+            button.interactable = false;
         }
 
         private void UpdatePresetView(LobbyData lobby, bool is_host)
@@ -223,6 +256,11 @@ namespace Core.ClientPresentation
         private void SwitchTeam()
         {
             ClientAppRoot.Instance.LobbyActions.SwitchTeam();
+        }
+
+        private void SwitchPlayerTeam(int player_id)
+        {
+            ClientAppRoot.Instance.LobbyActions.SwitchPlayerTeam(player_id);
         }
 
         private void SelectPreset(int index)

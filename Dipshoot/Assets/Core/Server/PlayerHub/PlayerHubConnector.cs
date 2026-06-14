@@ -73,6 +73,8 @@ namespace Server.PlayerHub
         [Command]
         public void CommandSwitchTeam() => _controller.SwitchTeam();
         [Command]
+        public void CommandSwitchPlayerTeam(int player_id) => _controller.SwitchPlayerTeam(player_id);
+        [Command]
         public void CommandSelectPreset(string preset_id) => _controller.SelectPreset(preset_id);
         [Command]
         public void CommandSetTutorialMode(bool enabled) => _controller.SetTutorialMode(enabled);

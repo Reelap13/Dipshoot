@@ -102,6 +102,17 @@ namespace Server.PlayerHub
             LobbiesController.Instance.SwitchTeam(this, Lobby.Id);
         }
 
+        public void SwitchPlayerTeam(int player_id)
+        {
+            if (Lobby == null)
+            {
+                RegisterError("Error 08: Attempt to switch player team without being a member of the lobby");
+                return;
+            }
+
+            LobbiesController.Instance.SwitchPlayerTeam(this, Lobby.Id, player_id);
+        }
+
         public void SelectPreset(string preset_id)
         {
             if (Lobby == null)
