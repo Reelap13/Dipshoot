@@ -1,0 +1,53 @@
+% Insert in "Evolutionary Generator" after subsection "Evolution Process",
+% before "\subsection{Mutation}".
+
+The experimental evolutionary configuration uses a population of \(32\) genomes and runs for \(50\) generations. In each generation, the best \(4\) genomes are preserved as elites. Parent selection uses tournament selection with tournament size \(4\). Each generation also receives \(4\) random immigrants.
+
+The mutation rate is \(0.35\). During the first third of the evolutionary process, mutation is more aggressive and applies between \(1\) and \(9\) mutation steps. In later generations, mutation applies between \(1\) and \(5\) steps.
+
+The mutation operator selects one of six operation types using fixed probability ranges:
+\[
+\begin{array}{ll}
+    \text{add structure} & 25\% \\
+    \text{remove structure} & 17\% \\
+    \text{change structure} & 23\% \\
+    \text{add cover} & 15\% \\
+    \text{remove cover} & 12\% \\
+    \text{macro mutation} & 8\%
+\end{array}
+\]
+
+Crossover combines two parent genomes by splitting the source half along a central band:
+\[
+    centerStartY = \max(1, H/2 - 5) = 9 .
+\]
+Objects with \(y < 9\) are inherited from the first parent, while objects with \(y \ge 9\) are inherited from the second parent. The capture point is also inherited from the second parent.
+
+Duplicate genomes are detected using a genome hash and receive an additional penalty of \(200\) per duplicate occurrence.
+
+% Replace or extend the start of subsection "Fitness Evaluation" in Evolutionary Generator.
+
+The evolutionary fitness function is minimised:
+\[
+    F = \sum penalties - \sum bonuses .
+\]
+The main penalty terms used in the experimental configuration are:
+
+\[
+\begin{array}{ll}
+    \text{no path to capture} & +10000 \\
+    \text{no ground-only path} & +8000 \\
+    \text{clear-zone violation} & +1500 \\
+    \text{weighted path cost over }55 & +(cost-55)\cdot 8 \\
+    \text{path difference over }8 & +diff\cdot 12 \\
+    \text{direct spawn-to-capture line of sight} & +250 \\
+    \text{structure density error} & +missing/excess \cdot 10 \\
+    \text{cover count error} & +|covers-\operatorname{round}(W\cdot H\cdot 0.12)|\cdot 8 \\
+    \text{top component without ladder} & +350 \\
+    \text{enclosed bridge} & +600
+\end{array}
+\]
+
+The fitness function also includes route-quality bonuses. Up to three distinct ground paths may reduce the score by \(150\) each, and sufficiently wide ground routes may reduce the score by up to \(180\).
+
+Two additional terms, \texttt{DeadEndPenalty} and \texttt{CaptureOnlySpawnHalfPenalty}, exist in the implementation. They were inactive in the experimental assets because both weights were set to \(0\).

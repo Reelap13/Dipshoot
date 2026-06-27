@@ -1,0 +1,38 @@
+% Insert in "Agent-Based Rule-Driven Generator" after the workflow enumerate.
+
+The agent-based configuration uses the following numerical targets. The source-half structure target is
+\[
+    N_{struct}^{source}
+    =
+    \frac{\operatorname{round}(W \cdot H \cdot 0.4)}{2}
+    =
+    \frac{\operatorname{round}(15 \cdot 28 \cdot 0.4)}{2}
+    =
+    84 .
+\]
+The source-half cover target is
+\[
+    N_{cover}^{source}
+    =
+    \frac{\operatorname{round}(W \cdot H \cdot 0.12)}{2}
+    =
+    25 .
+\]
+
+During clustered container placement, high containers are selected with probability
+\[
+    P(ContainerHigh)=0.15,
+\]
+while the remaining containers are low containers. Bridge count is derived from the number of already occupied structural cells:
+\[
+    targetBridges =
+    clamp(\operatorname{round}(occupiedCells \cdot 0.25), 2, 6).
+\]
+The ladder target is based on the amount of structure in the source half:
+\[
+    targetLadders = \max(2, structureCells / 8).
+\]
+
+Cover generation uses three main probabilities: full cover is selected with probability \(0.45\), elevated top cover is attempted with probability \(0.45\), and random cover rotation is attempted with probability \(0.22\).
+
+The fitness report produced by this generator is used as validation and diagnostics. It describes route cost, clear-zone violations, line of sight, density, cover placement, and elevated access, but it does not act as an optimiser and does not select between multiple candidate layouts.

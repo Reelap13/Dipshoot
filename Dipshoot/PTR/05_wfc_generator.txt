@@ -1,0 +1,64 @@
+% Insert in "Wave Function Collapse Generator" after the tile-set itemize.
+
+The WFC generator performs up to \(48\) collapse attempts. Each attempt has a propagation limit of \(4096\) steps.
+
+The experimental tile weights are:
+
+\[
+\begin{array}{ll}
+    Empty & 2.0 \\
+    ContainerLow & 2.4 \\
+    ContainerHigh & 0.7 \\
+    BridgeHorizontal & 0.1 \\
+    BridgeVertical & 0.1 \\
+    LadderNorth, LadderSouth, LadderEast, LadderWest & 0.32
+\end{array}
+\]
+
+When a cell is collapsed, the tile is sampled from the remaining domain using weighted random selection:
+\[
+    P(tile_i) = \frac{w_i}{\sum_{j \in D_c} w_j}.
+\]
+
+Cell entropy is calculated from the number of remaining domain values with a small random tie-breaking term:
+\[
+    H(c) = |D_c| + \epsilon,
+    \qquad
+    \epsilon = random[0,1)\cdot 0.05 .
+\]
+
+% Insert in WFC subsection "Tile Set and Domains" after the paragraph
+% "At the beginning of an attempt:" or replace that itemize with this.
+
+At the beginning of an attempt, initial domains are assigned as follows:
+
+\[
+\begin{array}{ll}
+    \text{clear-zone cells} & \{Empty\} \\
+    \text{reserved route cells} & \{Empty, BridgeHorizontal, BridgeVertical\} \\
+    \text{other cells} & \text{all tiles, with boundary pruning}
+\end{array}
+\]
+
+Compatibility rules then restrict neighbouring domains. Ladder tiles require a low container in the direction they face. Horizontal bridges require either a low container or another horizontal bridge on their left and right sides. Vertical bridges require either a low container or another vertical bridge above and below them.
+
+% Insert in WFC subsection "Repeated Attempts and Evaluation",
+% before the fallback paragraph.
+
+Each successful WFC attempt is scored after collapse. The score is used only to select the best collapse attempt; it does not evolve a population and does not modify the collapse process itself.
+
+The main attempt-scoring terms are:
+
+\[
+\begin{array}{ll}
+    \text{invalid layout, no path, no ground path, or clear-zone violation} & +10000 \\
+    \text{path difference over }8 & +(|path_A-path_B|-8)\cdot 12 \\
+    \text{weighted path cost over }55 & +(cost-55)\cdot 8 \\
+    \text{capture cover count outside }[4,8]\text{ within radius }5 & +diff\cdot 120 \\
+    \text{ground turns below }3 & +(3-turns)\cdot 90 \\
+    \text{straight segment above }7 & +(maxStraight-7)\cdot 45 \\
+    \text{directness below }1.2 & +(1.2-directness)\cdot 300
+\end{array}
+\]
+
+If all collapse attempts fail, a fallback layout is created and receives an additional penalty of \(50000\).

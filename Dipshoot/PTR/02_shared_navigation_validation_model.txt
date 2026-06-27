@@ -1,0 +1,26 @@
+% Insert after the shared navigation list in "Common Warehouse Data Model",
+% before "\section{Agent-Based Rule-Driven Generator}".
+
+The shared navigation model evaluates two types of routes. The weighted route cost is computed over both ground and elevated movement levels:
+\[
+    C(path) = \sum_{i \in path} (1 + e_i),
+\]
+where \(e_i=0\) for a normal cell, \(e_i=2\) for a cell affected by partial cover, and \(e_i=4\) for a cell affected by full cover. The maximum accepted weighted path cost is \(55\).
+
+Ground-only connectivity is evaluated separately using an unweighted breadth-first search over ground-level cells:
+\[
+    C_{ground}(path) = |path|-1 .
+\]
+This check ensures that the capture point is reachable without relying exclusively on elevated traversal.
+
+Cover also affects movement direction. A cover object stores a blocking direction vector \(d\). Movement from one cell to another with movement vector \(m\) is blocked when
+\[
+    m = d \quad \text{or} \quad m = -d .
+\]
+
+Line of sight is checked by tracing grid cells between a spawn point and the capture point. The line is considered blocked if any intermediate cell is occupied by a ground-blocking structure. Direct line of sight between a spawn point and the capture point is penalised by the validation and scoring systems.
+
+The two teams' weighted route costs are compared using an allowed difference of \(8\):
+\[
+    |C_A - C_B| \le 8 .
+\]

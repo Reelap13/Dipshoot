@@ -1,0 +1,39 @@
+% Insert in section "Common Warehouse Data Model"
+% Replace the paragraph that starts with:
+% "The experimental maps use a grid of 15 by 28 cells."
+
+The experimental maps use a rectangular grid with width \(W=15\) and height \(H=28\), giving
+\[
+    |G| = W \cdot H = 15 \cdot 28 = 420
+\]
+logical cells. Each cell corresponds to a world-space footprint of \(s_x=2.4\) units and \(s_z=2.9\) units.
+
+The spawn points are derived from the grid dimensions:
+\[
+    Spawn_A = (W/2, 1),
+    \qquad
+    Spawn_B = (W/2, H-1).
+\]
+For the experimental configuration this gives \(Spawn_A=(7.5,1)\) and \(Spawn_B=(7.5,27)\).
+
+The capture point is placed on the central horizontal band with a randomized horizontal offset:
+\[
+    Capture = (4 + 7u, H/2), \qquad u \in [0,1).
+\]
+Thus the capture point has \(y=14\), while its \(x\)-coordinate lies in the interval \([4,11)\).
+
+Spawn and capture clear zones are represented by circular exclusion regions. The spawn clear-zone radius is \(2\) cells, and the capture clear-zone radius is \(3\) cells. An object is considered to touch a protected zone if its centre satisfies
+\[
+    \|p_{object} - p_{zone}\|^2 \le r^2 .
+\]
+
+The main route skeleton is described by two lane coordinates and two connector rows. The centre lane is based on \(\lfloor Spawn_A.x \rfloor = 7\). The left lane is sampled in the range \(x=2..4\), and the right lane in the range \(x=10..12\). The lower connector row is sampled in the range \(y=4..6\), while the upper connector row is sampled in the range \(y=10..12\).
+
+All three generators construct a source half of the layout and mirror it to the opposite side. For an object with origin \((x,y)\) and size \((size_x,size_y)\), the mirrored origin is
+\[
+    mirror(x,y,size) = (W - x - size_x,\; H - y - size_y).
+\]
+The mirrored object also receives a \(180^\circ\) rotation offset:
+\[
+    rotation' = rotation + 180^\circ .
+\]
