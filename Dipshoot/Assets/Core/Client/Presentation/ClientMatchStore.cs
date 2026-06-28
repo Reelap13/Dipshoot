@@ -12,6 +12,7 @@ namespace Core.ClientPresentation
         public bool IsMatchSceneLoaded { get; private set; }
         public string MatchSceneName { get; private set; }
         public TeamControlModeController ModeController { get; private set; }
+        public MatchHudController HudController { get; private set; }
 
         public void BeginLoading(string scene_name)
         {
@@ -19,6 +20,7 @@ namespace Core.ClientPresentation
             IsMatchSceneLoaded = false;
             MatchSceneName = scene_name;
             ModeController = null;
+            HudController = null;
             OnUpdated?.Invoke();
         }
 
@@ -36,11 +38,31 @@ namespace Core.ClientPresentation
             OnUpdated?.Invoke();
         }
 
+        public void SetMatchControllers(
+            TeamControlModeController mode_controller,
+            MatchHudController hud_controller)
+        {
+            ModeController = mode_controller;
+            HudController = hud_controller;
+            HasActiveMatch = mode_controller != null || hud_controller != null || HasActiveMatch;
+            OnUpdated?.Invoke();
+        }
+
         public void ClearModeController(TeamControlModeController mode_controller)
         {
             if (ModeController != mode_controller)
                 return;
 
+            ModeController = null;
+            OnUpdated?.Invoke();
+        }
+
+        public void ClearMatchControllers(MatchHudController hud_controller)
+        {
+            if (HudController != hud_controller)
+                return;
+
+            HudController = null;
             ModeController = null;
             OnUpdated?.Invoke();
         }
@@ -51,6 +73,7 @@ namespace Core.ClientPresentation
             IsMatchSceneLoaded = false;
             MatchSceneName = null;
             ModeController = null;
+            HudController = null;
             OnUpdated?.Invoke();
         }
     }

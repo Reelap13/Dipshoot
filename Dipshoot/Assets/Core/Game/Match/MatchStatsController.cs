@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Game.Players;
 using UnityEngine;
 
 namespace Game.MatchMode
@@ -6,8 +7,11 @@ namespace Game.MatchMode
     public class MatchStatsController : MonoBehaviour
     {
         private readonly Dictionary<int, PlayerRoundStats> _player_stats = new();
+        private readonly List<MatchKillEvent> _kill_events = new();
+        private int _next_kill_id = 1;
 
         public IEnumerable<PlayerRoundStats> PlayerStats => _player_stats.Values;
+        public IReadOnlyList<MatchKillEvent> KillEvents => _kill_events;
         public float RedScore { get; private set; }
         public float BlueScore { get; private set; }
         public int RedRoundWins { get; private set; }
@@ -20,6 +24,8 @@ namespace Game.MatchMode
             RedRoundWins = 0;
             BlueRoundWins = 0;
             _player_stats.Clear();
+            _kill_events.Clear();
+            _next_kill_id = 1;
         }
 
         public void ResetRoundScores()
@@ -75,14 +81,48 @@ namespace Game.MatchMode
 
         public void RegisterDeath(int killer_player_id, int victim_player_id)
         {
+            RegisterDeath(
+                killer_player_id,
+                victim_player_id,
+                WeaponSlot.None,
+                PlayerHitboxType.None);
+        }
+
+        public void RegisterDeath(
+            int killer_player_id,
+            int victim_player_id,
+            WeaponSlot weapon_slot,
+            PlayerHitboxType hitbox_type)
+        {
+            _player_stats.TryGetValue(killer_player_id, out PlayerRoundStats killer_stats);
+            _player_stats.TryGetValue(victim_player_id, out PlayerRoundStats victim_stats);
+
             if (killer_player_id != victim_player_id &&
-                _player_stats.TryGetValue(killer_player_id, out PlayerRoundStats killer_stats))
+                killer_stats != null)
             {
                 killer_stats.Kills++;
             }
 
-            if (_player_stats.TryGetValue(victim_player_id, out PlayerRoundStats victim_stats))
+            if (victim_stats != null)
                 victim_stats.Deaths++;
+
+            MatchKillWeapon weapon = MatchKillEvent.GetWeapon(weapon_slot);
+            if (killer_stats == null ||
+                victim_stats == null ||
+                killer_player_id == victim_player_id ||
+                weapon == MatchKillWeapon.None)
+            {
+                return;
+            }
+
+            _kill_events.Add(new MatchKillEvent
+            {
+                KillId = _next_kill_id++,
+                Killer = CreatePlayerInfo(killer_stats),
+                Victim = CreatePlayerInfo(victim_stats),
+                Weapon = weapon,
+                Tags = MatchKillEvent.GetTags(hitbox_type),
+            });
         }
 
         public void RegisterCapturePresence(int player_id, float delta_time)
@@ -91,6 +131,18 @@ namespace Game.MatchMode
                 return;
 
             stats.CapturePresenceTime += delta_time;
+        }
+
+        private static MatchKillPlayerInfo CreatePlayerInfo(PlayerRoundStats stats)
+        {
+            return new MatchKillPlayerInfo
+            {
+                PlayerId = stats.PlayerId,
+                Nickname = string.IsNullOrWhiteSpace(stats.Nickname)
+                    ? $"Player {stats.PlayerId}"
+                    : stats.Nickname,
+                TeamId = stats.TeamId,
+            };
         }
     }
 }

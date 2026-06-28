@@ -8,7 +8,7 @@ namespace Core.ClientPresentationEditor
 {
     public static class ClientMatchHudV2PrefabFactory
     {
-        private const string PrefabPath = "Assets/Core/Client/Presentation/Resources/ClientUI/ClientMatchHudV2Layer.prefab";
+        private const string PrefabPath = "Assets/Core/Client/Presentation/Resources/ClientUI/Match/Hud/ClientMatchHudV2Layer.prefab";
 
         [InitializeOnLoadMethod]
         private static void CreateMissingOnLoad()
