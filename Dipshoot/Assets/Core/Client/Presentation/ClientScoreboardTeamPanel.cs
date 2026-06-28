@@ -49,14 +49,15 @@ namespace Core.ClientPresentation
                 _round_wins_text.text = $"РАУНДЫ: {round_wins}";
 
             int count = players == null ? 0 : players.Count;
-            PreferredHeight =
-                _header_height +
-                _player_info_height * Mathf.Max(count, 0.5f);
+            PreferredHeight = CalculatePreferredHeight(
+                count,
+                out float players_height);
             if (_layout_element != null)
             {
                 _layout_element.minHeight = PreferredHeight;
                 _layout_element.preferredHeight = PreferredHeight;
             }
+            ApplyRuntimeHeight(PreferredHeight, players_height);
             EnsureRows(count);
 
             for (int i = 0; i < _rows.Count; i++)
@@ -66,6 +67,60 @@ namespace Core.ClientPresentation
                 row.gameObject.SetActive(is_active);
                 if (is_active)
                     row.Bind(players[i], players[i].PlayerId == local_player_id);
+            }
+
+            if (_rows_container is RectTransform rows_rect)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rows_rect);
+        }
+
+        private float CalculatePreferredHeight(
+            int player_count,
+            out float players_height)
+        {
+            float header_height = _header_height;
+            if (_team_background != null)
+                header_height = _team_background.rectTransform.rect.height;
+
+            float row_height = _player_info_height;
+            if (_player_row_prefab != null &&
+                _player_row_prefab.transform is RectTransform row_rect)
+            {
+                float preferred_height = LayoutUtility.GetPreferredHeight(row_rect);
+                row_height = preferred_height > 0f
+                    ? preferred_height
+                    : row_rect.rect.height;
+            }
+
+            float spacing = 0f;
+            if (_rows_container != null &&
+                _rows_container.TryGetComponent(out VerticalLayoutGroup rows_layout))
+            {
+                spacing = rows_layout.spacing * Mathf.Max(0, player_count - 1);
+            }
+
+            players_height =
+                row_height * Mathf.Max(player_count, 0.5f) +
+                spacing;
+            return header_height + players_height;
+        }
+
+        private void ApplyRuntimeHeight(
+            float team_height,
+            float players_height)
+        {
+            if (transform is RectTransform team_rect)
+            {
+                team_rect.SetSizeWithCurrentAnchors(
+                    RectTransform.Axis.Vertical,
+                    team_height);
+            }
+
+            if (_rows_container != null &&
+                _rows_container.parent is RectTransform players_panel)
+            {
+                players_panel.SetSizeWithCurrentAnchors(
+                    RectTransform.Axis.Vertical,
+                    players_height);
             }
         }
 

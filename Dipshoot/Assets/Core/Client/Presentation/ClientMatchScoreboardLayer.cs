@@ -23,6 +23,8 @@ namespace Core.ClientPresentation
         private ClientScoreboardTeamPanel _blue_team_panel;
         private ClientScoreboardTeamPanel _red_team_panel;
         private MatchHudController _hud_controller;
+        private RectTransform _content_rect;
+        private float _content_vertical_padding;
         private int _last_scoreboard_revision = -1;
         private int _last_blue_score = -1;
         private int _last_red_score = -1;
@@ -32,6 +34,17 @@ namespace Core.ClientPresentation
 
         private void Awake()
         {
+            _content_rect = _content_root != null
+                ? _content_root.transform as RectTransform
+                : null;
+            if (_content_rect != null && _scoreboard_panel != null)
+            {
+                _content_vertical_padding = Mathf.Max(
+                    0f,
+                    _content_rect.rect.height -
+                    _scoreboard_panel.rect.height);
+            }
+
             _layer = GetComponent<ClientUiLayer>();
             if (_layer == null)
             {
@@ -142,33 +155,73 @@ namespace Core.ClientPresentation
                 _red_team_panel != null)
             {
                 float height =
-                    _panel_vertical_padding +
-                    _team_spacing +
+                    GetPanelVerticalPadding() +
+                    GetTeamSpacing() +
                     _blue_team_panel.PreferredHeight +
                     _red_team_panel.PreferredHeight;
                 SetPanelHeightKeepingTop(height);
             }
         }
 
+        private float GetTeamSpacing()
+        {
+            if (_teams_container != null &&
+                _teams_container.TryGetComponent(out VerticalLayoutGroup layout))
+            {
+                return layout.spacing;
+            }
+
+            return _team_spacing;
+        }
+
+        private float GetPanelVerticalPadding()
+        {
+            if (_teams_container is not RectTransform teams_rect)
+                return _panel_vertical_padding;
+
+            return Mathf.Max(
+                0f,
+                teams_rect.offsetMin.y - teams_rect.offsetMax.y);
+        }
+
         private void SetPanelHeightKeepingTop(float height)
         {
-            float previous_height = _scoreboard_panel.rect.height;
-            float top_position =
-                _scoreboard_panel.anchoredPosition.y +
-                (1f - _scoreboard_panel.pivot.y) * previous_height;
-
-            _scoreboard_panel.SetSizeWithCurrentAnchors(
-                RectTransform.Axis.Vertical,
-                height);
-
-            Vector2 position = _scoreboard_panel.anchoredPosition;
-            position.y =
-                top_position -
-                (1f - _scoreboard_panel.pivot.y) * height;
-            _scoreboard_panel.anchoredPosition = position;
+            if (_content_rect != null)
+            {
+                SetHeightKeepingTop(
+                    _content_rect,
+                    height + _content_vertical_padding);
+                _scoreboard_panel.SetSizeWithCurrentAnchors(
+                    RectTransform.Axis.Vertical,
+                    height);
+            }
+            else
+            {
+                SetHeightKeepingTop(_scoreboard_panel, height);
+            }
 
             if (_teams_container is RectTransform teams_rect)
                 LayoutRebuilder.ForceRebuildLayoutImmediate(teams_rect);
+        }
+
+        private static void SetHeightKeepingTop(
+            RectTransform rect,
+            float height)
+        {
+            float previous_height = rect.rect.height;
+            float top_position =
+                rect.anchoredPosition.y +
+                (1f - rect.pivot.y) * previous_height;
+
+            rect.SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Vertical,
+                height);
+
+            Vector2 position = rect.anchoredPosition;
+            position.y =
+                top_position -
+                (1f - rect.pivot.y) * height;
+            rect.anchoredPosition = position;
         }
 
         private void SplitAndSortPlayers(
