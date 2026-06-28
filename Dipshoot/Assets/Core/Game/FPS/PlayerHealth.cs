@@ -80,14 +80,34 @@ namespace Game.Players
             PlayerHitboxType hitbox_type,
             float damage_multiplier)
         {
+            return TryApplyDamage(
+                damage,
+                damage_source_net_id,
+                hitbox_type,
+                damage_multiplier,
+                WeaponSlot.None);
+        }
+
+        public bool TryApplyDamage(
+            int damage,
+            uint damage_source_net_id,
+            PlayerHitboxType hitbox_type,
+            float damage_multiplier,
+            WeaponSlot weapon_slot)
+        {
             if (!isServer || !_is_alive || damage <= 0 || Time.time < _invulnerable_until)
                 return false;
 
-            DamageInfo damage_info = new(damage_source_net_id, damage, hitbox_type, damage_multiplier);
+            DamageInfo damage_info = new(
+                damage_source_net_id,
+                damage,
+                hitbox_type,
+                damage_multiplier,
+                weapon_slot);
             _current_health = Mathf.Max(0, _current_health - damage);
             Debug.Log(
                 $"{LogPrefix} Damage. netId={netId} source={damage_source_net_id} " +
-                $"damage={damage} hitbox={hitbox_type} multiplier={damage_multiplier:0.##} " +
+                $"damage={damage} hitbox={hitbox_type} weapon={weapon_slot} multiplier={damage_multiplier:0.##} " +
                 $"health={_current_health}/{MaxHealth}");
 
             OnDamageApplied?.Invoke(this, damage_info);

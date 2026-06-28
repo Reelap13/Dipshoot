@@ -212,7 +212,13 @@ namespace Game.MatchMode
                 return;
 
             if (TryGetPlayerId(damage_info.SourceNetId, out int killer_player_id))
-                _stats_controller?.RegisterDeath(killer_player_id, victim_player_id);
+            {
+                _stats_controller?.RegisterDeath(
+                    killer_player_id,
+                    victim_player_id,
+                    damage_info.WeaponSlot,
+                    damage_info.HitboxType);
+            }
 
             if (!IsRespawnEnabled || _respawn_coroutines.ContainsKey(victim_player_id))
                 return;

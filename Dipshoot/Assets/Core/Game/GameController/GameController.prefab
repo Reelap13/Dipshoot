@@ -228,3 +228,6 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   _mode_controller: {fileID: 9101000000000000004}
+  _stats_controller: {fileID: 9101000000000000003}
+  _scoreboard_sync_interval: 0.1
+  _max_synced_kill_events: 32
