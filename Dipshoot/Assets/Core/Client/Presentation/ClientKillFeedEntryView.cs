@@ -7,7 +7,7 @@ namespace Core.ClientPresentation
 {
     public class ClientKillFeedEntryView : MonoBehaviour
     {
-        private const float FadeInDuration = 0.5f;
+        private const float FadeInDuration = 0.1f;
         private const float HoldUntil = 4.5f;
         private const float Lifetime = 5.5f;
 
