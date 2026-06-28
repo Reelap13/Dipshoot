@@ -20,7 +20,7 @@ namespace Game.Players
         [SerializeField] private InputBufferSynchronizer _input_buffer_synchronizer;
         [SerializeField] private float _position_error_threshold = 0.001f;
         [SerializeField] private float _rotation_error_threshold = 0.1f;
-        [SerializeField] private float _remote_interpolation_back_ms = 150f;
+        [SerializeField] private float _remote_interpolation_back_ms = 250f;
         [SerializeField] private float _server_tick_offset_lerp_factor = 0.1f;
         [SerializeField] private bool _tick_sync_debug_enabled = true;
         [SerializeField] private int _tick_sync_debug_max_logs_per_second = 3;

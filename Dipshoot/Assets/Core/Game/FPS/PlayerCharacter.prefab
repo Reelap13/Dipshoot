@@ -319,7 +319,7 @@ MonoBehaviour:
   _input_buffer_synchronizer: {fileID: 1508822084912371000}
   _position_error_threshold: 0.001
   _rotation_error_threshold: 0.1
-  _remote_interpolation_back_ms: 150
+  _remote_interpolation_back_ms: 250
   _server_tick_offset_lerp_factor: 0.1
   _tick_sync_debug_enabled: 1
   _tick_sync_debug_max_logs_per_second: 3
