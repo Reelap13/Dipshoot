@@ -105,18 +105,18 @@ namespace Core.ClientPresentation
         private static string FormatResultTitle(TeamId winner, TeamId local_team)
         {
             if (winner == TeamId.None)
-                return "Draw!";
+                return "Ничья!";
 
             if (local_team == TeamId.Spectator || local_team == TeamId.None)
-                return "Match Ended!";
+                return "Матч Закончен!";
 
-            return winner == local_team ? "Victory!" : "Defeat!";
+            return winner == local_team ? "Победа!" : "Поражение!";
         }
 
         private static string FormatWinnerText(TeamId winner)
         {
             if (winner == TeamId.None)
-                return "No Team Wins!";
+                return "Ничья!";
 
             string color = ColorUtility.ToHtmlStringRGB(GetTeamColor(winner));
             return $"<color=#{color}>{FormatTeamName(winner)}</color> Wins!";
