@@ -276,7 +276,7 @@ namespace Core.ClientPresentation
             TeamId team_id = GetLocalTeam();
             string team_name = FormatTeamName(team_id);
             string color = ColorUtility.ToHtmlStringRGB(GetTeamColor(team_id));
-            _player_team_text.text = $"Your team: <color=#{color}>{team_name}</color>";
+            _player_team_text.text = $"Ваша команда: <color=#{color}>{team_name}</color>";
         }
 
         private void SetSpawnFlagsVisible(bool visible)

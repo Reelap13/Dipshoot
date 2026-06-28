@@ -23,7 +23,7 @@ MonoBehaviour:
   m_MinSize: {x: 300, y: 100}
   m_MaxSize: {x: 24288, y: 16192}
   vertical: 0
-  controlID: 22535
+  controlID: 26829
   draggingID: 0
 --- !u!114 &2
 MonoBehaviour:
@@ -150,7 +150,7 @@ MonoBehaviour:
   m_MinSize: {x: 300, y: 100}
   m_MaxSize: {x: 24288, y: 16192}
   vertical: 1
-  controlID: 22536
+  controlID: 26830
   draggingID: 0
 --- !u!114 &4
 MonoBehaviour:
@@ -177,7 +177,7 @@ MonoBehaviour:
   m_MinSize: {x: 300, y: 50}
   m_MaxSize: {x: 24288, y: 8096}
   vertical: 0
-  controlID: 22537
+  controlID: 26831
   draggingID: 0
 --- !u!114 &5
 MonoBehaviour:
@@ -249,18 +249,18 @@ MonoBehaviour:
       m_ExpandedIDs: 2ce3f6ff68e3f6ff76e3f6ff34e7f8ff3ce7f8ff4ae7f8ff0eebf8ff4070faff5a70faffa270faffa870faffb070faffb870faffc670faff8a74faffe064fbff2865fbff7860feff8060feffc860feff2661feff2e61feff3661feff4461feff566fffff6e6fffff0080ffff0480ffffc4dbffff86dcffffb6eeffff36f4ffff3ef4ffff7ef4ffff86f4ffff2cf5ffff34f5ffff3cf5ffff4af5ffffdafafffff4ffffff
       m_RenameOverlay:
         m_UserAcceptedRename: 0
-        m_Name: 
-        m_OriginalName: 
+        m_Name: ControlsText (1)
+        m_OriginalName: ControlsText (1)
         m_EditFieldRect:
           serializedVersion: 2
           x: 0
           y: 0
           width: 0
           height: 0
-        m_UserData: 0
+        m_UserData: 330592
         m_IsWaitingForDelay: 0
         m_IsRenaming: 0
-        m_OriginalEventType: 11
+        m_OriginalEventType: 0
         m_IsRenamingFilename: 0
         m_TrimLeadingAndTrailingWhitespace: 0
         m_ClientGUIView: {fileID: 5}
@@ -3076,7 +3076,7 @@ MonoBehaviour:
   - {fileID: 17}
   - {fileID: 18}
   m_Selected: 0
-  m_LastSelected: 3
+  m_LastSelected: 1
 --- !u!114 &15
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -3124,7 +3124,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/Core/Client/Presentation/Resources/ClientUI/Match/Hud/KillFeed
+    - Assets/Core/Client/Presentation
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -3134,15 +3134,15 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 68
   m_LastFolders:
-  - Assets/Core/Client/Presentation/Resources/ClientUI/Match/Hud/KillFeed
+  - Assets/Core/Client/Presentation
   m_LastFoldersGridSize: 68
   m_LastProjectPath: D:\Projects\Dipshoot\Dipshoot
   m_LockTracker:
     m_IsLocked: 0
   m_FolderTreeState:
-    scrollPos: {x: 0, y: 91}
-    m_SelectedIDs: 0c5f0400
-    m_LastClickedID: 286476
+    scrollPos: {x: 0, y: 111}
+    m_SelectedIDs: a25d0400
+    m_LastClickedID: 286114
     m_ExpandedIDs: 00000000285d04002a5d04002c5d04002e5d0400305d0400325d0400345d0400365d0400385d04003a5d04003c5d04003e5d0400405d0400425d0400445d0400465d0400485d04004a5d04004c5d04004e5d0400505d0400525d0400545d0400565d0400585d04005a5d04005c5d04005e5d0400605d0400625d0400645d0400665d0400685d04006a5d04006c5d04006e5d0400705d0400725d0400745d0400765d0400785d04007a5d04007c5d04007e5d0400805d0400825d0400845d0400865d0400885d04008a5d04008c5d04008e5d0400905d0400925d0400945d0400965d0400985d04009a5d04009c5d04009e5d0400a05d0400a25d0400a45d0400a65d0400a85d0400aa5d0400ac5d0400345e0400
     m_RenameOverlay:
       m_UserAcceptedRename: 0
