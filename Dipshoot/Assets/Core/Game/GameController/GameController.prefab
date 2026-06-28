@@ -135,6 +135,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TickRate: 60
   MaxTicksPerFrame: 8
+  _min_tick_rate_scale: 0.95
+  _max_tick_rate_scale: 1.05
+  _remote_interpolation_back_ms: 150
+  _remote_adaptive_interpolation_enabled: 1
+  _remote_max_interpolation_back_ms: 200
+  _remote_interpolation_recovery_seconds: 2
 --- !u!114 &9101000000000000001
 MonoBehaviour:
   m_ObjectHideFlags: 0

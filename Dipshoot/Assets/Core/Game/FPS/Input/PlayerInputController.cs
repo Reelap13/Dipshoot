@@ -58,6 +58,9 @@ namespace Game.Players.Input
             }
 
             input.Tick = context.Tick;
+            input.ShotViewTick = Character.TickManager == null
+                ? context.Tick
+                : Mathf.FloorToInt(Character.TickManager.RemoteRenderTick);
             Character.InputBuffet.Add(input);
 
             OnInputCaptured?.Invoke(input);

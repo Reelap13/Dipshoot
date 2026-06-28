@@ -15,7 +15,7 @@ namespace Game.Players
             PlayerInputData input,
             WeaponSlotState fired_slot_state,
             int server_tick,
-            int hitbox_rewind_ticks,
+            int hitbox_query_tick,
             Vector3 eye_offset,
             LayerMask hit_mask,
             QueryTriggerInteraction trigger_interaction,
@@ -34,10 +34,7 @@ namespace Game.Players
                 hits,
                 out RaycastHit world_hit);
             float player_hit_range = has_world_hit ? world_hit.distance : weapon_stats.Range;
-            int hitbox_snapshot_tick = ResolveHitboxSnapshotTick(
-                input,
-                server_tick,
-                hitbox_rewind_ticks);
+            int hitbox_snapshot_tick = Mathf.Clamp(hitbox_query_tick, 0, server_tick);
             bool has_player_hit = PlayerHitboxLagCompensation.TryRaycast(
                 shooter,
                 hitbox_snapshot_tick,
@@ -70,6 +67,7 @@ namespace Game.Players
                 SpreadSeed = spread_seed,
                 InputTick = input.Tick,
                 ServerTick = server_tick,
+                ShotViewTick = input.ShotViewTick,
                 HitboxQueryTick = hitbox_snapshot_tick,
                 HitboxSnapshotTick = has_player_hit ? player_hit.SnapshotTick : -1,
                 Origin = origin,
@@ -127,8 +125,12 @@ namespace Game.Players
                 SpreadSeed = spread_seed,
                 InputTick = input.Tick,
                 ServerTick = -1,
+                ShotViewTick = input.ShotViewTick,
+                ValidatedShotViewTick = input.ShotViewTick,
                 HitboxQueryTick = -1,
                 HitboxSnapshotTick = -1,
+                LagCompensationVisualBackTicks = Mathf.Max(0, input.Tick - input.ShotViewTick),
+                ShotServerRewindTicks = -1,
                 Origin = origin,
                 Direction = direction,
                 Point = has_hit ? hit.point : origin + direction * weapon_stats.Range,
@@ -208,17 +210,6 @@ namespace Game.Players
             value *= 0x846ca68b;
             value ^= value >> 16;
             return (value & 0x00ffffff) / 16777215f;
-        }
-
-        private static int ResolveHitboxSnapshotTick(
-            PlayerInputData input,
-            int server_tick,
-            int hitbox_visual_back_ticks)
-        {
-            int back_ticks = Mathf.Max(0, hitbox_visual_back_ticks);
-            int base_tick = input.Tick > 0 ? input.Tick : server_tick;
-
-            return Mathf.Clamp(base_tick - back_ticks, 0, server_tick);
         }
 
         private static bool TryGetWorldHit(

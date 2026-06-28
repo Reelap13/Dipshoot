@@ -11,11 +11,15 @@ namespace Game.Players
         public int SpreadSeed;
         public int InputTick;
         public int ServerTick;
+        public int ShotViewTick;
+        public int ValidatedShotViewTick;
         public int HitboxQueryTick;
         public int HitboxSnapshotTick;
         public int LagCompensationVisualBackTicks;
         public int LagCompensationBiasTicks;
         public int LagCompensationRewindTicks;
+        public int ShotServerRewindTicks;
+        public bool ShotTimestampClamped;
         public Vector3 Origin;
         public Vector3 Direction;
         public Vector3 Point;

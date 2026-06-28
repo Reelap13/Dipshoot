@@ -15,7 +15,7 @@ MonoBehaviour:
   _slot: 1
   _first_person_prefab: {fileID: 4599805615451697323, guid: bbd9a96e478987848854405ed07c4043, type: 3}
   _third_person_prefab: {fileID: 2626743814325838858, guid: 9aba2ff6b256b3946a18227adc46199b, type: 3}
-  _muzzle_flash_prefab: {fileID: 0}
+  _muzzle_flash_prefab: {fileID: 5840250221227890651, guid: c039d9afc329f814992941f7436bd164, type: 3}
   _tracer_prefab: {fileID: 4424260122697664946, guid: 8288ebc14da4b504d8c22440e18f03f3, type: 3}
   _world_impact_prefab: {fileID: 0}
   _player_impact_prefab: {fileID: 0}

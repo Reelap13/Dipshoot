@@ -15,6 +15,7 @@ namespace Game.Players
         private float _length;
         private float _age;
         private LineRenderer _line_renderer;
+        private TrailRenderer[] _trail_renderers;
         private Color _start_color;
         private Color _end_color;
 
@@ -42,6 +43,11 @@ namespace Game.Players
             _fade_start_time = Mathf.Max(travel_time, min_visible_time);
             _lifetime = Mathf.Max(0.01f, _fade_start_time + _fade_time);
             _age = 0f;
+
+            transform.position = _start;
+            if (_direction.sqrMagnitude > 0.0001f)
+                transform.rotation = Quaternion.LookRotation(_direction);
+
             _line_renderer = GetComponentInChildren<LineRenderer>();
             if (_line_renderer != null)
             {
@@ -49,9 +55,14 @@ namespace Game.Players
                 _end_color = _line_renderer.endColor;
             }
 
-            transform.position = _start;
-            if (_direction.sqrMagnitude > 0.0001f)
-                transform.rotation = Quaternion.LookRotation(_direction);
+            _trail_renderers = GetComponentsInChildren<TrailRenderer>(true);
+            for (int i = 0; i < _trail_renderers.Length; i++)
+            {
+                TrailRenderer trail = _trail_renderers[i];
+                trail.enabled = true;
+                trail.Clear();
+                trail.emitting = true;
+            }
         }
 
         private void Update()

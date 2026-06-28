@@ -1,4 +1,5 @@
 using UnityEngine;
+using Game.Players.Input;
 
 namespace Game.Players.State
 {
@@ -8,6 +9,12 @@ namespace Game.Players.State
         public int StateTick;
         public int AckInputTick;
         public int LastProcessedInputTick;
+        public int InputQueueDepth;
+        public int InputTargetDepth;
+        public int MissingInputTicks;
+        public int BufferResetCount;
+        public ServerInputSource InputSource;
+        public float InputJitterTicks;
 
         public Vector3 Position;
         public Vector3 Velocity;
@@ -23,7 +30,13 @@ namespace Game.Players.State
         public static PlayerStateSnapshot Create(
             PlayerState state,
             int server_tick,
-            int last_processed_input_tick)
+            int last_processed_input_tick,
+            int input_queue_depth = 0,
+            int input_target_depth = 0,
+            int missing_input_ticks = 0,
+            int buffer_reset_count = 0,
+            ServerInputSource input_source = ServerInputSource.None,
+            float input_jitter_ticks = 0f)
         {
             return new PlayerStateSnapshot
             {
@@ -31,6 +44,12 @@ namespace Game.Players.State
                 StateTick = state.Tick,
                 AckInputTick = last_processed_input_tick,
                 LastProcessedInputTick = last_processed_input_tick,
+                InputQueueDepth = input_queue_depth,
+                InputTargetDepth = input_target_depth,
+                MissingInputTicks = missing_input_ticks,
+                BufferResetCount = buffer_reset_count,
+                InputSource = input_source,
+                InputJitterTicks = input_jitter_ticks,
                 Position = state.Position,
                 Velocity = state.Velocity,
                 Rotation = state.Rotation,

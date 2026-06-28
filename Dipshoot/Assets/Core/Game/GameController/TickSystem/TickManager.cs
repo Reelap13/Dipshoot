@@ -49,23 +49,43 @@ namespace Game.TickSystem
         public int MaxTicksPerFrame = 8;
         [SerializeField] private float _min_tick_rate_scale = 0.95f;
         [SerializeField] private float _max_tick_rate_scale = 1.05f;
+        [Header("Remote World Timeline")]
+        [SerializeField] private float _remote_interpolation_back_ms = 150f;
+        [SerializeField] private bool _remote_adaptive_interpolation_enabled = true;
+        [SerializeField] private float _remote_max_interpolation_back_ms = 200f;
+        [SerializeField] private float _remote_interpolation_recovery_seconds = 2f;
 
         public float TickDelta => TickRate <= 0 ? 0f : 1f / TickRate;
         public float TickProgress => GetScaledTickDelta() <= 0f ? 0f : _accumulator / GetScaledTickDelta();
         public float TickRateScale { get; set; } = 1f;
         public float CurrentTickRateScale => Mathf.Clamp(TickRateScale, _min_tick_rate_scale, _max_tick_rate_scale);
+        public float RemoteInterpolationBackMs => Mathf.Max(0f, _remote_dynamic_interpolation_back_ms);
+        public int RemoteInterpolationBackTicks => TickRate <= 0
+            ? 0
+            : Mathf.Max(0, Mathf.RoundToInt(RemoteInterpolationBackMs * 0.001f * TickRate));
+        public float RemoteRenderTick => CurrentTick - RemoteInterpolationBackTicks;
 
         public int CurrentTick { get; private set; } = 0;
 
         private float _accumulator;
+        private float _remote_dynamic_interpolation_back_ms;
+        private float _last_remote_buffer_underrun_at = -1000f;
+        private float _last_remote_buffer_decrease_at = -1000f;
+        private bool _remote_buffer_underrun_pending;
         private int _register_order;
         private readonly List<TickSystemEntry> _systems = new();
+
+        private void Awake()
+        {
+            ResetRemoteTimeline();
+        }
 
         void Update()
         {
             if (TickRate <= 0)
                 return;
 
+            UpdateRemoteInterpolationDelay();
             float scaled_tick_delta = GetScaledTickDelta();
             float max_accumulator = scaled_tick_delta * MaxTicksPerFrame;
             _accumulator = Mathf.Min(_accumulator + Time.deltaTime, max_accumulator);
@@ -104,6 +124,53 @@ namespace Game.TickSystem
             CurrentTick += skipped_ticks;
             _accumulator = 0f;
             return skipped_ticks;
+        }
+
+        public void ReportRemoteBufferUnderrun()
+        {
+            if (!_remote_adaptive_interpolation_enabled || TickRate <= 0)
+                return;
+
+            _remote_buffer_underrun_pending = true;
+            _last_remote_buffer_underrun_at = Time.unscaledTime;
+        }
+
+        private void UpdateRemoteInterpolationDelay()
+        {
+            if (!_remote_adaptive_interpolation_enabled || TickRate <= 0)
+                return;
+
+            if (_remote_buffer_underrun_pending)
+            {
+                _remote_buffer_underrun_pending = false;
+                float max_back_ms = Mathf.Max(
+                    Mathf.Max(0f, _remote_interpolation_back_ms),
+                    _remote_max_interpolation_back_ms);
+                _remote_dynamic_interpolation_back_ms = Mathf.Min(
+                    max_back_ms,
+                    _remote_dynamic_interpolation_back_ms + TickDelta * 1000f);
+                return;
+            }
+
+            float recovery_seconds = Mathf.Max(0.1f, _remote_interpolation_recovery_seconds);
+            if (Time.unscaledTime - _last_remote_buffer_underrun_at < recovery_seconds ||
+                Time.unscaledTime - _last_remote_buffer_decrease_at < 1f)
+            {
+                return;
+            }
+
+            _last_remote_buffer_decrease_at = Time.unscaledTime;
+            _remote_dynamic_interpolation_back_ms = Mathf.Max(
+                Mathf.Max(0f, _remote_interpolation_back_ms),
+                _remote_dynamic_interpolation_back_ms - TickDelta * 1000f);
+        }
+
+        private void ResetRemoteTimeline()
+        {
+            _remote_dynamic_interpolation_back_ms = Mathf.Max(0f, _remote_interpolation_back_ms);
+            _last_remote_buffer_underrun_at = -1000f;
+            _last_remote_buffer_decrease_at = -1000f;
+            _remote_buffer_underrun_pending = false;
         }
 
         private void RunTick()

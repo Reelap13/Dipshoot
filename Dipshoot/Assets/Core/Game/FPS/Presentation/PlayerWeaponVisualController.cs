@@ -45,7 +45,11 @@ namespace Game.Players
             bool use_first_person = _visual != null && _visual.IsFirstPersonVisible;
             visual.Trigger(use_first_person, FireTrigger);
             SpawnMuzzleFlash(visual, use_first_person);
-            PlayAudio(visual, use_first_person, visual.Definition?.Audio?.Fire);
+            PlayAudio(
+                visual,
+                use_first_person,
+                visual.Definition?.Audio?.Fire,
+                true);
         }
 
         public bool TryGetShotTracerOrigin(WeaponSlot slot, out Vector3 origin)
@@ -211,14 +215,23 @@ namespace Game.Players
             muzzle_flash.AddComponent<SelfDestroyer>().Initialize(MuzzleFlashLifetime);
         }
 
-        private void PlayAudio(WeaponVisualInstance visual, bool use_first_person, AudioCue cue)
+        private void PlayAudio(
+            WeaponVisualInstance visual,
+            bool use_first_person,
+            AudioCue cue,
+            bool ignore_cooldown = false)
         {
             if (visual == null || cue == null)
                 return;
 
             Transform socket = visual.GetMuzzleSocket(use_first_person);
             Vector3 position = socket == null ? transform.position : socket.position;
-            GameAudioService.Instance.Play(cue, position, use_first_person);
+            GameAudioService.Instance.Play(
+                cue,
+                position,
+                use_first_person,
+                gameObject.GetInstanceID(),
+                ignore_cooldown);
         }
 
         private static Transform FindChildRecursive(Transform root, string name)

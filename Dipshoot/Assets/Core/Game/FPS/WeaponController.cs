@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Game.Players
 {
@@ -19,10 +20,11 @@ namespace Game.Players
         private const float PredictedShotPointWarningThreshold = 0.35f;
         private const float PredictedShotAngleWarningThreshold = 0.5f;
         private const int PredictedShotTimeoutTicks = 96;
+        private const int PresentedShotTimeoutTicks = 600;
 
         [SerializeField] private PlayerCharacter _character;
         [SerializeField] private StatsController _stats;
-        [SerializeField] private StateSynchronizer _state_synchronizer;
+        [SerializeField] private InputBufferSynchronizer _input_buffer_synchronizer;
         [SerializeField] private WeaponDefinition _primary_weapon;
         [SerializeField] private WeaponDefinition _pistol_weapon;
         [SerializeField] private Vector3 _eye_offset = new(0f, 0.49f, 0.359f);
@@ -30,7 +32,10 @@ namespace Game.Players
         [SerializeField] private LayerMask _hit_mask = ~0;
         [SerializeField] private QueryTriggerInteraction _trigger_interaction = QueryTriggerInteraction.Collide;
         [SerializeField] private float _lag_compensation_hit_reg_bias_ms = 0f;
-        [SerializeField] private float _lag_compensation_max_rewind_ms = 200f;
+        [SerializeField] private float _lag_compensation_min_visual_back_ms = 150f;
+        [FormerlySerializedAs("_lag_compensation_max_rewind_ms")]
+        [SerializeField] private float _lag_compensation_max_visual_back_ms = 200f;
+        [SerializeField] private float _lag_compensation_max_server_rewind_ms = 350f;
         [SerializeField] private bool _shot_compare_debug_enabled = true;
         [SerializeField] private int _shot_compare_debug_max_logs_per_second = 20;
 
@@ -60,6 +65,7 @@ namespace Game.Players
         private int _shot_compare_debug_logged_in_window;
         private int _shot_compare_debug_suppressed;
         private readonly Dictionary<PredictedShotKey, PredictedShot> _predicted_shots = new();
+        private readonly Dictionary<PredictedShotKey, int> _presented_owner_shots = new();
 
         public TickLayer TickLayer => TickLayer.WeaponSimulation;
         public int TickOrder => 0;
@@ -79,7 +85,9 @@ namespace Game.Players
         public WeaponDefinition PrimaryWeaponDefinition => _primary_weapon;
         public WeaponDefinition PistolWeaponDefinition => _pistol_weapon;
         public float LagCompensationHitRegBiasMs => Mathf.Max(0f, _lag_compensation_hit_reg_bias_ms);
-        public float LagCompensationMaxRewindMs => Mathf.Max(0f, _lag_compensation_max_rewind_ms);
+        public float LagCompensationMinVisualBackMs => Mathf.Max(0f, _lag_compensation_min_visual_back_ms);
+        public float LagCompensationMaxVisualBackMs => Mathf.Max(0f, _lag_compensation_max_visual_back_ms);
+        public float LagCompensationMaxServerRewindMs => Mathf.Max(0f, _lag_compensation_max_server_rewind_ms);
         public bool HasLastConfirmedShot { get; private set; }
         public ShotResult LastConfirmedShot { get; private set; }
 
@@ -134,8 +142,8 @@ namespace Game.Players
             if (_stats == null)
                 _stats = GetComponent<StatsController>();
 
-            if (_state_synchronizer == null)
-                _state_synchronizer = GetComponent<StateSynchronizer>();
+            if (_input_buffer_synchronizer == null)
+                _input_buffer_synchronizer = GetComponent<InputBufferSynchronizer>();
         }
 
         private void TryRegisterTickSystem()
@@ -160,22 +168,27 @@ namespace Game.Players
         {
             EnsureWeaponState(server_tick);
 
-            bool processed_input = false;
-            while (_character.InputBuffet.TryGetFirstAfter(_last_processed_input_tick, out PlayerInputData input) &&
-                   input.Tick <= server_tick)
+            if (_input_buffer_synchronizer == null)
             {
-                _last_processed_input_tick = input.Tick;
-                processed_input = true;
-                ProcessWeaponInput(input, server_tick);
+                ProcessWeaponInput(default, server_tick, false);
+                return;
             }
 
-            if (!processed_input)
+            ServerInputFrame frame =
+                _input_buffer_synchronizer.ResolveServerInputFrame(server_tick);
+            if (!frame.HasCommittedInput)
+            {
                 ProcessWeaponInput(default, server_tick, false);
+                return;
+            }
+
+            _last_processed_input_tick = frame.SourceInputTick;
+            ProcessWeaponInput(frame.Input, server_tick);
         }
 
         private void ProcessWeaponInput(PlayerInputData input, int server_tick, bool has_input = true)
         {
-            int simulation_tick = has_input ? input.Tick : server_tick;
+            int simulation_tick = server_tick;
             bool has_simulation_state = TryGetPlayerState(simulation_tick, out PlayerState simulation_state);
             WeaponSimulationResult simulation_result = WeaponSimulation.Simulate(
                 _weapon_state,
@@ -201,11 +214,14 @@ namespace Game.Players
                 return;
             }
 
-            int lag_compensation_visual_back_ticks = GetLagCompensationVisualBackTicks();
-            int lag_compensation_bias_ticks = GetLagCompensationBiasTicks();
-            int lag_compensation_rewind_ticks = GetLagCompensationRewindTicks(
-                lag_compensation_visual_back_ticks,
-                lag_compensation_bias_ticks);
+            ShotTimestampValidation timestamp = ShotTimestampValidator.Validate(
+                input.Tick,
+                input.ShotViewTick,
+                server_tick,
+                GetTicksFromMs(_lag_compensation_min_visual_back_ms),
+                GetTicksFromMs(_lag_compensation_max_visual_back_ms),
+                GetLagCompensationBiasTicks(),
+                GetTicksFromMs(_lag_compensation_max_server_rewind_ms));
             ShotResult shot_result = WeaponShotResolver.Resolve(
                 _character,
                 simulation_result.FiredWeapon,
@@ -214,14 +230,19 @@ namespace Game.Players
                 input,
                 simulation_result.FiredSlotState,
                 server_tick,
-                lag_compensation_rewind_ticks,
+                timestamp.QueryTick,
                 GetEyeOffset(simulation_state),
                 _hit_mask,
                 _trigger_interaction,
                 _hits);
-            shot_result.LagCompensationVisualBackTicks = lag_compensation_visual_back_ticks;
-            shot_result.LagCompensationBiasTicks = lag_compensation_bias_ticks;
-            shot_result.LagCompensationRewindTicks = lag_compensation_rewind_ticks;
+            shot_result.ValidatedShotViewTick = timestamp.ValidatedViewTick;
+            shot_result.ShotTimestampClamped = timestamp.WasClamped;
+            shot_result.LagCompensationVisualBackTicks = timestamp.VisualBackTicks;
+            shot_result.LagCompensationBiasTicks = timestamp.BiasTicks;
+            shot_result.LagCompensationRewindTicks = Mathf.Max(
+                0,
+                input.Tick - timestamp.QueryTick);
+            shot_result.ShotServerRewindTicks = timestamp.ServerRewindTicks;
 
             LogShotCompare(
                 ShotCompareServerPrefix,
@@ -231,10 +252,7 @@ namespace Game.Players
                 simulation_result.FiredSlotState.ConsecutiveShots,
                 WeaponShotResolver.GetSprayPatternOffset(
                     simulation_result.FiredWeaponStats,
-                    simulation_result.FiredSlotState.ConsecutiveShots),
-                lag_compensation_visual_back_ticks,
-                lag_compensation_bias_ticks,
-                lag_compensation_rewind_ticks);
+                    simulation_result.FiredSlotState.ConsecutiveShots));
 
             if (isOwned)
                 ApplyViewRecoil(
@@ -306,8 +324,10 @@ namespace Game.Players
                 _trigger_interaction,
                 _hits);
 
-            _predicted_shots[new PredictedShotKey(result.WeaponSlot, result.ShotSequence)] =
-                new PredictedShot(result, tick);
+            PredictedShotKey shot_key =
+                new(result.WeaponSlot, result.ShotSequence);
+            _predicted_shots[shot_key] = new PredictedShot(result, tick);
+            _presented_owner_shots[shot_key] = tick;
             LogShotCompare(
                 ShotCompareLocalPrefix,
                 result,
@@ -316,10 +336,7 @@ namespace Game.Players
                 simulation_result.FiredSlotState.ConsecutiveShots,
                 WeaponShotResolver.GetSprayPatternOffset(
                     simulation_result.FiredWeaponStats,
-                    simulation_result.FiredSlotState.ConsecutiveShots),
-                0,
-                0,
-                0);
+                    simulation_result.FiredSlotState.ConsecutiveShots));
             ApplyViewRecoil(
                 simulation_result.RecoilPitch,
                 simulation_result.RecoilYaw,
@@ -403,17 +420,35 @@ namespace Game.Players
             HasLastConfirmedShot = true;
             WeaponPresentation.ApplyConfirmedKill(result);
 
-            if (isOwned && TryConsumePredictedShot(result, out ShotResult predicted_result))
+            PredictedShotKey shot_key =
+                new(result.WeaponSlot, result.ShotSequence);
+            bool was_presented = _presented_owner_shots.Remove(shot_key);
+            ShotResult predicted_result = default;
+            bool had_prediction =
+                isOwned &&
+                TryConsumePredictedShot(result, out predicted_result);
+            if (had_prediction)
             {
                 WarnIfPredictedShotMismatch(predicted_result, result);
-                WeaponPresentation.PlayConfirmedOwnerShot(this, result, GetWeaponDefinition(result.WeaponSlot));
-                WeaponPresentation.PlayOwnerHitFeedback(result);
-                return;
             }
 
             if (isOwned)
             {
-                WeaponPresentation.PlayConfirmedOwnerShot(this, result, GetWeaponDefinition(result.WeaponSlot));
+                if (was_presented || had_prediction)
+                {
+                    WeaponPresentation.PlayConfirmedOwnerShot(
+                        this,
+                        result,
+                        GetWeaponDefinition(result.WeaponSlot));
+                }
+                else
+                {
+                    WeaponPresentation.PlayRemoteShot(
+                        this,
+                        result,
+                        GetWeaponDefinition(result.WeaponSlot));
+                }
+
                 WeaponPresentation.PlayOwnerHitFeedback(result);
                 return;
             }
@@ -435,6 +470,7 @@ namespace Game.Players
             _predicted_shot_sequence = 0;
             HasLastConfirmedShot = false;
             _predicted_shots.Clear();
+            _presented_owner_shots.Clear();
         }
 
         private void EnsurePredictedWeaponState(int tick)
@@ -596,10 +632,7 @@ namespace Game.Players
             PlayerState state,
             float spread_degrees,
             int shot_index,
-            Vector2 pattern_offset,
-            int lag_compensation_visual_back_ticks,
-            int lag_compensation_bias_ticks,
-            int lag_compensation_rewind_ticks)
+            Vector2 pattern_offset)
         {
             if (!ShouldLogShotCompare())
                 return;
@@ -611,9 +644,13 @@ namespace Game.Players
                 $"{prefix} shotId={GetShotDebugId(result)} " +
                 $"inputTick={result.InputTick} serverTick={result.ServerTick} " +
                 $"serverMinusInput={result.ServerTick - result.InputTick} " +
-                $"stateTick={state.Tick} hitboxQueryTick={result.HitboxQueryTick} " +
-                $"hitboxSnapshotTick={result.HitboxSnapshotTick} visualBackTicks={lag_compensation_visual_back_ticks} " +
-                $"biasTicks={lag_compensation_bias_ticks} rewindTicks={lag_compensation_rewind_ticks} " +
+                $"shotViewTick={result.ShotViewTick} validatedViewTick={result.ValidatedShotViewTick} " +
+                $"timestampClamped={result.ShotTimestampClamped} stateTick={state.Tick} " +
+                $"hitboxQueryTick={result.HitboxQueryTick} hitboxSnapshotTick={result.HitboxSnapshotTick} " +
+                $"visualBackTicks={result.LagCompensationVisualBackTicks} " +
+                $"biasTicks={result.LagCompensationBiasTicks} " +
+                $"inputRewindTicks={result.LagCompensationRewindTicks} " +
+                $"serverRewindTicks={result.ShotServerRewindTicks} " +
                 $"pos={FormatVector(state.Position)} origin={FormatVector(result.Origin)} " +
                 $"dir={FormatVector(result.Direction)} point={FormatVector(result.Point)} " +
                 $"rotY={FormatFloat(state.Rotation.eulerAngles.y)} pitch={FormatFloat(state.CameraPitch)} " +
@@ -645,30 +682,9 @@ namespace Game.Players
             return true;
         }
 
-        private int GetLagCompensationVisualBackTicks()
-        {
-            if (_character == null || _character.TickManager == null)
-                return 0;
-
-            float visual_back_ms = _state_synchronizer == null
-                ? 50f
-                : _state_synchronizer.RemoteInterpolationBackMs;
-
-            return GetTicksFromMs(visual_back_ms);
-        }
-
         private int GetLagCompensationBiasTicks()
         {
             return GetTicksFromMs(_lag_compensation_hit_reg_bias_ms);
-        }
-
-        private int GetLagCompensationRewindTicks(int visual_back_ticks, int bias_ticks)
-        {
-            int max_rewind_ticks = GetTicksFromMs(_lag_compensation_max_rewind_ms);
-            int rewind_ticks = Mathf.Max(0, visual_back_ticks - bias_ticks);
-            return max_rewind_ticks <= 0
-                ? rewind_ticks
-                : Mathf.Min(rewind_ticks, max_rewind_ticks);
         }
 
         private int GetTicksFromMs(float milliseconds)
@@ -733,8 +749,13 @@ namespace Game.Players
 
         private void CleanupPredictedShots()
         {
-            if (!isClient || !isOwned || _predicted_shots.Count == 0 || _character == null || _character.TickManager == null)
+            if (!isClient ||
+                !isOwned ||
+                _character == null ||
+                _character.TickManager == null)
+            {
                 return;
+            }
 
             int current_tick = _character.TickManager.CurrentTick;
             List<PredictedShotKey> expired_keys = null;
@@ -747,15 +768,32 @@ namespace Game.Players
                 expired_keys.Add(pair.Key);
             }
 
+            if (expired_keys != null)
+            {
+                for (int i = 0; i < expired_keys.Count; i++)
+                    _predicted_shots.Remove(expired_keys[i]);
+
+                Debug.LogWarning(
+                    $"{LogPrefix} Predicted shot was not confirmed. netId={netId} count={expired_keys.Count}");
+                if (_predicted_shots.Count == 0)
+                    ResetPredictedStateFromSync();
+            }
+
+            expired_keys = null;
+            foreach (KeyValuePair<PredictedShotKey, int> pair in _presented_owner_shots)
+            {
+                if (current_tick - pair.Value <= PresentedShotTimeoutTicks)
+                    continue;
+
+                expired_keys ??= new List<PredictedShotKey>();
+                expired_keys.Add(pair.Key);
+            }
+
             if (expired_keys == null)
                 return;
 
             for (int i = 0; i < expired_keys.Count; i++)
-                _predicted_shots.Remove(expired_keys[i]);
-
-            Debug.LogWarning($"{LogPrefix} Predicted shot was not confirmed. netId={netId} count={expired_keys.Count}");
-            if (_predicted_shots.Count == 0)
-                ResetPredictedStateFromSync();
+                _presented_owner_shots.Remove(expired_keys[i]);
         }
 
         private int GetCurrentTick()

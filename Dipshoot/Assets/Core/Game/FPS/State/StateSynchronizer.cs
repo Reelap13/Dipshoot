@@ -20,7 +20,6 @@ namespace Game.Players
         [SerializeField] private InputBufferSynchronizer _input_buffer_synchronizer;
         [SerializeField] private float _position_error_threshold = 0.001f;
         [SerializeField] private float _rotation_error_threshold = 0.1f;
-        [SerializeField] private float _remote_interpolation_back_ms = 150f;
         [SerializeField] private float _server_tick_offset_lerp_factor = 0.1f;
         [SerializeField] private bool _tick_sync_debug_enabled = true;
         [SerializeField] private int _tick_sync_debug_max_logs_per_second = 3;
@@ -41,11 +40,23 @@ namespace Game.Players
         public int LastReceivedStateTick { get; private set; } = -1;
         public int LastAppliedStateTick { get; private set; } = -1;
         public int LastProcessedInputTick { get; private set; } = -1;
-        public float RemoteInterpolationBackMs => Mathf.Max(0f, _remote_interpolation_back_ms);
-        public int RemoteInterpolationBackTicks => GetRemoteInterpolationBackTicks();
+        public float RemoteInterpolationBackMs =>
+            _character == null || _character.TickManager == null
+                ? 0f
+                : _character.TickManager.RemoteInterpolationBackMs;
+        public int RemoteInterpolationBackTicks =>
+            _character == null || _character.TickManager == null
+                ? 0
+                : _character.TickManager.RemoteInterpolationBackTicks;
         public int RemoteBufferCount => _remote_interpolation_buffer.Count;
         public float LastRemoteRenderTick { get; private set; } = -1f;
         public double EstimatedServerTick => GetEstimatedServerTick();
+        public int LastServerInputQueueDepth { get; private set; }
+        public int LastServerInputTargetDepth { get; private set; }
+        public int LastServerMissingInputTicks { get; private set; }
+        public int LastServerBufferResetCount { get; private set; }
+        public ServerInputSource LastServerInputSource { get; private set; }
+        public float LastServerInputJitterTicks { get; private set; }
 
         private TickManager _registered_tick_manager;
         private bool _has_server_tick_offset;
@@ -74,6 +85,10 @@ namespace Game.Players
         {
             CacheReferences();
             TryRegisterTickSystem();
+        }
+
+        private void LateUpdate()
+        {
             UpdateRemoteInterpolation();
         }
 
@@ -141,27 +156,56 @@ namespace Game.Players
 
             int server_tick = _character.TickManager.CurrentTick;
             int last_processed_input_tick = _movement.LastServerProcessedInputTick;
-            if (last_processed_input_tick < 0)
+            if (!TryGetState(server_tick, out PlayerState server_state))
                 return;
 
-            LogServerStateWarning(server_tick, last_processed_input_tick);
+            int input_queue_depth = _input_buffer_synchronizer == null
+                ? 0
+                : _input_buffer_synchronizer.ServerInputQueueDepth;
+            int input_target_depth = _input_buffer_synchronizer == null
+                ? 0
+                : _input_buffer_synchronizer.ServerTargetBufferTicks;
+            int missing_input_ticks = _input_buffer_synchronizer == null
+                ? 0
+                : _input_buffer_synchronizer.ServerMissingInputTicks;
+            int buffer_reset_count = _input_buffer_synchronizer == null
+                ? 0
+                : _input_buffer_synchronizer.ServerBufferResetCount;
+            ServerInputSource input_source = _input_buffer_synchronizer == null
+                ? ServerInputSource.None
+                : _input_buffer_synchronizer.LastServerInputSource;
+            float input_jitter_ticks = _input_buffer_synchronizer == null
+                ? 0f
+                : _input_buffer_synchronizer.ServerInputJitterTicks;
 
-            if (connectionToClient != null &&
-                TryGetState(last_processed_input_tick, out PlayerState owner_state))
+            if (last_processed_input_tick >= 0)
             {
-                TargetReceiveAuthoritativeState(PlayerStateSnapshot.Create(
-                    owner_state,
-                    server_tick,
-                    last_processed_input_tick));
+                LogServerStateWarning(server_tick, last_processed_input_tick);
+                if (connectionToClient != null)
+                {
+                    TargetReceiveAuthoritativeState(PlayerStateSnapshot.Create(
+                        server_state,
+                        server_tick,
+                        last_processed_input_tick,
+                        input_queue_depth,
+                        input_target_depth,
+                        missing_input_ticks,
+                        buffer_reset_count,
+                        input_source,
+                        input_jitter_ticks));
+                }
             }
 
-            if (TryGetState(server_tick, out PlayerState remote_state))
-            {
-                RpcReceiveRemoteAuthoritativeState(PlayerStateSnapshot.Create(
-                    remote_state,
-                    server_tick,
-                    last_processed_input_tick));
-            }
+            RpcReceiveRemoteAuthoritativeState(PlayerStateSnapshot.Create(
+                server_state,
+                server_tick,
+                last_processed_input_tick,
+                input_queue_depth,
+                input_target_depth,
+                missing_input_ticks,
+                buffer_reset_count,
+                input_source,
+                input_jitter_ticks));
         }
 
         [TargetRpc]
@@ -186,8 +230,13 @@ namespace Game.Players
         {
             LastReceivedStateTick = snapshot.ServerTick;
             int ack_input_tick = GetSnapshotAckInputTick(snapshot);
-            int state_tick = GetSnapshotStateTick(snapshot);
             LastProcessedInputTick = ack_input_tick;
+            LastServerInputQueueDepth = snapshot.InputQueueDepth;
+            LastServerInputTargetDepth = snapshot.InputTargetDepth;
+            LastServerMissingInputTicks = snapshot.MissingInputTicks;
+            LastServerBufferResetCount = snapshot.BufferResetCount;
+            LastServerInputSource = snapshot.InputSource;
+            LastServerInputJitterTicks = snapshot.InputJitterTicks;
             UpdateServerTickEstimate(snapshot.ServerTick);
             ApplyClientTickCorrection();
             LogTickSyncSnapshot(snapshot, true);
@@ -195,10 +244,10 @@ namespace Game.Players
             if (_character == null || _movement == null)
                 return;
 
-            if (state_tick < 0)
+            if (ack_input_tick < 0)
                 return;
 
-            PlayerState state = snapshot.ToState(state_tick);
+            PlayerState state = snapshot.ToState(ack_input_tick);
 
             if (_character.TickManager == null)
             {
@@ -207,7 +256,7 @@ namespace Game.Players
                 return;
             }
 
-            int predicted_tick = state_tick;
+            int predicted_tick = ack_input_tick;
             if (!_character.StateBuffer.TryGet(predicted_tick, out PlayerState predicted_state))
             {
                 ApplyAuthoritativeState(state);
@@ -337,7 +386,14 @@ namespace Game.Players
                 return;
             }
 
-            float render_tick = _character.TickManager.CurrentTick - GetRemoteInterpolationBackTicks();
+            TickManager tick_manager = _character.TickManager;
+            float render_tick = tick_manager.RemoteRenderTick;
+            if (_remote_interpolation_buffer.Count > 0 &&
+                render_tick > _remote_interpolation_buffer.NewestTick)
+            {
+                tick_manager.ReportRemoteBufferUnderrun();
+            }
+
             LastRemoteRenderTick = render_tick;
             LogRemoteBufferAnomalies(render_tick);
 
@@ -536,6 +592,12 @@ namespace Game.Players
             LastReceivedStateTick = -1;
             LastAppliedStateTick = -1;
             LastProcessedInputTick = -1;
+            LastServerInputQueueDepth = 0;
+            LastServerInputTargetDepth = 0;
+            LastServerMissingInputTicks = 0;
+            LastServerBufferResetCount = 0;
+            LastServerInputSource = ServerInputSource.None;
+            LastServerInputJitterTicks = 0f;
             _has_render_state = false;
             _has_last_remote_snapshot = false;
             _last_remote_snapshot_tick = -1;
@@ -559,15 +621,6 @@ namespace Game.Players
             return network_time_tick + _server_tick_offset;
         }
 
-        private int GetRemoteInterpolationBackTicks()
-        {
-            if (_character == null || _character.TickManager == null || _remote_interpolation_back_ms <= 0f)
-                return 0;
-
-            return Mathf.Max(
-                0,
-                Mathf.RoundToInt(_remote_interpolation_back_ms * 0.001f * _character.TickManager.TickRate));
-        }
 
         private void LogTickSyncSnapshot(PlayerStateSnapshot snapshot, bool owner_snapshot)
         {

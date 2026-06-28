@@ -120,8 +120,24 @@ namespace Core.ClientPresentation
                 _builder.Append("TickScale: ").Append(Format(character.TickManager.CurrentTickRateScale)).AppendLine();
                 _builder.Append("OwnerServerTick: ").Append(state_synchronizer.LastReceivedStateTick).AppendLine();
                 _builder.Append("OwnerInputTick: ").Append(state_synchronizer.LastProcessedInputTick).AppendLine();
+                _builder.Append("ServerInputQueue: ")
+                    .Append(state_synchronizer.LastServerInputQueueDepth)
+                    .Append(" / ")
+                    .Append(state_synchronizer.LastServerInputTargetDepth)
+                    .AppendLine();
+                _builder.Append("ServerInputSource: ")
+                    .Append(state_synchronizer.LastServerInputSource)
+                    .Append(" missing=")
+                    .Append(state_synchronizer.LastServerMissingInputTicks)
+                    .Append(" resets=")
+                    .Append(state_synchronizer.LastServerBufferResetCount)
+                    .Append(" jitter=")
+                    .Append(Format(state_synchronizer.LastServerInputJitterTicks))
+                    .AppendLine();
                 _builder.Append("RemoteAppliedTick: ").Append(state_synchronizer.LastAppliedStateTick).AppendLine();
-                _builder.Append("RemoteRenderTick: ").Append(Format(state_synchronizer.LastRemoteRenderTick)).AppendLine();
+                _builder.Append("RemoteRenderTick: ")
+                    .Append(Format(character.TickManager.RemoteRenderTick))
+                    .AppendLine();
                 _builder.Append("RemoteBuffer: ").Append(state_synchronizer.RemoteBufferCount).AppendLine();
                 _builder.Append("RemoteBack: ")
                     .Append(Format(state_synchronizer.RemoteInterpolationBackMs))
@@ -151,13 +167,22 @@ namespace Core.ClientPresentation
             _builder.AppendLine();
             _builder.AppendLine("LastShot:");
             _builder.Append("input/server: ").Append(shot.InputTick).Append(" / ").Append(shot.ServerTick).AppendLine();
+            _builder.Append("view/validated/clamped: ")
+                .Append(shot.ShotViewTick)
+                .Append(" / ")
+                .Append(shot.ValidatedShotViewTick)
+                .Append(" / ")
+                .Append(shot.ShotTimestampClamped)
+                .AppendLine();
             _builder.Append("query/snapshot: ").Append(shot.HitboxQueryTick).Append(" / ").Append(shot.HitboxSnapshotTick).AppendLine();
-            _builder.Append("visual/bias/rewind: ")
+            _builder.Append("visual/bias/input/server rewind: ")
                 .Append(shot.LagCompensationVisualBackTicks)
                 .Append(" / ")
                 .Append(shot.LagCompensationBiasTicks)
                 .Append(" / ")
                 .Append(shot.LagCompensationRewindTicks)
+                .Append(" / ")
+                .Append(shot.ShotServerRewindTicks)
                 .AppendLine();
             _builder.Append("hit/dmg/kill: ")
                 .Append(shot.HasHit)

@@ -176,7 +176,11 @@ namespace Game.Players
 
         private void Play(AudioCue cue)
         {
-            GameAudioService.Instance.Play(cue, transform.position, _character.isOwned);
+            GameAudioService.Instance.Play(
+                cue,
+                transform.position,
+                _character.isOwned,
+                gameObject.GetInstanceID());
         }
     }
 }
