@@ -389,7 +389,7 @@ MonoBehaviour:
   _title_text: {fileID: 3529298685828389739}
   _winner_text: {fileID: 4355177593539268903}
   _score_text: {fileID: 4704449278308346239}
-  _exit_to_menu_button: {fileID: 6505688655432209153}
+  _exit_to_menu_button: {fileID: 6274451020168929248}
   _survey_button: {fileID: 6505688655432209153}
 --- !u!222 &8954331578701749259
 CanvasRenderer:

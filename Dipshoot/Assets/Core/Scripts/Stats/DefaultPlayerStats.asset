@@ -30,11 +30,11 @@ MonoBehaviour:
   - Preset: {fileID: 11400000, guid: e6a03ecfb96448e68b8288a4833f3928, type: 2}
     Value: 0.25
   - Preset: {fileID: 11400000, guid: 7c74c3a9554b47499f265491f6d87346, type: 2}
-    Value: 50
+    Value: 40
   - Preset: {fileID: 11400000, guid: b79e44b0cfd342a284a0e89638e25d1a, type: 2}
     Value: 75
   - Preset: {fileID: 11400000, guid: 3f33c0e677ae40f784e2673368ab90cb, type: 2}
-    Value: 0.5
+    Value: 0.2
   - Preset: {fileID: 11400000, guid: 9b67d3199ab14c1ca468e88e0252fd10, type: 2}
     Value: 12
   - Preset: {fileID: 11400000, guid: 3c88af15189e4be28077bc5808b279d6, type: 2}
