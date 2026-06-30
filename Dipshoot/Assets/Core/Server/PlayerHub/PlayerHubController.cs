@@ -2,6 +2,7 @@ using Mirror;
 using Server.Data;
 using Server.Lobby;
 using Server.Match;
+using Server.ServerSide;
 using UnityEngine;
 
 namespace Server.PlayerHub
@@ -17,6 +18,7 @@ namespace Server.PlayerHub
         {
             Player = player;
             _connector.Initialize(this);
+            LobbiesController.Instance.RegisterPlayerHub(this);
         }
 
         public void UpdateLobbyData(LobbyData lobby)
@@ -30,6 +32,12 @@ namespace Server.PlayerHub
         {
             if (Player != null && Player.IsHasClient())
                 _connector.TargetRegisterError(error);
+        }
+
+        public void UpdatePopulationData(ServerPopulationSnapshot snapshot)
+        {
+            if (Player != null && Player.IsHasClient())
+                _connector.TargetUpdatePopulationData(snapshot);
         }
 
         public void CreateLobby(string lobby_code)
@@ -52,6 +60,29 @@ namespace Server.PlayerHub
                 return;
             }
             LobbiesController.Instance.EnterToLobby(this, lobby_code);
+        }
+
+        public void FindOrCreatePublicLobby()
+        {
+            ClearStaleLobby();
+            if (Lobby != null)
+            {
+                RegisterError("Error 09: Attempt to search from another lobby");
+                return;
+            }
+
+            LobbiesController.Instance.FindOrCreatePublicLobby(this);
+        }
+
+        public void OpenLobby()
+        {
+            if (Lobby == null)
+            {
+                RegisterError("Error 10: Attempt to open lobby without being a member");
+                return;
+            }
+
+            LobbiesController.Instance.OpenLobby(this, Lobby.Id);
         }
 
         public void LeaveFromLobby()

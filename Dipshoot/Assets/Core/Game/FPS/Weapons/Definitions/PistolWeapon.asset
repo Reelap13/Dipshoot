@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: PistolWeapon
   m_EditorClassIdentifier: 
   _id: pistol
-  _display_name: Pistol
+  _display_name: "\u0412\u0442\u043E\u0440\u0438\u0447\u043D\u043E\u0435"
   _slot: 2
   _fire_mode: 0
   _damage_stat: 2100
@@ -35,6 +35,7 @@ MonoBehaviour:
   _recoil_yaw_stat: 2114
   _recoil_recovery_stat: 2115
   _recoil_max_stat: 2116
+  _recoil_pattern: {fileID: 0}
   _visual: {fileID: 11400000, guid: a5b397ccf768f554e9243b9b56bc0761, type: 2}
   _show_debug_tracer: 1
   _show_debug_hit_marker: 0

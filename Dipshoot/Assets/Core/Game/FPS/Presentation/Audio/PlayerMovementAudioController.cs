@@ -6,6 +6,7 @@ namespace Game.Players
     public class PlayerMovementAudioController : MonoBehaviour, IPlayerSimulationResettable
     {
         [SerializeField] private PlayerCharacter _character;
+        [SerializeField] private StateSynchronizer _state_synchronizer;
         [SerializeField] private FootstepAudioSet _footsteps;
         [SerializeField] private float _crouch_step_distance = 1.55f;
         [SerializeField] private float _walk_step_distance = 1.35f;
@@ -17,8 +18,6 @@ namespace Game.Players
         private PlayerState _last_state;
         private bool _has_last_state;
         private float _step_distance;
-        private Vector3 _last_transform_position;
-        private bool _has_last_transform_position;
 
         private void Awake()
         {
@@ -60,7 +59,6 @@ namespace Game.Players
         public void ResetSimulation()
         {
             _has_last_state = false;
-            _has_last_transform_position = false;
             _step_distance = 0f;
         }
 
@@ -68,6 +66,9 @@ namespace Game.Players
         {
             if (_character == null)
                 _character = GetComponent<PlayerCharacter>();
+
+            if (_state_synchronizer == null)
+                _state_synchronizer = GetComponent<StateSynchronizer>();
         }
 
         private bool TryGetCurrentState(out PlayerState state)
@@ -143,35 +144,17 @@ namespace Game.Players
 
         private void UpdateRemoteSteps()
         {
-            Vector3 position = transform.position;
-            if (!_has_last_transform_position)
+            if (_state_synchronizer == null ||
+                !_state_synchronizer.TryGetRenderState(out PlayerState state))
             {
-                _last_transform_position = position;
-                _has_last_transform_position = true;
                 return;
             }
 
-            Vector3 delta = position - _last_transform_position;
-            delta.y = 0f;
-            _last_transform_position = position;
+            UpdateTransitions(state);
+            UpdateSteps(state);
 
-            float delta_time = Mathf.Max(Time.deltaTime, 0.0001f);
-            float speed = delta.magnitude / delta_time;
-            if (speed < _min_step_speed)
-            {
-                _step_distance = 0f;
-                return;
-            }
-
-            _step_distance += delta.magnitude;
-            float target_distance = speed >= _run_speed_threshold
-                ? _run_step_distance
-                : _walk_step_distance;
-            if (_step_distance < target_distance)
-                return;
-
-            _step_distance %= target_distance;
-            Play(speed >= _run_speed_threshold ? _footsteps.RunSteps : _footsteps.WalkSteps);
+            _last_state = state;
+            _has_last_state = true;
         }
 
         private void Play(AudioCue cue)

@@ -17,6 +17,21 @@ namespace Server.ServerSide
         private List<Player> _players = new();
         private int _player_id = 0;
 
+        public int ConnectedPlayersCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < _players.Count; i++)
+                {
+                    if (_players[i].IsHasClient())
+                        count++;
+                }
+
+                return count;
+            }
+        }
+
         private void Awake()
         {
             ConnectionController.Instance.OnConnected.AddListener(ConnectPlayer);

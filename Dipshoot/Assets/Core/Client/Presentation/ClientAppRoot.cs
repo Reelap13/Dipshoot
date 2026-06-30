@@ -37,6 +37,7 @@ namespace Core.ClientPresentation
         public ClientSessionStore SessionStore { get; private set; }
         public ClientLobbyStore LobbyStore { get; private set; }
         public ClientMatchStore MatchStore { get; private set; }
+        public ClientPopulationStore PopulationStore { get; private set; }
         public ClientInputRouter InputRouter { get; private set; }
         public ClientCameraRouter CameraRouter { get; private set; }
         public ClientPresentationRoot PresentationRoot { get; private set; }
@@ -66,6 +67,7 @@ namespace Core.ClientPresentation
             SessionStore = GetOrAddComponent<ClientSessionStore>();
             LobbyStore = GetOrAddComponent<ClientLobbyStore>();
             MatchStore = GetOrAddComponent<ClientMatchStore>();
+            PopulationStore = GetOrAddComponent<ClientPopulationStore>();
             InputRouter = GetOrAddComponent<ClientInputRouter>();
             CameraRouter = GetOrAddComponent<ClientCameraRouter>();
             PresentationRoot = GetOrAddComponent<ClientPresentationRoot>();

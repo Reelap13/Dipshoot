@@ -17,6 +17,7 @@ namespace Core.ClientPresentation
         [SerializeField] private TextMeshProUGUI _mouse_sensitivity_value_text;
         [SerializeField] private Slider _master_volume_slider;
         [SerializeField] private TextMeshProUGUI _master_volume_value_text;
+        [SerializeField] private Button _leave_match_button;
         [SerializeField] private RawImage _map_image;
         [SerializeField] private Camera _map_camera;
         [SerializeField] private GameObject _intro_timer_panel;
@@ -49,6 +50,8 @@ namespace Core.ClientPresentation
             InitializeSliders();
             InitializeMapCamera();
             ApplyMasterVolume(ClientGameplaySettings.MasterVolume);
+            if (_leave_match_button != null)
+                _leave_match_button.onClick.AddListener(LeaveMatch);
         }
 
         private void OnDestroy()
@@ -57,6 +60,8 @@ namespace Core.ClientPresentation
                 _mouse_sensitivity_slider.onValueChanged.RemoveListener(SetMouseSensitivity);
             if (_master_volume_slider != null)
                 _master_volume_slider.onValueChanged.RemoveListener(SetMasterVolume);
+            if (_leave_match_button != null)
+                _leave_match_button.onClick.RemoveListener(LeaveMatch);
 
             if (_map_texture != null)
             {
@@ -141,6 +146,11 @@ namespace Core.ClientPresentation
         {
             _is_intro_auto_open = false;
             ClientAppRoot.Instance.PresentationRoot.SetState(ClientPresentationState.Match);
+        }
+
+        private void LeaveMatch()
+        {
+            ClientAppRoot.Instance.LobbyActions.RequestLeaveMatch();
         }
 
         private void InitializeSliders()
@@ -276,7 +286,7 @@ namespace Core.ClientPresentation
             TeamId team_id = GetLocalTeam();
             string team_name = FormatTeamName(team_id);
             string color = ColorUtility.ToHtmlStringRGB(GetTeamColor(team_id));
-            _player_team_text.text = $"¬‡¯‡ ÍÓÏ‡Ì‰‡: <color=#{color}>{team_name}</color>";
+            _player_team_text.text = $"–í–∞—à–∞ –∫–æ–º–∞–Ω–¥–∞: <color=#{color}>{team_name}</color>";
         }
 
         private void SetSpawnFlagsVisible(bool visible)

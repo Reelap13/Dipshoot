@@ -67,7 +67,7 @@ namespace Game.Players
             source.spatialBlend = force_2d ? 0f : cue.SpatialBlend;
             source.minDistance = cue.MinDistance;
             source.maxDistance = cue.MaxDistance;
-            source.rolloffMode = AudioRolloffMode.Logarithmic;
+            source.rolloffMode = cue.RolloffMode;
             source.loop = false;
             source.Play();
 

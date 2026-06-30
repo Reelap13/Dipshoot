@@ -17,10 +17,16 @@ namespace Server.Lobby
         public string SelectedResultUrl;
         public bool IsTutorialMode;
         public bool IsConnectionBlocked;
+        public LobbyAccessMode AccessMode;
         public List<LobbyPlayerData> Players;
 
         public LobbyData() { }
-        public LobbyData(int lobby_id, string lobby_map, int lobby_capacity, int map_id)
+        public LobbyData(
+            int lobby_id,
+            string lobby_map,
+            int lobby_capacity,
+            int map_id,
+            LobbyAccessMode access_mode = LobbyAccessMode.Private)
         {
             Id = lobby_id;
             Code = lobby_map;
@@ -33,6 +39,7 @@ namespace Server.Lobby
             SelectedResultUrl = string.Empty;
             IsTutorialMode = false;
             IsConnectionBlocked = false;
+            AccessMode = access_mode;
             Players = new();
         }
 

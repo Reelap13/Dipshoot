@@ -131,6 +131,7 @@ namespace Server.Match
             if (_players.Count == 0)
                 MatchController.FinishMatch();
 
+            MatchesContoller.Instance.NotifyPopulationChanged();
             return true;
         }
 

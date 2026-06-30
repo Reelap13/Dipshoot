@@ -191,7 +191,7 @@ namespace Core.ClientPresentation
 
             bool is_reloading = weapon_controller.IsActiveReloading;
             if (_weapon_reload_text != null)
-                _weapon_reload_text.text = is_reloading ? "Reloading" : string.Empty;
+                _weapon_reload_text.text = is_reloading ? "Перезарядка" : string.Empty;
             if (_weapon_reload_progress_fill != null)
                 _weapon_reload_progress_fill.rectTransform.anchorMax =
                     new Vector2(is_reloading ? weapon_controller.ActiveReloadProgress : 0f, 1f);

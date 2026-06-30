@@ -13,12 +13,21 @@ public class ConnectorToServer : MonoBehaviour
     [SerializeField] private TMP_InputField _player_id_input;
     [SerializeField] private Button _start_client_button;
     [SerializeField] private bool _create_missing_player_id_input = true;
+    [SerializeField] private bool _connect_on_start = true;
 
     private void Awake()
     {
         EnsurePlayerIdUi();
         LoadPlayerIdInput();
         UpdateStartClientButton();
+    }
+
+    private void Start()
+    {
+#if !UNITY_SERVER
+        if (_connect_on_start && !NetworkClient.active && !NetworkServer.active)
+            CreateClientConnection();
+#endif
     }
 
     private void OnDestroy()

@@ -25,6 +25,7 @@ namespace Core.ClientPresentation
         [SerializeField] private Button _start_game_button;
 
         private ClientUiLayer _layer;
+        private ClientLobbyMatchmakingView _matchmaking_view;
         private readonly List<string> _preset_ids = new();
         private bool _suppress_preset_event;
 
@@ -34,15 +35,13 @@ namespace Core.ClientPresentation
             _layer.Initialize(ClientUiLayerKind.Lobby);
 
             ValidatePrefabReferences();
+            _matchmaking_view = CreateMatchmakingView();
+            HideLegacyMatchSettings();
             _leave_button.onClick.AddListener(Leave);
             _start_game_button.onClick.AddListener(StartGame);
             _switch_team_button.onClick.AddListener(SwitchTeam);
-            if (_preset_dropdown != null)
-                _preset_dropdown.onValueChanged.AddListener(SelectPreset);
-            if (_preset_cycle_button != null)
-                _preset_cycle_button.onClick.AddListener(SelectNextPreset);
-            if (_tutorial_mode_toggle != null)
-                _tutorial_mode_toggle.onValueChanged.AddListener(SetTutorialMode);
+            if (_matchmaking_view != null)
+                _matchmaking_view.OpenLobbyButton.onClick.AddListener(OpenLobby);
 
             ClientAppRoot app_root = ClientAppRoot.Instance;
             app_root.LobbyStore.OnLobbyUpdated += UpdateView;
@@ -56,12 +55,8 @@ namespace Core.ClientPresentation
             _start_game_button.onClick.RemoveListener(StartGame);
             if (_switch_team_button != null)
                 _switch_team_button.onClick.RemoveListener(SwitchTeam);
-            if (_preset_dropdown != null)
-                _preset_dropdown.onValueChanged.RemoveListener(SelectPreset);
-            if (_preset_cycle_button != null)
-                _preset_cycle_button.onClick.RemoveListener(SelectNextPreset);
-            if (_tutorial_mode_toggle != null)
-                _tutorial_mode_toggle.onValueChanged.RemoveListener(SetTutorialMode);
+            if (_matchmaking_view != null)
+                _matchmaking_view.OpenLobbyButton.onClick.RemoveListener(OpenLobby);
 
             if (!ClientAppRoot.HasInstance)
                 return;
@@ -80,9 +75,9 @@ namespace Core.ClientPresentation
                 return;
             }
 
-            _lobby_code_text.text = $"Code: {lobby.Code}";
+            _lobby_code_text.text = $"Код: {lobby.Code}";
             int players_count = lobby.Players != null ? lobby.Players.Count : 0;
-            _capacity_text.text = $"Players: {players_count}/{lobby.PlayersCapacity}";
+            _capacity_text.text = $"Игроки: {players_count}/{lobby.PlayersCapacity}";
 
             int player_id = ClientAppRoot.Instance.SessionStore.PlayerId;
             LobbyPlayerData local_player = lobby.GetPlayer(player_id);
@@ -96,8 +91,8 @@ namespace Core.ClientPresentation
             FillTeamRows(lobby, TeamId.Spectator, _spectator_player_rows, is_host, player_id);
 
             _start_game_button.gameObject.SetActive(is_host);
-            UpdatePresetView(lobby, is_host);
-            UpdateTutorialModeView(lobby, is_host);
+            _matchmaking_view?.SetState(lobby, is_host);
+            HideLegacyMatchSettings();
         }
 
         private void ClearView()
@@ -113,6 +108,7 @@ namespace Core.ClientPresentation
                 _tutorial_mode_toggle.SetIsOnWithoutNotify(false);
 
             _start_game_button.gameObject.SetActive(false);
+            _matchmaking_view?.SetState(null, false);
         }
 
         private void FillTeamRows(LobbyData lobby, TeamId team_id, List<TextMeshProUGUI> rows, bool is_host, int local_player_id)
@@ -253,6 +249,11 @@ namespace Core.ClientPresentation
             ClientAppRoot.Instance.LobbyActions.StartGame();
         }
 
+        private void OpenLobby()
+        {
+            ClientAppRoot.Instance.LobbyActions.OpenLobby();
+        }
+
         private void SwitchTeam()
         {
             ClientAppRoot.Instance.LobbyActions.SwitchTeam();
@@ -318,10 +319,6 @@ namespace Core.ClientPresentation
                 _blue_player_rows = CreateTeamColumn("Blue Team", new Color(0.08f, 0.16f, 0.5f, 0.78f), new Vector2(180f, -40f));
             if (_spectator_player_rows.Count == 0)
                 Debug.LogError($"{nameof(ClientLobbyLayer)} spectator rows are not assigned.", this);
-            if (_selected_preset_text == null)
-                _selected_preset_text = CreateRuntimeText("SelectedPresetText", new Vector2(0f, -92f), new Vector2(420f, 30f), 18, TextAlignmentOptions.Center);
-            if (_preset_dropdown == null && _preset_cycle_button == null)
-                _preset_cycle_button = CreateRuntimeButton("PresetCycleButton", new Vector2(0f, -130f), new Vector2(230f, 34f), "Change Preset");
             if (_tutorial_mode_toggle == null)
                 Debug.LogWarning($"{nameof(ClientLobbyLayer)} tutorial mode toggle is not assigned.", this);
             if (_switch_team_button == null)
@@ -329,6 +326,38 @@ namespace Core.ClientPresentation
 
             if (_lobby_code_text == null || _capacity_text == null || _leave_button == null || _start_game_button == null)
                 Debug.LogError($"{nameof(ClientLobbyLayer)} prefab is not fully assigned.", this);
+        }
+
+        private ClientLobbyMatchmakingView CreateMatchmakingView()
+        {
+            ClientLobbyMatchmakingView existing =
+                GetComponentInChildren<ClientLobbyMatchmakingView>(true);
+            if (existing != null)
+                return existing;
+
+            GameObject prefab = Resources.Load<GameObject>(
+                "ClientUI/Lobby/ClientLobbyMatchmakingView");
+            if (prefab == null)
+            {
+                Debug.LogError("Missing ClientLobbyMatchmakingView prefab.", this);
+                return null;
+            }
+
+            Transform parent = transform.Find("LobbyPanel");
+            GameObject instance = Instantiate(prefab, parent == null ? transform : parent);
+            return instance.GetComponent<ClientLobbyMatchmakingView>();
+        }
+
+        private void HideLegacyMatchSettings()
+        {
+            if (_selected_preset_text != null)
+                _selected_preset_text.gameObject.SetActive(false);
+            if (_preset_dropdown != null)
+                _preset_dropdown.gameObject.SetActive(false);
+            if (_preset_cycle_button != null)
+                _preset_cycle_button.gameObject.SetActive(false);
+            if (_tutorial_mode_toggle != null)
+                _tutorial_mode_toggle.gameObject.SetActive(false);
         }
 
         private List<TextMeshProUGUI> CreateTeamColumn(string title, Color color, Vector2 position)

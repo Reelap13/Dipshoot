@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: PrimaryWeapon
   m_EditorClassIdentifier: 
   _id: primary
-  _display_name: Primary
+  _display_name: "\u041E\u0441\u043D\u043E\u0432\u043D\u043E\u0435"
   _slot: 1
   _fire_mode: 1
   _damage_stat: 2000

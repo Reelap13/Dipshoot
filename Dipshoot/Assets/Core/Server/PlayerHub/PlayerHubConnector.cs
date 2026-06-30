@@ -1,6 +1,7 @@
 using Core.ClientPresentation;
 using Mirror;
 using Server.Lobby;
+using Server.ServerSide;
 
 namespace Server.PlayerHub
 {
@@ -50,6 +51,12 @@ namespace Server.PlayerHub
             ClientAppRoot.Instance.LobbyStore.RegisterError(error);
         }
 
+        [TargetRpc]
+        public void TargetUpdatePopulationData(ServerPopulationSnapshot snapshot)
+        {
+            ClientAppRoot.Instance.PopulationStore.SetSnapshot(snapshot);
+        }
+
         private ClientPresentationState GetPresentationState(ClientAppRoot app_root, LobbyData data)
         {
             if (data != null)
@@ -64,6 +71,10 @@ namespace Server.PlayerHub
         public void CommandCreateLobby(string lobby_code) => _controller.CreateLobby(lobby_code);
         [Command]
         public void CommandEnterToLobby(string lobby_code) => _controller.EnterToLobby(lobby_code);
+        [Command]
+        public void CommandFindOrCreatePublicLobby() => _controller.FindOrCreatePublicLobby();
+        [Command]
+        public void CommandOpenLobby() => _controller.OpenLobby();
         [Command]
         public void CommandLeaveFromLobby() => _controller.LeaveFromLobby();
         [Command]

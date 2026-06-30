@@ -17,9 +17,10 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 40d8fe6fd2f14ae489729c0c35f11c6a, type: 3}
   - {fileID: 8300000, guid: 6787f332303cacf479c5773f01061ce2, type: 3}
   _output_mixer_group: {fileID: 4693966573754120106, guid: 3c994f10ac3869d40bf2795c38374261, type: 2}
-  _volume_range: {x: 0.35, y: 0.45}
+  _volume_range: {x: 0.65, y: 1}
   _pitch_range: {x: 0.94, y: 1.04}
   _spatial_blend: 1
-  _min_distance: 1
-  _max_distance: 112
+  _min_distance: 5
+  _max_distance: 20
+  _rolloff_mode: 1
   _cooldown: 0.08

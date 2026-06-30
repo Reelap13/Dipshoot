@@ -33,6 +33,22 @@ namespace Core.ClientPresentation
             _connector.CommandEnterToLobby(lobby_code);
         }
 
+        public void FindOrCreatePublicLobby()
+        {
+            if (_connector == null)
+                return;
+
+            _connector.CommandFindOrCreatePublicLobby();
+        }
+
+        public void OpenLobby()
+        {
+            if (_connector == null)
+                return;
+
+            _connector.CommandOpenLobby();
+        }
+
         public void LeaveFromLobby()
         {
             if (_connector == null)

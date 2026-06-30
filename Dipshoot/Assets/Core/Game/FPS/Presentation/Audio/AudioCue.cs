@@ -14,12 +14,14 @@ namespace Game.Players
         [SerializeField] private float _spatial_blend = 1f;
         [SerializeField] private float _min_distance = 1f;
         [SerializeField] private float _max_distance = 24f;
+        [SerializeField] private AudioRolloffMode _rolloff_mode = AudioRolloffMode.Logarithmic;
         [SerializeField] private float _cooldown = 0f;
 
         public AudioMixerGroup OutputMixerGroup => _output_mixer_group;
         public float SpatialBlend => _spatial_blend;
         public float MinDistance => _min_distance;
         public float MaxDistance => _max_distance;
+        public AudioRolloffMode RolloffMode => _rolloff_mode;
         public float Cooldown => _cooldown;
 
         public bool TryGetClip(out AudioClip clip)
