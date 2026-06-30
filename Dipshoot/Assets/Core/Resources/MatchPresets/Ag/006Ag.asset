@@ -18,5 +18,5 @@ MonoBehaviour:
   Seed: -1146724422
   RoundsCount: 1
   RoundDurationSeconds: 300
-  MaxCaptureScore: 400
+  MaxCaptureScore: 150
   ResultUrl: https://forms.gle/JTte67iAhvGui2Pr8

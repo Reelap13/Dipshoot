@@ -77,11 +77,12 @@ namespace Server.ServerSide
             player.Client = null;
             DisableAllPlayerObjects(player); 
             OnDisconnected.Invoke(player);
+            DeletePlayer(player);
         }
 
         public void DeletePlayer(Player player)
         {
-            if (player.Client != null)
+            if (player == null || player.Client != null || !_players.Contains(player))
                 return;
 
             _players.Remove(player);

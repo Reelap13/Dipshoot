@@ -49,7 +49,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  _production_build: 0
+  _production_build: 1
 --- !u!114 &7015028239414536093
 MonoBehaviour:
   m_ObjectHideFlags: 0

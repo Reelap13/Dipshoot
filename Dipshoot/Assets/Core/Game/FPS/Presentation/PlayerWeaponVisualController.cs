@@ -21,6 +21,9 @@ namespace Game.Players
         private WeaponSlot _last_active_slot = WeaponSlot.None;
         private bool _last_active_reload_state;
         private bool _has_weapon_state;
+        private WeaponSlot _last_presented_shot_slot = WeaponSlot.None;
+        private int _last_presented_shot_sequence = -1;
+        private int _last_presented_shot_input_tick = -1;
 
         private void Awake()
         {
@@ -38,18 +41,31 @@ namespace Game.Players
 
         public void PlayShot(ShotResult result)
         {
+            if (IsDuplicatePresentedShot(result))
+                return;
+
+            _last_presented_shot_slot = result.WeaponSlot;
+            _last_presented_shot_sequence = result.ShotSequence;
+            _last_presented_shot_input_tick = result.InputTick;
+
             WeaponVisualInstance visual = GetVisual(result.WeaponSlot);
             if (visual == null)
                 return;
 
             bool use_first_person = _visual != null && _visual.IsFirstPersonVisible;
             visual.Trigger(use_first_person, FireTrigger);
-            SpawnMuzzleFlash(visual, use_first_person);
             PlayAudio(
                 visual,
                 use_first_person,
                 visual.Definition?.Audio?.Fire,
                 true);
+        }
+
+        private bool IsDuplicatePresentedShot(ShotResult result)
+        {
+            return result.WeaponSlot == _last_presented_shot_slot &&
+                result.ShotSequence == _last_presented_shot_sequence &&
+                result.InputTick == _last_presented_shot_input_tick;
         }
 
         public bool TryGetShotTracerOrigin(WeaponSlot slot, out Vector3 origin)
@@ -386,17 +402,33 @@ namespace Game.Players
                 if (root == null)
                     return;
 
-                for (int i = 0; i < root.childCount; i++)
+                for (int i = root.childCount - 1; i >= 0; i--)
                 {
                     Transform child = root.GetChild(i);
-                    if (child.name.StartsWith("MuzzleFlash", System.StringComparison.OrdinalIgnoreCase))
+                    if (IsEmbeddedMuzzleFlash(child))
                     {
+                        PreserveMuzzleSocket(child);
                         child.gameObject.SetActive(false);
                         continue;
                     }
 
                     DisableEmbeddedMuzzleFlashes(child);
                 }
+            }
+
+            private static bool IsEmbeddedMuzzleFlash(Transform root)
+            {
+                return root != null &&
+                    root.name.IndexOf("MuzzleFlash", System.StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+
+            private static void PreserveMuzzleSocket(Transform muzzle_flash)
+            {
+                Transform socket = FindChildRecursive(muzzle_flash, "MuzzleSocket");
+                if (socket == null || muzzle_flash.parent == null || socket.parent == muzzle_flash.parent)
+                    return;
+
+                socket.SetParent(muzzle_flash.parent, true);
             }
 
             private static bool ParentMatches(GameObject instance, Transform parent)

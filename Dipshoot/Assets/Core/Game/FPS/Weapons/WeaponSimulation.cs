@@ -38,7 +38,8 @@ namespace Game.Players
 
     public static class WeaponSimulation
     {
-        private const float SemiAutomaticFireBufferFraction = 0.15f;
+        private const float SemiAutomaticFireBufferSeconds = 0.08f;
+        private const float SemiAutomaticFireBufferMaxFraction = 0.45f;
 
         public static WeaponRuntimeState CreateInitialState(
             WeaponDefinition primary_weapon,
@@ -97,7 +98,7 @@ namespace Game.Players
 
             int fire_interval_ticks = SecondsToTicks(active_stats.FireInterval, tick_rate);
             if (has_input && !did_switch_slot)
-                TryBufferFireIntent(ref active_slot_state, input, active_weapon, fire_interval_ticks, tick);
+                TryBufferFireIntent(ref active_slot_state, input, active_weapon, fire_interval_ticks, tick, tick_rate);
 
             bool wants_fire = has_input && !did_switch_slot && WantsFire(input, active_weapon) ||
                 ShouldConsumeBufferedFire(active_slot_state, active_weapon, tick);
@@ -188,12 +189,17 @@ namespace Game.Players
             PlayerInputData input,
             WeaponDefinition weapon,
             int fire_interval_ticks,
-            int tick)
+            int tick,
+            int tick_rate)
         {
             if (weapon.FireMode == WeaponFireMode.Automatic || !input.IsShootPressed || tick >= state.NextFireTick)
                 return;
 
-            int buffer_ticks = Mathf.Max(1, Mathf.CeilToInt(fire_interval_ticks * SemiAutomaticFireBufferFraction));
+            int buffer_ticks = Mathf.Max(
+                1,
+                Mathf.Min(
+                    SecondsToTicks(SemiAutomaticFireBufferSeconds, tick_rate),
+                    Mathf.CeilToInt(fire_interval_ticks * SemiAutomaticFireBufferMaxFraction)));
             if (state.NextFireTick - tick <= buffer_ticks)
                 state.BufferedFireTick = tick;
         }

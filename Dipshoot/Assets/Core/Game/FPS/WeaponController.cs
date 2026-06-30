@@ -523,7 +523,37 @@ namespace Game.Players
             if (!isClient || !isOwned || isServer || !_has_predicted_weapon_state)
                 return;
 
+            WeaponRuntimeState previous_prediction = _predicted_weapon_state;
             ResetPredictedStateFromSync();
+            PreservePredictedCooldown(ref _predicted_weapon_state.Primary, previous_prediction.Primary);
+            PreservePredictedCooldown(ref _predicted_weapon_state.Pistol, previous_prediction.Pistol);
+
+            if (HasPendingPredictedShots())
+                _predicted_weapon_state.ActiveSlot = previous_prediction.ActiveSlot;
+        }
+
+        private void PreservePredictedCooldown(
+            ref WeaponSlotState synced_state,
+            WeaponSlotState predicted_state)
+        {
+            int current_tick = GetCurrentTick();
+            if (predicted_state.NextFireTick <= synced_state.NextFireTick ||
+                predicted_state.NextFireTick <= current_tick)
+            {
+                return;
+            }
+
+            synced_state.NextFireTick = predicted_state.NextFireTick;
+            synced_state.ConsecutiveShots = predicted_state.ConsecutiveShots;
+            synced_state.LastShotTick = predicted_state.LastShotTick;
+            synced_state.SpreadDegrees = predicted_state.SpreadDegrees;
+            synced_state.BufferedFireTick = predicted_state.BufferedFireTick;
+        }
+
+        private bool HasPendingPredictedShots()
+        {
+            return _predicted_shots.Count > 0 ||
+                _presented_owner_shots.Count > 0;
         }
 
         private void HandleActiveSlotSynced(WeaponSlot old_value, WeaponSlot new_value) => RefreshPredictedStateFromAuthoritativeSync();

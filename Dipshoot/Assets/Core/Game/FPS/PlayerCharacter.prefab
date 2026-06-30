@@ -487,6 +487,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _character: {fileID: 7358710916428720345}
+  _state_synchronizer: {fileID: 0}
   _footsteps: {fileID: 11400000, guid: 98663dda5bd855e418044d297517f2fa, type: 2}
   _crouch_step_distance: 1.55
   _walk_step_distance: 1.35
@@ -501,7 +502,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1239777248742655304}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5d13a3fdc90a1eb409b4657e81f4e0ec, type: 3}
   m_Name: 
