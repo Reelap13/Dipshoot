@@ -181,7 +181,7 @@ namespace Game.Players
 
         private static float GetStateSpread(PlayerState state, WeaponStats weapon_stats)
         {
-            return Mathf.Min(weapon_stats.MaxSpread, weapon_stats.SpreadDegrees);
+            return Mathf.Max(0f, weapon_stats.SpreadDegrees);
         }
 
         private static Quaternion GetSpreadRotation(

@@ -34,7 +34,7 @@ MonoBehaviour:
   - {x: -0.08, y: 1.62}
   - {x: -0.1, y: 1.68}
   _pattern_reset_time: 0.32
-  _gameplay_scale: 1
+  _gameplay_scale: 0.4
   _visual_scale: 0.25
   _random_yaw: 0
   _random_pitch: 0

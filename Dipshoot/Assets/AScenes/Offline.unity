@@ -173,7 +173,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6130225365883260258, guid: ac5a45f79446f704280d82b8fdd5a18c, type: 3}
       propertyPath: _fade_on_awake
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

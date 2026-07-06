@@ -220,17 +220,17 @@ namespace Game.Players
             PlayerInputData input,
             PlayerState player_state)
         {
-            float spread = stats.SpreadDegrees + state.SpreadDegrees;
+            float spread = Mathf.Min(stats.MaxSpread, stats.SpreadDegrees + state.SpreadDegrees);
             Vector3 horizontal_velocity = new(player_state.Velocity.x, 0f, player_state.Velocity.z);
             spread += stats.MoveSpread * Mathf.Clamp01(horizontal_velocity.magnitude / stats.MoveSpreadFullSpeed);
-
-            if (!player_state.IsGrounded)
-                spread += stats.AirSpread * Mathf.Clamp01(Mathf.Abs(player_state.Velocity.y) / stats.FallSpreadFullSpeed);
 
             if (player_state.Stance == MovementStance.Crouching)
                 spread *= stats.CrouchSpreadMultiplier;
 
-            return Mathf.Min(stats.MaxSpread, spread);
+            if (!player_state.IsGrounded)
+                spread += stats.AirSpread * Mathf.Clamp01(Mathf.Abs(player_state.Velocity.y) / stats.FallSpreadFullSpeed);
+
+            return Mathf.Max(0f, spread);
         }
 
         private static void IncreaseSpread(ref WeaponSlotState state, WeaponStats stats)
